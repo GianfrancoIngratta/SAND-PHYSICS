@@ -16,9 +16,20 @@ namespace GENIE{//GENIE
 
 std::string InteractionTarget(const ROOT::VecOps::RVec<int>& pdg);
 
+ROOT::VecOps::RVec<int> StableFinalStateParticles(const ROOT::VecOps::RVec<int>& pdg,
+                                           const ROOT::VecOps::RVec<int>& status);
+
+int NofFinalStateParticles(const ROOT::VecOps::RVec<int>& pdg);
+
 ROOT::RDF::RNode AddColumnsFromGENIE(ROOT::RDataFrame& df);
 
 }//GENIE
+
+namespace GEO{//GEO
+
+std::string GetMaterialFromCoordinates(double x, double y, double z);
+
+}
 
 }//RDFUtils
 

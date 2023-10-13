@@ -28,16 +28,19 @@ target_link_libraries(GenieUtils PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::Tre
                       GPDG GBaryonResonance GEVGCore GEVGDrivers GNtuple GGeo GFluxDrivers GPDF
                       GElFF GDecay GFragmentation GNuclear GLlewellynSmith GCrossSections GCharm
                       GElas GGiBUU GReinSehgal GQPM GBodekYang GEVGModules GQEL GRES GDIS GCoh
-                      GDfrc GMEC GNuE GNuGamma GHadronTransp GAlvarezRuso GBergerSehgal GSingleKaon GMuELoss  
+                      GDfrc GMEC GNuE GNuGamma GAlvarezRuso GHadronTransp GBergerSehgal GSingleKaon GMuELoss  
                       xml2
-                      log4cpp)                  
+                      log4cpp)
 
 # Creates a libUtils shared library
 add_library(RDataFrameUtils SHARED src/RDataFrameUtils.cpp)
 target_link_libraries(RDataFrameUtils PUBLIC ROOT::RIO ROOT::Net ROOT::ROOTDataFrame GenieUtils)
 
+add_library(GeoUtils SHARED src/GeoUtils.cpp)
+target_link_libraries(GeoUtils PUBLIC ROOT::RIO ROOT::Net ROOT::ROOTDataFrame EDepSim::edepsim_io)
+
 add_executable(AnalyseGenie src/AnalyseGenie.cpp)
-target_link_libraries(AnalyseGenie PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils)
+target_link_libraries(AnalyseGenie PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils)
 
 install(TARGETS  GenieUtils RDataFrameUtils AnalyseGenie
         RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin"
