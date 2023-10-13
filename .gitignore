@@ -1,0 +1,4 @@
+scratch/*
+build/*
+*.root
+*.gdml
