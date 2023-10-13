@@ -26,7 +26,7 @@ int main(int argc, char* argv[]){
 
     auto df = RDFUtils::InitDF(fInput, "gRooTracker");
 
-    // RDFUtils::PrintColumns(df);
+    RDFUtils::PrintColumns(df);
 
     auto dfG = RDFUtils::GENIE::AddColumnsFromGENIE(df);
 
@@ -34,7 +34,13 @@ int main(int argc, char* argv[]){
 
     dfG.Snapshot("myTree",fOutput,{"InteractionTarget",
                                    "InteractionTargetFromGEO",
-                                   "NofFinalStateParticles"});
+                                   "NofFinalStateParticles",
+                                   "EventType",
+                                   "MuonMomentumPX",
+                                   "MuonMomentumPY",
+                                   "MuonMomentumPZ",
+                                   "MuonMomentumP",
+                                   });
 
     return 0;
 }
