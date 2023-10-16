@@ -13,7 +13,13 @@
 #include "PDG/PDGUtils.h"
 
 namespace GenieUtils{
+
 std::string PDG2Name(int pdg);
+
+genie::GHepParticle GenieParticle(int pdg, 
+                                  genie::GHepStatus_t status, 
+                                  const TLorentzVector& momentum);
+
 }
 
 #endif

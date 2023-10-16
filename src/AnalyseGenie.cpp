@@ -24,9 +24,11 @@ int main(int argc, char* argv[]){
 
     const char* fOutput = argv[3];
 
+    if(!std::strstr(fInput,"*")) ROOT::EnableImplicitMT();
+
     auto df = RDFUtils::InitDF(fInput, "gRooTracker");
 
-    RDFUtils::PrintColumns(df);
+    // RDFUtils::PrintColumns(df);
 
     auto dfG = RDFUtils::GENIE::AddColumnsFromGENIE(df);
 
@@ -36,10 +38,13 @@ int main(int argc, char* argv[]){
                                    "InteractionTargetFromGEO",
                                    "NofFinalStateParticles",
                                    "EventType",
+                                //    "isCCQElike",
                                    "MuonMomentumPX",
                                    "MuonMomentumPY",
                                    "MuonMomentumPZ",
                                    "MuonMomentumP",
+                                   "HadronSystemMomentumP",
+                                   "MuonHadronSystKinImbalance",
                                    });
 
     return 0;

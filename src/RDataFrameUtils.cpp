@@ -43,6 +43,31 @@ ROOT::VecOps::RVec<double> RDFUtils::GetComponent(const ROOT::VecOps::RVec<TLore
     return v;
 }
 
+ROOT::VecOps::RVec<double> RDFUtils::VectorDifference(const ROOT::VecOps::RVec<double>& v1,
+                                                      const ROOT::VecOps::RVec<double>& v2){
+    ROOT::VecOps::RVec<double> diff;
+    for(auto i=0u; i<v1.size(); i++) diff.push_back(v1[i]-v2[i]);
+    return diff;                                                        
+}
+
+ROOT::VecOps::RVec<double> RDFUtils::VectorSubtractConst(const ROOT::VecOps::RVec<double>& v1, double c){
+    ROOT::VecOps::RVec<double> diff;
+    for(auto i=0u; i<v1.size(); i++) diff.push_back(v1[i]-c);
+    return diff;                                                        
+}
+
+TLorentzVector RDFUtils::VectorFilterByHighest(const ROOT::VecOps::RVec<double>& filter,
+                                               const ROOT::VecOps::RVec<TLorentzVector>& v){
+    // return value of v at index position corresponding to index of filter's highest
+    if(v.size()==0){
+        return {0.,0.,0.,0.};
+    }else{                                      
+        auto pointer2max = std::max_element(filter.begin(),filter.end());
+        auto index2max = std::find(filter.begin(),filter.end(),*pointer2max);
+        return v[index2max-filter.begin()];
+    }
+}
+
 //RDFUtils::GENIE_________________________________________________________________
 
 std::string RDFUtils::GENIE::InteractionTarget(const ROOT::VecOps::RVec<int>& pdg){
@@ -56,6 +81,7 @@ ROOT::VecOps::RVec<int> RDFUtils::GENIE::StableFinalStateParticles(const ROOT::V
     for (auto i = 0u; i < status.size(); i++)
     {
         if(status[i]==1) fsp.push_back(pdg[i]);
+        // if(status[i]==1) fsp.push_back(GenieUtils::PDG2Name(pdg[i]));
     }
 
     return fsp;
@@ -80,6 +106,36 @@ std::string RDFUtils::GENIE::EventType(TObjString& s){
     }
 }
 
+ROOT::VecOps::RVec<genie::GHepParticle> RDFUtils::GENIE::AllGenieParticles(const ROOT::VecOps::RVec<int>& pdg,
+                                                                           const ROOT::VecOps::RVec<int>& status,
+                                                                           const ROOT::VecOps::RVec<double>& P4){
+    ROOT::VecOps::RVec<genie::GHepParticle> particles;
+
+    for(auto i=0u; i<pdg.size(); i++){
+        
+        TLorentzVector momentum = {P4[4*i],P4[4*i+1],P4[4*i+2],P4[4*i+3]};
+
+        auto flag = static_cast<genie::GHepStatus_t>(status[i]);
+        
+        auto particle = GenieUtils::GenieParticle(pdg[i], flag, momentum);
+        
+        particles.push_back(particle);
+    }
+
+    return particles;                                                                            
+}
+
+ROOT::VecOps::RVec<genie::GHepParticle> RDFUtils::GENIE::StableFinalStateParticles(const ROOT::VecOps::RVec<genie::GHepParticle>& particles){
+    
+    ROOT::VecOps::RVec<genie::GHepParticle> stables;
+    
+    for(auto& p : particles){
+        if(p.Status()==genie::kIStStableFinalState) stables.push_back(p);
+    }
+
+    return stables;
+}
+
 template<int PDG>
 ROOT::VecOps::RVec<TLorentzVector> RDFUtils::GENIE::GetMomentum(const ROOT::VecOps::RVec<int>& pdg,
                                                                 const ROOT::VecOps::RVec<int>& status,
@@ -93,8 +149,37 @@ ROOT::VecOps::RVec<TLorentzVector> RDFUtils::GENIE::GetMomentum(const ROOT::VecO
             v.push_back(p);
         }
     }
-                                                    
+
     return v;
+}
+
+TLorentzVector RDFUtils::GENIE::GetMomomentumHadronSystem(const ROOT::VecOps::RVec<int>& pdg,
+                                                          const ROOT::VecOps::RVec<int>& status,
+                                                          const ROOT::VecOps::RVec<double>& P4){
+    TLorentzVector hadron_vector; 
+    for (auto i = 0u; i < pdg.size(); i++)
+    {
+        // exclude muons, electrons, positrons, neutrinos, photons
+        bool isNotLepton = (abs(pdg[i])!=13) && (abs(pdg[i])==14) && 
+                           (abs(pdg[i])==11) && (abs(pdg[i])==22);
+        bool isStableFinalState = (status[i]==1);
+        if(isNotLepton && isStableFinalState){
+            TLorentzVector running_hadron = {P4[4*i],P4[4*i+1],P4[4*i+2],P4[4*i+3]};
+            hadron_vector += running_hadron;
+        }
+    }
+
+    return hadron_vector;                                                               
+}
+
+double RDFUtils::GENIE::PImbalanceTrasverse2beam(TLorentzVector& p1, TLorentzVector& p2){
+    /*
+    take 2 particles and subtract their momentum transverse to the beam
+    and return the magnitude of the difference
+    */
+   auto diff = p1 - p2;
+
+   return sqrt(diff.X()*diff.X() + diff.Y()*diff.Y()); 
 }
 
 ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDataFrame& df){
@@ -104,15 +189,32 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDataFrame& df){
              .Define("Interaction_vtxT","EvtVtx[3]")
              .Define("InteractionTarget", RDFUtils::GENIE::InteractionTarget, {"StdHepPdg"})
              .Define("InteractionTargetFromGEO", RDFUtils::GEO::GetMaterialFromCoordinates, {"Interaction_vtxX","Interaction_vtxY","Interaction_vtxZ"})
-             .Define("StableFinalStateParticles", RDFUtils::GENIE::StableFinalStateParticles,{"StdHepPdg","StdHepStatus"})
-             .Define("NofFinalStateParticles", RDFUtils::GENIE::NofFinalStateParticles, {"StableFinalStateParticles"})
+             //
+             .Define("Particles", RDFUtils::GENIE::AllGenieParticles, {"StdHepPdg","StdHepStatus","StdHepP4"})
+             .Define("StableFinalStateParticles", RDFUtils::GENIE::StableFinalStateParticles, {"Particles"})
+             //
              .Define("EventType", RDFUtils::GENIE::EventType, {"EvtCode"})
+             // muons
              .Define("MuonMomentum", RDFUtils::GENIE::GetMomentum<13>, {"StdHepPdg","StdHepStatus","StdHepP4"})
              .Define("MuonMomentumPX", RDFUtils::GetComponent<0>, {"MuonMomentum"})
              .Define("MuonMomentumPY", RDFUtils::GetComponent<1>, {"MuonMomentum"})
              .Define("MuonMomentumPZ", RDFUtils::GetComponent<2>, {"MuonMomentum"})
              .Define("MuonMomentumP",  RDFUtils::GetComponent<3>, {"MuonMomentum"})
-             // add hadron system info and compare for diff EventType
+             .Define("MuonHighestP", RDFUtils::VectorFilterByHighest, {"MuonMomentumP","MuonMomentum"}) // useless here, just 1 mu per event but ok
+             // protons
+             .Define("ProtonMomentum", RDFUtils::GENIE::GetMomentum<2122>, {"StdHepPdg","StdHepStatus","StdHepP4"})
+             .Define("ProtonMomentumPX", RDFUtils::GetComponent<0>, {"ProtonMomentum"})
+             .Define("ProtonMomentumPY", RDFUtils::GetComponent<1>, {"ProtonMomentum"})
+             .Define("ProtonMomentumPZ", RDFUtils::GetComponent<2>, {"ProtonMomentum"})
+             .Define("ProtonMomentumP", RDFUtils::GetComponent<3>, {"ProtonMomentum"})
+             .Define("ProtonHighestP", RDFUtils::VectorFilterByHighest, {"ProtonMomentumP","ProtonMomentum"})
+             // final hadron system
+             .Define("HadronSystemMomentum", RDFUtils::GENIE::GetMomomentumHadronSystem, {"StdHepPdg","StdHepStatus","StdHepP4"})
+             .Define("HadronSystemMomentumPX", "HadronSystemMomentum[0]")
+             .Define("HadronSystemMomentumPY", "HadronSystemMomentum[1]")
+             .Define("HadronSystemMomentumPZ", "HadronSystemMomentum[2]")
+             .Define("HadronSystemMomentumP", "HadronSystemMomentum[3]")
+             .Define("MuonHadronSystKinImbalance", RDFUtils::GENIE::PImbalanceTrasverse2beam, {"MuonHighestP","HadronSystemMomentum"})
              ;
 }
 
@@ -121,9 +223,9 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDataFrame& df){
 std::string RDFUtils::GEO::GetMaterialFromCoordinates(double x, double y, double z){
     
     if(!geo){
-        std::cout<<"GEO not initialized in "<<__FILE__<<__LINE__<<"\n";
+        std::cout<<"GEO not initialized in "<<__FILE__<<" "<<__LINE__<<"\n";
         throw "";
     }
-
+   
     return geo->FindNode(x*100., y*100., z*100.)->GetVolume()->GetMaterial()->GetName();
 }
