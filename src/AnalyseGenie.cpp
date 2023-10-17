@@ -36,15 +36,19 @@ int main(int argc, char* argv[]){
 
     dfG.Snapshot("myTree",fOutput,{"InteractionTarget",
                                    "InteractionTargetFromGEO",
-                                   "NofFinalStateParticles",
                                    "EventType",
-                                //    "isCCQElike",
-                                   "MuonMomentumPX",
-                                   "MuonMomentumPY",
-                                   "MuonMomentumPZ",
-                                   "MuonMomentumP",
-                                   "HadronSystemMomentumP",
-                                   "MuonHadronSystKinImbalance",
+                                   // initial state particles
+                                   "InitialStateParticlesPDG",
+                                   "InitialStateParticlesE",
+                                   "InitialStateEnergy",
+                                   // stable final state particles
+                                   "StableFinalStateParticlesPDG",
+                                   "StableFinalStateParticlesE",
+                                   "StableFinalStateEnergy",
+                                   // final state nuclear remnant
+                                   "FinalStateNuclearRemnantPDG",
+                                   "FinalStateNuclearRemnantE",
+                                   "FinalStateNuclearRemnantEnergy"
                                    });
 
     return 0;

@@ -21,6 +21,8 @@ void PrintColumns(ROOT::RDataFrame& df);
 template<int coord>
 ROOT::VecOps::RVec<double> GetComponent(const ROOT::VecOps::RVec<TLorentzVector>& vTL);
 
+double GetColumnSum(const ROOT::VecOps::RVec<double>& v);
+
 ROOT::VecOps::RVec<double> VectorDifference(const ROOT::VecOps::RVec<double>& v1,
                                             const ROOT::VecOps::RVec<double>& v2);
 
@@ -33,27 +35,21 @@ namespace GENIE{//GENIE
 
 std::string InteractionTarget(const ROOT::VecOps::RVec<int>& pdg);
 
-ROOT::VecOps::RVec<genie::GHepParticle> AllGenieParticles(const ROOT::VecOps::RVec<int>& pdg,
-                                                          const ROOT::VecOps::RVec<int>& status,
-                                                          const ROOT::VecOps::RVec<double>& P4);
-
-ROOT::VecOps::RVec<int> StableFinalStateParticles(const ROOT::VecOps::RVec<int>& pdg,
-                                                  const ROOT::VecOps::RVec<int>& status);
-
-int NofFinalStateParticles(const ROOT::VecOps::RVec<int>& pdg);
-
 std::string EventType(TObjString& t);
 
-template<int PDG>
-ROOT::VecOps::RVec<TLorentzVector> GetMomentum(const ROOT::VecOps::RVec<int>& pdg,
-                                               const ROOT::VecOps::RVec<int>& status,
-                                               const ROOT::VecOps::RVec<double>& P4);
+ROOT::VecOps::RVec<genie::GHepParticle> AllGenieParticles(const ROOT::VecOps::RVec<int>& pdg,
+                                                          const ROOT::VecOps::RVec<int>& status,
+                                                          const ROOT::VecOps::RVec<double>& P4);                                                
 
-TLorentzVector GetMomomentumHadronSystem(const ROOT::VecOps::RVec<int>& pdg,
-                                         const ROOT::VecOps::RVec<int>& status,
-                                         const ROOT::VecOps::RVec<double>& P4);
+template<genie::GHepStatus_t STATUS>
+ROOT::VecOps::RVec<genie::GHepParticle> GetParticlesWithStatus(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
-double PImbalanceTrasverse2beam(TLorentzVector& p1, TLorentzVector& p2);
+template<int component>
+ROOT::VecOps::RVec<double> GetMomentum(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
+
+ROOT::VecOps::RVec<int> GetPDG(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);  
+
+int NofFinalStateParticles(const ROOT::VecOps::RVec<int>& pdg);
 
 ROOT::RDF::RNode AddColumnsFromGENIE(ROOT::RDataFrame& df);
 
