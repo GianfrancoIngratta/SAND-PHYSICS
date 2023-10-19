@@ -30,7 +30,9 @@ int main(int argc, char* argv[]){
 
     // RDFUtils::PrintColumns(df);
 
-    auto dfG = RDFUtils::GENIE::AddColumnsFromGENIE(df);
+    auto dfC = RDFUtils::AddConstantsToDF(df);
+
+    auto dfG = RDFUtils::GENIE::AddColumnsFromGENIE(dfC);
 
     geo = TGeoManager::Import(geometry);
 
@@ -40,15 +42,20 @@ int main(int argc, char* argv[]){
                                    // initial state particles
                                    "InitialStateParticlesPDG",
                                    "InitialStateParticlesE",
+                                   "InitialStateMomentum",
                                    "InitialStateEnergy",
                                    // stable final state particles
                                    "StableFinalStateParticlesPDG",
                                    "StableFinalStateParticlesE",
+                                   "StableFinalStateMomentum",
                                    "StableFinalStateEnergy",
                                    // final state nuclear remnant
                                    "FinalStateNuclearRemnantPDG",
                                    "FinalStateNuclearRemnantE",
-                                   "FinalStateNuclearRemnantEnergy"
+                                   "FinalStateNuclearMomentum",
+                                   "FinalStateNuclearEnergy",
+                                   // topology
+                                   "FinalStateTopology",
                                    });
 
     return 0;

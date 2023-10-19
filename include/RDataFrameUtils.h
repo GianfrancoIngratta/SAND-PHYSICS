@@ -18,6 +18,8 @@ ROOT::RDataFrame InitDF(const char* production, const char* tree_name);
 
 void PrintColumns(ROOT::RDataFrame& df);
 
+ROOT::RDF::RNode AddConstantsToDF(ROOT::RDataFrame& df);
+
 template<int coord>
 ROOT::VecOps::RVec<double> GetComponent(const ROOT::VecOps::RVec<TLorentzVector>& vTL);
 
@@ -44,14 +46,26 @@ ROOT::VecOps::RVec<genie::GHepParticle> AllGenieParticles(const ROOT::VecOps::RV
 template<genie::GHepStatus_t STATUS>
 ROOT::VecOps::RVec<genie::GHepParticle> GetParticlesWithStatus(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
-template<int component>
-ROOT::VecOps::RVec<double> GetMomentum(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
+template<int PDG>
+ROOT::VecOps::RVec<genie::GHepParticle> GetParticlesWithPDG(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
-ROOT::VecOps::RVec<int> GetPDG(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);  
+ROOT::VecOps::RVec<genie::GHepParticle> GetExhoticMesons(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
+
+ROOT::VecOps::RVec<genie::GHepParticle> GetExhoticHadrons(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
+
+ROOT::VecOps::RVec<genie::GHepParticle> GetRecoiledNuclei(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
+
+TString GetFinalStateTopology(const ROOT::VecOps::RVec<int>& pdgs);
+
+ROOT::VecOps::RVec<int> GetPDG(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
+
+ROOT::VecOps::RVec<TLorentzVector> GetMomentum(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
+
+TLorentzVector SumLorentzVectors(const ROOT::VecOps::RVec<TLorentzVector>& VTL);
 
 int NofFinalStateParticles(const ROOT::VecOps::RVec<int>& pdg);
 
-ROOT::RDF::RNode AddColumnsFromGENIE(ROOT::RDataFrame& df);
+ROOT::RDF::RNode AddColumnsFromGENIE(ROOT::RDF::RNode& df);
 
 }//GENIE
 

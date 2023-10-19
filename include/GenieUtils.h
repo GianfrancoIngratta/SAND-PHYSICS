@@ -20,6 +20,29 @@ genie::GHepParticle GenieParticle(int pdg,
                                   genie::GHepStatus_t status, 
                                   const TLorentzVector& momentum);
 
+// class GenieEvent
+// {
+//     private:
+        
+//         int gNofMuons; 
+//         int gNofProton; 
+//         int gNofNeutrons; 
+//         int gNofChargedPions; 
+//         int gNofPi0;
+//         int gNofGamma;
+//         int gNofElectronsPositrons;
+//         int gNofHyperons;
+//         int gNofHeavyMesons;
+//         int gNofNuclei;
+        
+//         const char* gEventName;
+
+//         genie::GHepParticle gMuon;
+//         std::vector<genie::GHepParticle> gHadronSystem;
+
+//     public:
+// }                                  
+
 }
 
 #endif
