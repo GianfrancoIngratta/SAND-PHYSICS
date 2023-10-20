@@ -20,28 +20,27 @@ genie::GHepParticle GenieParticle(int pdg,
                                   genie::GHepStatus_t status, 
                                   const TLorentzVector& momentum);
 
-// class GenieEvent
-// {
-//     private:
-        
-//         int gNofMuons; 
-//         int gNofProton; 
-//         int gNofNeutrons; 
-//         int gNofChargedPions; 
-//         int gNofPi0;
-//         int gNofGamma;
-//         int gNofElectronsPositrons;
-//         int gNofHyperons;
-//         int gNofHeavyMesons;
-//         int gNofNuclei;
-        
-//         const char* gEventName;
+struct event_topology
+{
+    int NofMuons = 0;
 
-//         genie::GHepParticle gMuon;
-//         std::vector<genie::GHepParticle> gHadronSystem;
+    int NofProtons = 0;
 
-//     public:
-// }                                  
+    int NofNeutrons = 0;
+    // pi+- pi0
+    int NofPions = 0;
+    // e+- gamma
+    int NofElPosGamma = 0;
+    // mesons : K0, KL, K+- ..., hadrons : Sigma, lambda...
+    int NofExhotic;
+    // C12, 016, ...
+    int NofRecoiledNuclei = 0;
+
+    TString GetTopologyName(){
+        return  TString::Format("%dmu_%dpr_%dne_%dpi_%dem_%dex_%dnu",
+        NofMuons,NofProtons,NofNeutrons,NofPions,NofElPosGamma,NofExhotic,NofRecoiledNuclei);
+    };
+};                              
 
 }
 

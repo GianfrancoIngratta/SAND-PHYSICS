@@ -28,13 +28,13 @@ int main(int argc, char* argv[]){
 
     auto df = RDFUtils::InitDF(fInput, "gRooTracker");
 
+    geo = TGeoManager::Import(geometry);
+
     // RDFUtils::PrintColumns(df);
 
     auto dfC = RDFUtils::AddConstantsToDF(df);
 
     auto dfG = RDFUtils::GENIE::AddColumnsFromGENIE(dfC);
-
-    geo = TGeoManager::Import(geometry);
 
     dfG.Snapshot("myTree",fOutput,{"InteractionTarget",
                                    "InteractionTargetFromGEO",
@@ -55,8 +55,14 @@ int main(int argc, char* argv[]){
                                    "FinalStateNuclearMomentum",
                                    "FinalStateNuclearEnergy",
                                    // topology
-                                   "FinalStateTopology",
+                                   "FinalStateTopologyName",
                                    });
+
+    TString fOutput_1mu_1pr_1pi = TString::Format("test_1mu_1pr_1pi.root");
+
+    // example of topology name : "1mu_0pr_1ne_2pi_0em_0ex_0nu"
+    dfG.Filter([](GenieUtils::event_topology t){return t.GetTopologyName().Contains("1mu_1pr_0ne_1pi_0em_0ex_0nu");}, {"FinalStateTopologyName"})
+       .Snapshot("1mu_1pr_1pi", fOutput_1mu_1pr_1pi.Data(), {"StableFinalStateMomentum"});                                   
 
     return 0;
 }

@@ -130,36 +130,36 @@ ROOT::VecOps::RVec<genie::GHepParticle> RDFUtils::GENIE::GetParticlesWithStatus(
     return selected;
 }
 
-TString RDFUtils::GENIE::GetFinalStateTopology(const ROOT::VecOps::RVec<int>& pdgs)
+GenieUtils::event_topology RDFUtils::GENIE::GetFinalStateTopology(const ROOT::VecOps::RVec<int>& pdgs)
 {
-    int nof_mu=0, nof_protons=0, nof_neutrons=0, nof_pions=0, nof_gamma_and_e=0, nof_exhotic=0, nof_nuclei=0;
+    
+    GenieUtils::event_topology t;
+
     for(auto& p : pdgs)
     {
         auto pdg = abs(p);
         if(pdg==genie::kPdgMuon){
-                nof_mu++;
+                t.NofMuons++;
         }else if(pdg==genie::kPdgElectron || pdg==genie::kPdgGamma){
-                nof_gamma_and_e++;
+                t.NofElPosGamma++;
         }else if(pdg==genie::kPdgProton){
-                nof_protons++;
+                t.NofProtons++;
         }else if(pdg==genie::kPdgNeutron){
-                nof_neutrons++;
+                t.NofNeutrons++;
         }else if(pdg==genie::kPdgPiP || pdg==genie::kPdgPi0){
-                nof_pions++;
+                t.NofPions++;
         }else if((pdg>100 || pdg<600)&&(pdg!=genie::kPdgPiP && pdg!=genie::kPdgPi0)){
-                nof_exhotic++;
+                t.NofExhotic++;
         }else if((pdg>1000 || pdg<50000)&&(pdg!=genie::kPdgProton && pdg!=genie::kPdgNeutron)){
-                nof_exhotic++;
+                t.NofExhotic++;
         }else if((pdg>=genie::kPdgTgtFreeP)){
-                nof_nuclei++;
+                t.NofRecoiledNuclei++;
         }else{
                 continue;
         }
     }
 
-    TString topology = TString::Format("%dmu_%dpr_%dne_%dpi_%dem_%dex_%dnu",
-                        nof_mu,nof_protons,nof_neutrons,nof_pions,nof_gamma_and_e,nof_exhotic,nof_nuclei); 
-    return  topology.Data();                  
+    return t;                  
 }
 
 template<int PDG>
@@ -288,6 +288,7 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              // EVENT TOPOLOGY
              /* organize final states */
              .Define("FinalStateTopology",          RDFUtils::GENIE::GetFinalStateTopology, {"StableFinalStateParticlesPDG"})
+             .Define("FinalStateTopologyName",      [](GenieUtils::event_topology t){return t.GetTopologyName();}, {"FinalStateTopology"})
              /*mu*/
              .Define("FinalStateMuons",             RDFUtils::GENIE::GetParticlesWithPDG<13>, {"StableFinalStateParticles"})
              .Define("FinalStateMuonsP",            RDFUtils::GENIE::GetMomentum, {"FinalStateMuons"})
