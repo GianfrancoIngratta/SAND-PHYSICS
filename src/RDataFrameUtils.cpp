@@ -56,6 +56,12 @@ ROOT::VecOps::RVec<double> RDFUtils::VectorDifference(const ROOT::VecOps::RVec<d
     return diff;                                                        
 }
 
+TVector3 RDFUtils::TLVectorCrossProduct(const TLorentzVector& v1,
+                                        const TLorentzVector& v2){
+    TVector3 v = v1.Vect().Cross(v2.Vect());
+    return v*(1./v.Mag());                                 
+}
+
 ROOT::VecOps::RVec<double> RDFUtils::VectorSubtractConst(const ROOT::VecOps::RVec<double>& v1, double c){
     ROOT::VecOps::RVec<double> diff;
     for(auto i=0u; i<v1.size(); i++) diff.push_back(v1[i]-c);
@@ -210,6 +216,18 @@ ROOT::VecOps::RVec<genie::GHepParticle> RDFUtils::GENIE::GetRecoiledNuclei(const
     return filtered_particles;
 }
 
+ROOT::VecOps::RVec<genie::GHepParticle> RDFUtils::GENIE::GetFinalHadronicSystem(const ROOT::VecOps::RVec<genie::GHepParticle>& particles){
+    
+    ROOT::VecOps::RVec<genie::GHepParticle> filtered_particles;
+
+    for(auto& p : particles){
+        int pdg = p.Pdg();
+        if((pdg!=genie::kPdgMuon || pdg!=genie::kPdgElectron)) filtered_particles.push_back(p);
+    }
+
+    return filtered_particles;
+}
+
 ROOT::VecOps::RVec<int> RDFUtils::GENIE::GetPDG(const ROOT::VecOps::RVec<genie::GHepParticle>& particles)
 {
     ROOT::VecOps::RVec<int> pdgs;
@@ -261,6 +279,10 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              .Define("InitialStateP4",              RDFUtils::GENIE::SumLorentzVectors, {"InitialStateParticlesP"})
              .Define("InitialStateMomentum", "InitialStateP4.Vect().Mag()")
              .Define("InitialStateEnergy",          RDFUtils::GetColumnSum, {"InitialStateParticlesE"})
+             /*incoming neutrino*/
+             .Define("InitialStateNeutrino",        RDFUtils::GENIE::GetParticlesWithPDG<14>, {"InitialStateParticles"})
+             .Define("InitialStateNeutrinoP",       RDFUtils::GENIE::GetMomentum, {"InitialStateNeutrino"})
+             .Define("InitialStateNeutrinoP4",      RDFUtils::GENIE::SumLorentzVectors, {"InitialStateNeutrinoP"}) // just to obtain a TLVector instead of vector<TLVector>
              //final state state particles
              /* generator-level final state: particles to be tracked by detector-level MC */
              .Define("StableFinalStateParticles",   RDFUtils::GENIE::GetParticlesWithStatus<genie::kIStStableFinalState>, {"Particles"})
@@ -292,6 +314,7 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              /*mu*/
              .Define("FinalStateMuons",             RDFUtils::GENIE::GetParticlesWithPDG<13>, {"StableFinalStateParticles"})
              .Define("FinalStateMuonsP",            RDFUtils::GENIE::GetMomentum, {"FinalStateMuons"})
+             .Define("FinalStateMuonsP4",           RDFUtils::GENIE::SumLorentzVectors, {"FinalStateMuonsP"}) // just to obtain a TLVector instead of vector<TLVector>
              /*protons*/
              .Define("FinalStateProtons",           RDFUtils::GENIE::GetParticlesWithPDG<2212>, {"StableFinalStateParticles"})
              .Define("FinalStateProtonsP",          RDFUtils::GENIE::GetMomentum, {"FinalStateProtons"})
@@ -319,6 +342,14 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              /*recoiled nuclei */ 
              .Define("FinalStateNuclei",           RDFUtils::GENIE::GetRecoiledNuclei, {"StableFinalStateParticles"})
              .Define("FinalStateNucleiP",          RDFUtils::GENIE::GetMomentum, {"FinalStateNuclei"})
+             /* hadronic system : sum of stable final state expet muons, electromagnetic stuff, and nuclear remnant*/
+             .Define("FinalHadronicSystem",        RDFUtils::GENIE::GetFinalHadronicSystem, {"StableFinalStateParticles"})
+             .Define("FinalHadronicSystemP",       RDFUtils::GENIE::GetMomentum, {"FinalHadronicSystem"})
+             .Define("FinalHadronicSystemP4",      RDFUtils::GENIE::SumLorentzVectors, {"FinalHadronicSystemP"})
+             .Define("DoubleTransverseAxis",       RDFUtils::TLVectorCrossProduct, {"InitialStateNeutrinoP4","FinalHadronicSystemP4"})
+             /*projection of FinalHadronicSystemP4 onto DoubleTransverseAxis perpendicular to neutrino direction
+             FinalHadronicSystemP4_TT i the douvle transverse momentum imbalance */
+             .Define("FinalHadronicSystemP4_TT",   "DoubleTransverseAxis.Dot(FinalHadronicSystemP4.Vect())")
              ;
 }
 

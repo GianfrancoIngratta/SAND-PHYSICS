@@ -28,6 +28,9 @@ double GetColumnSum(const ROOT::VecOps::RVec<double>& v);
 ROOT::VecOps::RVec<double> VectorDifference(const ROOT::VecOps::RVec<double>& v1,
                                             const ROOT::VecOps::RVec<double>& v2);
 
+TVector3 TLVectorCrossProduct(const TLorentzVector& v1,
+                              const TLorentzVector& v2);
+
 ROOT::VecOps::RVec<double> VectorSubtractConst(const ROOT::VecOps::RVec<double>& v1, double c);
 
 TLorentzVector VectorFilterByHighest(const ROOT::VecOps::RVec<double>& filter,
@@ -54,6 +57,8 @@ ROOT::VecOps::RVec<genie::GHepParticle> GetExhoticMesons(const ROOT::VecOps::RVe
 ROOT::VecOps::RVec<genie::GHepParticle> GetExhoticHadrons(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
 ROOT::VecOps::RVec<genie::GHepParticle> GetRecoiledNuclei(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
+
+ROOT::VecOps::RVec<genie::GHepParticle> GetFinalHadronicSystem(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
 GenieUtils::event_topology GetFinalStateTopology(const ROOT::VecOps::RVec<int>& pdgs);
 

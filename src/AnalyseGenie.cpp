@@ -61,8 +61,11 @@ int main(int argc, char* argv[]){
     TString fOutput_1mu_1pr_1pi = TString::Format("test_1mu_1pr_1pi.root");
 
     // example of topology name : "1mu_0pr_1ne_2pi_0em_0ex_0nu"
-    dfG.Filter([](GenieUtils::event_topology t){return t.GetTopologyName().Contains("1mu_1pr_0ne_1pi_0em_0ex_0nu");}, {"FinalStateTopologyName"})
-       .Snapshot("1mu_1pr_1pi", fOutput_1mu_1pr_1pi.Data(), {"StableFinalStateMomentum"});                                   
+    dfG.Filter([](TString s){return s.Contains("1mu_1pr_0ne_1pi_0em_0ex_0nu");}, {"FinalStateTopologyName"})
+       .Snapshot("selection", fOutput_1mu_1pr_1pi.Data(), {"FinalStateTopologyName",
+                                                             "InteractionTarget",
+                                                             "FinalHadronicSystemP4_TT",
+                                                            });                                   
 
     return 0;
 }
