@@ -221,7 +221,7 @@ ROOT::VecOps::RVec<genie::GHepParticle> RDFUtils::GENIE::GetFinalHadronicSystem(
     ROOT::VecOps::RVec<genie::GHepParticle> filtered_particles;
 
     for(auto& p : particles){
-        int pdg = p.Pdg();
+        int pdg = abs(p.Pdg());
         if((pdg!=genie::kPdgMuon || pdg!=genie::kPdgElectron)) filtered_particles.push_back(p);
     }
 
@@ -247,6 +247,24 @@ ROOT::VecOps::RVec<TLorentzVector> RDFUtils::GENIE::GetMomentum(const ROOT::VecO
     return momenta;
 }
 
+double RDFUtils::GENIE::GetInitialNucleonMomentum(const TLorentzVector& FinalStateMomentum,
+                                                  const TVector3& FinalStateLongitudinalMomentum,
+                                                  const TVector3& FinalStateDeltaPT,
+                                                  int InteractionTarget){
+/*total initial nucleon momentum as calculated in arXiv:2102.03346v1 (T2K collaboration)*/
+
+    double target_nucleus_mass = genie::PDGLibrary::Instance()->Find(InteractionTarget)->Mass();
+    double proton_mass = genie::PDGLibrary::Instance()->Find(genie::kPdgProton)->Mass();
+    double proton_mean_excitation_energy = 26.1 * 1E-3; // 26.1 MeV for Carbon
+    double residual_nucleus_mass = target_nucleus_mass - proton_mass + proton_mean_excitation_energy;
+    double final_state_energy = FinalStateMomentum.T();
+    double final_state_long_mom = FinalStateLongitudinalMomentum.Mag();
+    double FinalStateDeltaPT2 = FinalStateDeltaPT.Mag() * FinalStateDeltaPT.Mag(); 
+    double k = target_nucleus_mass + final_state_long_mom - final_state_energy;
+
+    return 0.5*(k - (FinalStateDeltaPT2 + residual_nucleus_mass * residual_nucleus_mass) / k);
+}
+
 TLorentzVector RDFUtils::GENIE::SumLorentzVectors(const ROOT::VecOps::RVec<TLorentzVector>& VTL){
     TLorentzVector sum = {0.,0.,0.,0.};
     for(auto& TL : VTL) sum += TL;
@@ -264,6 +282,7 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              .Define("Interaction_vtxT","EvtVtx[3]")
              .Define("EventType",                   RDFUtils::GENIE::EventType, {"EvtCode"})
              .Define("InteractionTarget",           RDFUtils::GENIE::InteractionTarget, {"StdHepPdg"})
+             .Define("InteractionTargetPDG",        "StdHepPdg[1]")
              .Define("InteractionTargetFromGEO",    RDFUtils::GEO::GetMaterialFromCoordinates, {"Interaction_vtxX","Interaction_vtxY","Interaction_vtxZ"})
              // all particles (hadrons laptons) and nuclei
              .Define("Particles",                   RDFUtils::GENIE::AllGenieParticles, {"StdHepPdg","StdHepStatus","StdHepP4"})
@@ -346,10 +365,21 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              .Define("FinalHadronicSystem",        RDFUtils::GENIE::GetFinalHadronicSystem, {"StableFinalStateParticles"})
              .Define("FinalHadronicSystemP",       RDFUtils::GENIE::GetMomentum, {"FinalHadronicSystem"})
              .Define("FinalHadronicSystemP4",      RDFUtils::GENIE::SumLorentzVectors, {"FinalHadronicSystemP"})
-             .Define("DoubleTransverseAxis",       RDFUtils::TLVectorCrossProduct, {"InitialStateNeutrinoP4","FinalHadronicSystemP4"})
+             // KINEMATIC IMALANCE METHOD________________________________________________________________________________
              /*projection of FinalHadronicSystemP4 onto DoubleTransverseAxis perpendicular to neutrino direction
              FinalHadronicSystemP4_TT i the douvle transverse momentum imbalance */
+             .Define("DoubleTransverseAxis",       RDFUtils::TLVectorCrossProduct, {"InitialStateNeutrinoP4","FinalStateMuonsP4"})
              .Define("FinalHadronicSystemP4_TT",   "DoubleTransverseAxis.Dot(FinalHadronicSystemP4.Vect())")
+             /*initial nucleon momentum*/
+             .Define("BeamDirection",              "InitialStateNeutrinoP4.Vect() * (1./InitialStateNeutrinoP4.Vect().Mag())")
+             .Define("FinalHadronicSystemPL",      "BeamDirection * (FinalHadronicSystemP4.Vect().Dot(BeamDirection))") // component parallel to beam direction
+             .Define("FinalStateMuonsPL",          "BeamDirection * (FinalStateMuonsP4.Vect().Dot(BeamDirection))") // component parallel to beam direction
+             .Define("FinalHadronicSystemPT",      "FinalHadronicSystemP4.Vect() - FinalHadronicSystemPL")
+             .Define("FinalStateMuonsPT",          "FinalStateMuonsP4.Vect() - FinalStateMuonsPL")
+             .Define("FinalStatePL",               "FinalHadronicSystemPL + FinalStateMuonsPL")
+             .Define("FinalStateDeltaPT",          "FinalStateMuonsPT + FinalHadronicSystemPT")
+             .Define("FinalStateP4",               "FinalHadronicSystemP4 + FinalStateMuonsP4")
+             .Define("InitialNucleonMomentum",     RDFUtils::GENIE::GetInitialNucleonMomentum, {"FinalStateP4", "FinalStatePL","FinalStateDeltaPT","InteractionTargetPDG"})
              ;
 }
 

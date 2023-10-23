@@ -40,6 +40,7 @@ int main(int argc, char* argv[]){
                                    "InteractionTargetFromGEO",
                                    "EventType",
                                    // initial state particles
+                                   "InitialStateNeutrinoP4",
                                    "InitialStateParticlesPDG",
                                    "InitialStateParticlesE",
                                    "InitialStateMomentum",
@@ -54,13 +55,15 @@ int main(int argc, char* argv[]){
                                    "FinalStateNuclearRemnantE",
                                    "FinalStateNuclearMomentum",
                                    "FinalStateNuclearEnergy",
-                                   // topology
+                                   // topology & kinematic sutudies
                                    "FinalStateTopologyName",
+                                   "FinalHadronicSystemP4_TT",
+                                   "InitialNucleonMomentum",
                                    });
 
     TString fOutput_1mu_1pr_1pi = TString::Format("test_1mu_1pr_1pi.root");
 
-    // example of topology name : "1mu_0pr_1ne_2pi_0em_0ex_0nu"
+    // // example of topology name : "1mu_0pr_1ne_2pi_0em_0ex_0nu"
     dfG.Filter([](TString s){return s.Contains("1mu_1pr_0ne_1pi_0em_0ex_0nu");}, {"FinalStateTopologyName"})
        .Snapshot("selection", fOutput_1mu_1pr_1pi.Data(), {"FinalStateTopologyName",
                                                              "InteractionTarget",

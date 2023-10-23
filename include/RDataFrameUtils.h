@@ -72,6 +72,11 @@ int NofFinalStateParticles(const ROOT::VecOps::RVec<int>& pdg);
 
 ROOT::RDF::RNode AddColumnsFromGENIE(ROOT::RDF::RNode& df);
 
+double GetInitialNucleonMomentum(const TLorentzVector& FinalStateMomentum,
+                                 const TVector3& FinalStateLongitudinalMomentum,
+                                 const TVector3& FinalStateDeltaPT,
+                                 int InteractionTarget);
+
 }//GENIE
 
 namespace GEO{//GEO
