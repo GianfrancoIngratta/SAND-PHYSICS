@@ -59,6 +59,7 @@ int main(int argc, char* argv[]){
                                    "FinalStateTopologyName",
                                    "FinalHadronicSystemP4_TT",
                                    "InitialNucleonMomentum",
+                                   "TransverseBoostingAngle",
                                    });
 
     TString fOutput_1mu_1pr_1pi = TString::Format("test_1mu_1pr_1pi.root");

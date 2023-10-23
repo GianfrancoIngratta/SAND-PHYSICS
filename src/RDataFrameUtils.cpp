@@ -2,6 +2,7 @@
 #include "GenieUtils.h"
 #include "GeoUtils.h"
 #include "TChain.h"
+#include "TMath.h"
 
 TGeoManager* geo = nullptr;
 
@@ -261,8 +262,9 @@ double RDFUtils::GENIE::GetInitialNucleonMomentum(const TLorentzVector& FinalSta
     double final_state_long_mom = FinalStateLongitudinalMomentum.Mag();
     double FinalStateDeltaPT2 = FinalStateDeltaPT.Mag() * FinalStateDeltaPT.Mag(); 
     double k = target_nucleus_mass + final_state_long_mom - final_state_energy;
+    double nucleon_long_mom = 0.5*(k - (FinalStateDeltaPT2 + residual_nucleus_mass * residual_nucleus_mass) / k);
 
-    return 0.5*(k - (FinalStateDeltaPT2 + residual_nucleus_mass * residual_nucleus_mass) / k);
+    return sqrt(FinalStateDeltaPT2 + nucleon_long_mom*nucleon_long_mom);
 }
 
 TLorentzVector RDFUtils::GENIE::SumLorentzVectors(const ROOT::VecOps::RVec<TLorentzVector>& VTL){
@@ -380,6 +382,8 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              .Define("FinalStateDeltaPT",          "FinalStateMuonsPT + FinalHadronicSystemPT")
              .Define("FinalStateP4",               "FinalHadronicSystemP4 + FinalStateMuonsP4")
              .Define("InitialNucleonMomentum",     RDFUtils::GENIE::GetInitialNucleonMomentum, {"FinalStateP4", "FinalStatePL","FinalStateDeltaPT","InteractionTargetPDG"})
+             /*Transverse boosting angle*/
+             .Define("TransverseBoostingAngle",    "TMath::ACos((((-1.)*FinalStateMuonsPT).Dot(FinalStateDeltaPT))/FinalStateMuonsPT.Mag()/FinalStateDeltaPT.Mag())")
              ;
 }
 
