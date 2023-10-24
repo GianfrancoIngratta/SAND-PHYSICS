@@ -366,13 +366,18 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              /* hadronic system : sum of stable final state expet muons, electromagnetic stuff, and nuclear remnant*/
              .Define("FinalHadronicSystem",        RDFUtils::GENIE::GetFinalHadronicSystem, {"StableFinalStateParticles"})
              .Define("FinalHadronicSystemP",       RDFUtils::GENIE::GetMomentum, {"FinalHadronicSystem"})
-             .Define("FinalHadronicSystemP4",      RDFUtils::GENIE::SumLorentzVectors, {"FinalHadronicSystemP"})
-             // KINEMATIC IMALANCE METHOD________________________________________________________________________________
-             /*projection of FinalHadronicSystemP4 onto DoubleTransverseAxis perpendicular to neutrino direction
-             FinalHadronicSystemP4_TT i the douvle transverse momentum imbalance */
-             .Define("DoubleTransverseAxis",       RDFUtils::TLVectorCrossProduct, {"InitialStateNeutrinoP4","FinalStateMuonsP4"})
+             .Define("FinalHadronicSystemP4",      RDFUtils::GENIE::SumLorentzVectors, {"FinalHadronicSystemP"}) 
+             ;
+}
+
+ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsForHydrogenCarbonSampleSelection(ROOT::RDF::RNode& df){
+    /* These variables allows the separation of interacions occurring on free proton (H)
+    from those occuring on Carbon. Variables are explained in arXiv:2102.03346v1 and arXiv:1809.08752v2[Petti] */
+    //____________________________________________________________________________
+            // FinalHadronicSystemP4_TT : projection of FinalHadronicSystemP4 onto DoubleTransverseAxis perpendicular to neutrino direction
+    return df.Define("DoubleTransverseAxis",       RDFUtils::TLVectorCrossProduct, {"InitialStateNeutrinoP4","FinalStateMuonsP4"})
              .Define("FinalHadronicSystemP4_TT",   "DoubleTransverseAxis.Dot(FinalHadronicSystemP4.Vect())")
-             /*initial nucleon momentum*/
+            // Initial Nucleon Momentum "P_N"
              .Define("BeamDirection",              "InitialStateNeutrinoP4.Vect() * (1./InitialStateNeutrinoP4.Vect().Mag())")
              .Define("FinalHadronicSystemPL",      "BeamDirection * (FinalHadronicSystemP4.Vect().Dot(BeamDirection))") // component parallel to beam direction
              .Define("FinalStateMuonsPL",          "BeamDirection * (FinalStateMuonsP4.Vect().Dot(BeamDirection))") // component parallel to beam direction
@@ -382,10 +387,10 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              .Define("FinalStateDeltaPT",          "FinalStateMuonsPT + FinalHadronicSystemPT")
              .Define("FinalStateP4",               "FinalHadronicSystemP4 + FinalStateMuonsP4")
              .Define("InitialNucleonMomentum",     RDFUtils::GENIE::GetInitialNucleonMomentum, {"FinalStateP4", "FinalStatePL","FinalStateDeltaPT","InteractionTargetPDG"})
-             /*Transverse boosting angle*/
+              /*Transverse boosting angle*/
              .Define("TransverseBoostingAngle",    "TMath::ACos((((-1.)*FinalStateMuonsPT).Dot(FinalStateDeltaPT))/FinalStateMuonsPT.Mag()/FinalStateDeltaPT.Mag())")
-             /*asymmetry missing transverse momentum and hadron vector : Petti arXiv:1809.08752v2*/
-             .Define("MissingTransverseMomentum",  "(-1.)*FinalStateDeltaPT")
+             // Transverse boosting angle "\deltaPt"
+             .Define("MissingTransverseMomentum",  "FinalStateDeltaPT")
              .Define("Asimmetry_RmH",              "(MissingTransverseMomentum.Mag()-FinalHadronicSystemPT.Mag())/(MissingTransverseMomentum.Mag()+FinalHadronicSystemPT.Mag())")
              ;
 }

@@ -70,12 +70,15 @@ TLorentzVector SumLorentzVectors(const ROOT::VecOps::RVec<TLorentzVector>& VTL);
 
 int NofFinalStateParticles(const ROOT::VecOps::RVec<int>& pdg);
 
-ROOT::RDF::RNode AddColumnsFromGENIE(ROOT::RDF::RNode& df);
-
 double GetInitialNucleonMomentum(const TLorentzVector& FinalStateMomentum,
                                  const TVector3& FinalStateLongitudinalMomentum,
                                  const TVector3& FinalStateDeltaPT,
                                  int InteractionTarget);
+
+ROOT::RDF::RNode AddColumnsFromGENIE(ROOT::RDF::RNode& df);
+
+ROOT::RDF::RNode AddColumnsForHydrogenCarbonSampleSelection(ROOT::RDF::RNode& df); // these is expected to have columns from AddColumnsFromGENIE output
+
 
 }//GENIE
 
