@@ -384,6 +384,9 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              .Define("InitialNucleonMomentum",     RDFUtils::GENIE::GetInitialNucleonMomentum, {"FinalStateP4", "FinalStatePL","FinalStateDeltaPT","InteractionTargetPDG"})
              /*Transverse boosting angle*/
              .Define("TransverseBoostingAngle",    "TMath::ACos((((-1.)*FinalStateMuonsPT).Dot(FinalStateDeltaPT))/FinalStateMuonsPT.Mag()/FinalStateDeltaPT.Mag())")
+             /*asymmetry missing transverse momentum and hadron vector : Petti arXiv:1809.08752v2*/
+             .Define("MissingTransverseMomentum",  "(-1.)*FinalStateDeltaPT")
+             .Define("Asimmetry_RmH",              "(MissingTransverseMomentum.Mag()-FinalHadronicSystemPT.Mag())/(MissingTransverseMomentum.Mag()+FinalHadronicSystemPT.Mag())")
              ;
 }
 
