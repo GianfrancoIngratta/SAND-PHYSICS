@@ -396,7 +396,82 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsForHydrogenCarbonSampleSelection(ROO
              ;
 }
 
-//RDFUtils::GEO___________________________________________________________________
+//RDFUtils::SANDRECO_________________________________________________________________
+
+ROOT::VecOps::RVec<particle> RDFUtils::SANDRECO::ParticleGoodTrackFit(const ROOT::VecOps::RVec<particle>& particles){
+    
+    ROOT::VecOps::RVec<particle> good_particles;
+
+    for(auto& p : particles){
+        if(p.tr.chi2_ln==0 && p.tr.chi2_cr==0) good_particles.push_back(p);	
+    }
+
+    return good_particles;
+}
+
+ROOT::VecOps::RVec<particle> RDFUtils::SANDRECO::FilterPrimaries(const ROOT::VecOps::RVec<particle>& particles){
+    
+    ROOT::VecOps::RVec<particle> primaries;
+
+    for(auto& p : particles){
+        if(p.primary==1) primaries.push_back(p);	
+    }
+
+    return primaries;
+}
+
+template<int PDG>
+ROOT::VecOps::RVec<particle> RDFUtils::SANDRECO::GetParticlesWithPDG(const ROOT::VecOps::RVec<particle>& particles){
+
+    ROOT::VecOps::RVec<particle> filtered_particles;
+
+    for(auto& p : particles){
+        if(p.pdg==PDG) filtered_particles.push_back(p);
+    }
+
+    return filtered_particles;
+}
+
+ROOT::VecOps::RVec<TLorentzVector> RDFUtils::SANDRECO::GetMomentum(const ROOT::VecOps::RVec<particle>& particles){
+
+    ROOT::VecOps::RVec<TLorentzVector> momenta;
+
+    for(auto& p : particles){
+        TLorentzVector momentum = {p.pxreco, p.pyreco, p.pzreco, p.Ereco};
+        momenta.push_back(momentum);
+    }
+
+    return momenta;
+}
+
+ROOT::VecOps::RVec<TLorentzVector> RDFUtils::SANDRECO::GetTrackVertex(const ROOT::VecOps::RVec<particle>& particles){
+
+    ROOT::VecOps::RVec<TLorentzVector> vertices;
+
+    for(auto& p : particles){
+        TLorentzVector vertex = {p.xreco, p.yreco, p.zreco, p.treco};
+        vertices.push_back(vertex);
+    }
+
+    return vertices;
+}
+
+ROOT::RDF::RNode RDFUtils::SANDRECO::AddColumnsFromSANDRECO(ROOT::RDF::RNode& df){
+    return df.Define("ParticlesGoodTrackFit", RDFUtils::SANDRECO::ParticleGoodTrackFit, {"particles"})
+             .Define("PrimariesGoodTrackFit", RDFUtils::SANDRECO::FilterPrimaries, {"ParticlesGoodTrackFit"})
+             // particles
+             /*muons with good trackfit*/
+             .Define("Muons",                 RDFUtils::SANDRECO::GetParticlesWithPDG<13>, {"PrimariesGoodTrackFit"})
+             .Define("MuonsVtx",              RDFUtils::SANDRECO::GetTrackVertex, {"PrimariesGoodTrackFit"})
+             .Define("MuonsVtxX",             RDFUtils::GetComponent<0>, {"MuonsVtx"})
+             .Define("MuonsVtxY",             RDFUtils::GetComponent<1>, {"MuonsVtx"})
+             .Define("MuonsVtxZ",             RDFUtils::GetComponent<2>, {"MuonsVtx"})
+             .Define("MuonsP4",               RDFUtils::SANDRECO::GetMomentum, {"Muons"})
+             .Define("MuonsP",                "MuonsP4[0].Vect().Mag()")
+             ;
+}
+
+//RDFUtils::GEO______________________________________________________________________
 
 std::string RDFUtils::GEO::GetMaterialFromCoordinates(double x, double y, double z){
     

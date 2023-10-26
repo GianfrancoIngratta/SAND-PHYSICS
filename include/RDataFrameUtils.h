@@ -4,6 +4,8 @@
 #include <string>
 
 #include "GenieUtils.h"
+#include "SandRecoUtils.h"
+#include "struct.h"
 #include "ROOT/RDF/RInterface.hxx"
 #include "ROOT/RDataFrame.hxx"
 #include "TString.h"
@@ -83,6 +85,19 @@ ROOT::RDF::RNode AddColumnsForHydrogenCarbonSampleSelection(ROOT::RDF::RNode& df
 }//GENIE
 
 namespace SANDRECO{//SANDRECO
+
+ROOT::VecOps::RVec<particle> ParticleGoodTrackFit(const ROOT::VecOps::RVec<particle>& particles);
+
+ROOT::VecOps::RVec<particle> FilterPrimaries(const ROOT::VecOps::RVec<particle>& particles);
+
+template<int PDG>
+ROOT::VecOps::RVec<particle> GetParticlesWithPDG(const ROOT::VecOps::RVec<particle>& particles);
+
+ROOT::VecOps::RVec<TLorentzVector> GetMomentum(const ROOT::VecOps::RVec<particle>& particles);
+
+ROOT::VecOps::RVec<TLorentzVector> GetTrackVertex(const ROOT::VecOps::RVec<particle>& particles);
+
+ROOT::RDF::RNode AddColumnsFromSANDRECO(ROOT::RDF::RNode& df);
 
 }//SANDRECO
 

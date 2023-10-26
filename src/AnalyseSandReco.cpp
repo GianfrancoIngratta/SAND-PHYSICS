@@ -3,6 +3,7 @@
 
 #include "RDataFrameUtils.h"
 #include "GenieUtils.h"
+#include "SandRecoUtils.h"
 #include "GeoUtils.h"
 #include "TFile.h"
 
@@ -23,6 +24,10 @@ int main(int argc, char* argv[]){
 
     const char* fOutput = argv[3];
 
+    // define output files name
+
+    TString fOutput_ = TString::Format("%s.root",fOutput); 
+
     // if you have multiple files enable multiple thread pocessing
 
     if(!std::strstr(fInput,"*")) ROOT::EnableImplicitMT();
@@ -33,5 +38,14 @@ int main(int argc, char* argv[]){
 
     // RDFUtils::PrintColumns(df);
 
-    
+    auto dfC = RDFUtils::AddConstantsToDF(df); // add some columns with usefull constants
+
+    auto dfSR = RDFUtils::SANDRECO::AddColumnsFromSANDRECO(dfC);
+
+    dfSR.Snapshot("myTree", fOutput_.Data(), {"MuonsVtxX",
+                                              "MuonsVtxY",
+                                              "MuonsVtxZ",
+                                              "MuonsP",
+                                              }
+    );
 }
