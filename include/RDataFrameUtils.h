@@ -82,6 +82,10 @@ ROOT::RDF::RNode AddColumnsForHydrogenCarbonSampleSelection(ROOT::RDF::RNode& df
 
 }//GENIE
 
+namespace SANDRECO{//SANDRECO
+
+}//SANDRECO
+
 namespace GEO{//GEO
 
 std::string GetMaterialFromCoordinates(double x, double y, double z);
