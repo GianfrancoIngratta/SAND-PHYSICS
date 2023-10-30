@@ -16,7 +16,7 @@ find_package(EDepSim)
 find_package(SandReco)
 include_directories(${PROJECT_SOURCE_DIR}/include /storage/gpfs_data/neutrino/users/gi/sand-reco/include)
 
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}" "/storage/gpfs_data/neutrino/users/gi/STT-DESIGN-STUDY/FastReco")
 
 # Creates a libGenieUtils shared library
 add_library(GenieUtils SHARED src/GenieUtils.cpp)
@@ -38,9 +38,16 @@ target_include_directories(SandRecoUtils PUBLIC /storage/gpfs_data/neutrino/user
 target_link_directories(SandRecoUtils PUBLIC /storage/gpfs_data/neutrino/users/gi/sand-reco/lib)
 target_link_libraries(SandRecoUtils PUBLIC ROOT::RIO ROOT::Net ROOT::EG)
 
+# Creates a libFastRecoUtils shared library
+add_library(evtinfo SHARED IMPORTED) # or STATIC instead of SHARED
+set_target_properties(evtinfo PROPERTIES
+  IMPORTED_LOCATION "/storage/gpfs_data/neutrino/users/gi/STT-DESIGN-STUDY/FastReco/build/libevtinfo.so"
+  INTERFACE_INCLUDE_DIRECTORIES "/storage/gpfs_data/neutrino/users/gi/STT-DESIGN-STUDY/FastReco"
+)
+
 # Creates a libUtils shared library
 add_library(RDataFrameUtils SHARED src/RDataFrameUtils.cpp)
-target_link_libraries(RDataFrameUtils PUBLIC ROOT::RIO ROOT::Net ROOT::ROOTDataFrame GenieUtils SandRecoUtils)
+target_link_libraries(RDataFrameUtils PUBLIC ROOT::RIO ROOT::Net ROOT::ROOTDataFrame GenieUtils SandRecoUtils evtinfo)
 
 add_library(GeoUtils SHARED src/GeoUtils.cpp)
 target_link_libraries(GeoUtils PUBLIC ROOT::RIO ROOT::Net ROOT::ROOTDataFrame EDepSim::edepsim_io)
@@ -49,7 +56,8 @@ add_executable(AnalyseGenie src/AnalyseGenie.cpp)
 target_link_libraries(AnalyseGenie PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils)
 
 add_executable(AnalyseSandReco src/AnalyseSandReco.cpp)
-target_link_libraries(AnalyseSandReco PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils SandRecoUtils)
+target_link_libraries(AnalyseSandReco PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics 
+GenieUtils RDataFrameUtils GeoUtils SandRecoUtils)
 
 install(TARGETS  GenieUtils RDataFrameUtils AnalyseGenie AnalyseSandReco
         RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin"

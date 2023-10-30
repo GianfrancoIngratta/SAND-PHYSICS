@@ -5,7 +5,9 @@
 
 #include "GenieUtils.h"
 #include "SandRecoUtils.h"
-#include "struct.h"
+#include "struct.h" // struct sandreco
+#include "evtinfo.h" // struct fastreco
+
 #include "ROOT/RDF/RInterface.hxx"
 #include "ROOT/RDataFrame.hxx"
 #include "TString.h"
@@ -100,6 +102,10 @@ ROOT::VecOps::RVec<TLorentzVector> GetTrackVertex(const ROOT::VecOps::RVec<parti
 ROOT::RDF::RNode AddColumnsFromSANDRECO(ROOT::RDF::RNode& df);
 
 }//SANDRECO
+
+namespace FASTRECO{//FASTRECO
+
+}//FASTRECO
 
 namespace GEO{//GEO
 
