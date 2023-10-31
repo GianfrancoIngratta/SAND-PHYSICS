@@ -31,19 +31,20 @@ int main(int argc, char* argv[]){
     if(!std::strstr(fInput,"*")) ROOT::EnableImplicitMT();
 
     // Initialize root DataFrame and add columns
-
-    auto df = RDFUtils::InitDF(fInput, "tEvent");
+    // auto df = RDFUtils::InitDF(fInput, "tEvent");
+    auto df = RDFUtils::InitDF(fInput, "edepsmear_anaevt_tree");
 
     // RDFUtils::PrintColumns(df);
 
     auto dfC = RDFUtils::AddConstantsToDF(df); // add some columns with usefull constants
 
-    auto dfSR = RDFUtils::SANDRECO::AddColumnsFromFASTRECO(dfC);
+    auto dfSR = RDFUtils::FASTRECO::AddColumnsFromFASTRECO(dfC);
 
-    // dfSR.Snapshot("myTree", fOutput_.Data(), {"MuonsVtxX",
-    //                                           "MuonsVtxY",
-    //                                           "MuonsVtxZ",
-    //                                           "MuonsP",
-    //                                           }
+    dfSR.Snapshot("myTree", fOutput_.Data(), {"RecoMuonsVtxX",
+                                              "RecoMuonsVtxY",
+                                              "RecoMuonsVtxZ",
+                                              "RecoMuonsP",
+                                              "MuonsMomentumRes"
+                                              }
     );
 }

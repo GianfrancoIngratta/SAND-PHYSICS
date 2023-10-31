@@ -4,7 +4,7 @@
 #include <string>
 
 #include "GenieUtils.h"
-#include "SandRecoUtils.h"
+#include "RecoUtils.h"
 #include "struct.h" // struct sandreco
 #include "evtinfo.h" // struct fastreco
 
@@ -15,6 +15,7 @@
 #include "TObjString.h"
 #include "TLorentzVector.h"
 #include "TVector2.h"
+#include "TVector3.h"
 
 namespace RDFUtils{//RDFUtils
 
@@ -38,7 +39,10 @@ TVector3 TLVectorCrossProduct(const TLorentzVector& v1,
 ROOT::VecOps::RVec<double> VectorSubtractConst(const ROOT::VecOps::RVec<double>& v1, double c);
 
 TLorentzVector VectorFilterByHighest(const ROOT::VecOps::RVec<double>& filter,
-                                     const ROOT::VecOps::RVec<TLorentzVector>& v);                                            
+                                     const ROOT::VecOps::RVec<TLorentzVector>& v);
+
+// ROOT::VecOps::RVec<double> GetResolution(const ROOT::VecOps::RVec<double>& reco,
+//                                          const ROOT::VecOps::RVec<double>& true);
 
 namespace GENIE{//GENIE
 
@@ -104,6 +108,20 @@ ROOT::RDF::RNode AddColumnsFromSANDRECO(ROOT::RDF::RNode& df);
 }//SANDRECO
 
 namespace FASTRECO{//FASTRECO
+
+template<int PDG>
+ROOT::VecOps::RVec<fast::particle> GetParticlesWithPDG(const std::map<int, fast::particle>& particle_map);
+
+ROOT::VecOps::RVec<TVector3> GetTrackVertex(const ROOT::VecOps::RVec<fast::particle>& particles);
+
+template<int coord>
+double GetEventVertex(const ROOT::VecOps::RVec<TVector3>& vertices);
+
+ROOT::VecOps::RVec<TLorentzVector> GetTrue4Momentum(const ROOT::VecOps::RVec<fast::particle>& particles);
+
+ROOT::VecOps::RVec<TLorentzVector> GetReco4Momentum(const ROOT::VecOps::RVec<fast::particle>& particles);
+
+ROOT::RDF::RNode AddColumnsFromFASTRECO(ROOT::RDF::RNode& df);
 
 }//FASTRECO
 

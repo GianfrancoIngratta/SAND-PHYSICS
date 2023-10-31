@@ -1,7 +1,8 @@
 #include "RDataFrameUtils.h"
 #include "GenieUtils.h"
-#include "SandRecoUtils.h"
+#include "RecoUtils.h"
 #include "GeoUtils.h"
+
 #include "TChain.h"
 #include "TMath.h"
 
@@ -81,6 +82,22 @@ TLorentzVector RDFUtils::VectorFilterByHighest(const ROOT::VecOps::RVec<double>&
         return v[index2max-filter.begin()];
     }
 }
+
+// ROOT::VecOps::RVec<double> RDFUtils::GetResolution(const ROOT::VecOps::RVec<double>& reco,
+//                                                    const ROOT::VecOps::RVec<double>& true){
+
+//     ROOT::VecOps::RVec<double> resolutions;
+    
+//     for (auto i = 0u; i < reco.size(); i++){
+//         if(reco[i]==RDFUtils::DEFAULT_DOUBLE){
+//             resolutions.push_back(RDFUtils::DEFAULT_NEGATIVE);
+//         }else{
+//             resolutions.push_back(1. - true[i] / reco[i]);
+//         }
+//     }
+    
+//     return resolutions;
+// }
 
 //RDFUtils::GENIE_________________________________________________________________
 
@@ -473,7 +490,106 @@ ROOT::RDF::RNode RDFUtils::SANDRECO::AddColumnsFromSANDRECO(ROOT::RDF::RNode& df
 
 //RDFUtils::FASTRECO_________________________________________________________________
 
+template<int PDG>
+ROOT::VecOps::RVec<fast::particle> RDFUtils::FASTRECO::GetParticlesWithPDG(const std::map<int, fast::particle>& particle_map){
 
+    ROOT::VecOps::RVec<fast::particle> particles_filter;
+
+    for(auto& entry : particle_map){
+        if(entry.second.parentid==-1 && entry.second.pdg==PDG) particles_filter.push_back(entry.second);
+    }
+
+    // particles_filter can contain either 1 or 0 entries
+    return particles_filter;
+}
+
+ROOT::VecOps::RVec<TVector3> RDFUtils::FASTRECO::GetTrackVertex(const ROOT::VecOps::RVec<fast::particle>& particles){
+
+    ROOT::VecOps::RVec<TVector3> vertices;
+
+    for(auto& p : particles){
+        TVector3 vertex = {p.position[0],p.position[1],p.position[2]};
+        vertices.push_back(vertex);
+    }
+
+    return vertices;
+}
+
+ROOT::VecOps::RVec<TLorentzVector> RDFUtils::FASTRECO::GetReco4Momentum(const ROOT::VecOps::RVec<fast::particle>& particles){
+    
+    ROOT::VecOps::RVec<TLorentzVector> momenta;
+
+    auto const MeV_to_GeV = 1E-3;
+
+    if(particles.size()==0){
+        momenta.push_back(RECO::DEFAULT_TLV);
+        return momenta;
+    }
+
+    for (auto& p : particles)
+    {
+        TLorentzVector momentum = {p.recoP4[0] * MeV_to_GeV,
+                                   p.recoP4[1] * MeV_to_GeV,
+                                   p.recoP4[2] * MeV_to_GeV,
+                                   p.recoP4[3] * MeV_to_GeV};
+        
+        momenta.push_back(momentum);                           
+    }
+
+    return momenta;
+}
+
+ROOT::VecOps::RVec<TLorentzVector> RDFUtils::FASTRECO::GetTrue4Momentum(const ROOT::VecOps::RVec<fast::particle>& particles){
+    
+    ROOT::VecOps::RVec<TLorentzVector> momenta;
+
+    auto const MeV_to_GeV = 1E-3;
+
+    if(particles.size()==0){
+        momenta.push_back(RECO::DEFAULT_TLV);
+        return momenta;
+    }
+
+    for (auto& p : particles)
+    {
+        TLorentzVector momentum = {p.trueP4[0] * MeV_to_GeV,
+                                   p.trueP4[1] * MeV_to_GeV,
+                                   p.trueP4[2] * MeV_to_GeV,
+                                   p.trueP4[3] * MeV_to_GeV};
+        
+        momenta.push_back(momentum);                           
+    }
+
+    return momenta;
+}
+
+template<int coord>
+double RDFUtils::FASTRECO::GetEventVertex(const ROOT::VecOps::RVec<TVector3>& vertices){
+    if(vertices.size()==RECO::DEFAULT_DOUBLE){
+        return 0.;
+    }else{
+        return vertices[0][coord];
+    }
+}
+
+ROOT::RDF::RNode RDFUtils::FASTRECO::AddColumnsFromFASTRECO(ROOT::RDF::RNode& df){
+    return df
+            /*muons*/
+             .Define("Muons",                 RDFUtils::FASTRECO::GetParticlesWithPDG<13>, {"particles"})
+             .Define("MuonsTrueP4",           RDFUtils::FASTRECO::GetTrue4Momentum, {"Muons"})
+             .Define("MuonsRecoP4",           RDFUtils::FASTRECO::GetReco4Momentum, {"Muons"})
+            /*protons*/
+             .Define("Protons",               RDFUtils::FASTRECO::GetParticlesWithPDG<2212>, {"particles"})
+            /*neutrons*/
+             .Define("Neutrons",              RDFUtils::FASTRECO::GetParticlesWithPDG<2112>, {"particles"})
+             //
+             .Define("MuonsVtx",              RDFUtils::FASTRECO::GetTrackVertex, {"Muons"})
+             .Define("MuonsVtxX",             RDFUtils::FASTRECO::GetEventVertex<0>, {"MuonsVtx"})
+             .Define("MuonsVtxY",             RDFUtils::FASTRECO::GetEventVertex<1>, {"MuonsVtx"})
+             .Define("MuonsVtxZ",             RDFUtils::FASTRECO::GetEventVertex<2>, {"MuonsVtx"})
+             
+    ;
+}
 
 //RDFUtils::GEO______________________________________________________________________
 
