@@ -10,12 +10,22 @@ TGeoManager* geo = nullptr;
 
 //RDFUtils______________________________________________________________________
 
-ROOT::RDataFrame RDFUtils::InitDF(const char* production, const char* tree_name){
+ROOT::RDataFrame RDFUtils::InitDF(TString production, 
+                                  const char* tree_name, 
+                                  unsigned int file_index_start, 
+                                  unsigned int file_index_stop){
     
     TChain* chain = new TChain(tree_name, tree_name);
-
-    chain->Add(production);
-
+    if(production.Contains("*")){
+        // chain a given number of file of a production
+        for(unsigned int i = file_index_start; i < file_index_stop; i++){
+            auto file = TString::Format(production.ReplaceAll("*","%d"), i, i);
+            if (!gSystem->AccessPathName(file.Data())) chain->Add(file);
+        }
+    }else{
+        chain->Add(production.Data());
+    }
+    std::cout << "tree name : " << tree_name << " number of events : " << chain ->GetEntries() << "\n";
     ROOT::RDataFrame* df = new ROOT::RDataFrame(*chain);
 
     if(!df){
@@ -304,6 +314,7 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              .Define("InteractionTarget",           RDFUtils::GENIE::InteractionTarget, {"StdHepPdg"})
              .Define("InteractionTargetPDG",        "StdHepPdg[1]")
              .Define("InteractionTargetFromGEO",    RDFUtils::GEO::GetMaterialFromCoordinates, {"Interaction_vtxX","Interaction_vtxY","Interaction_vtxZ"})
+             .Define("InteractionVolume",           RDFUtils::GEO::GetVolumeFromCoordinates, {"Interaction_vtxX","Interaction_vtxY","Interaction_vtxZ"})
              // all particles (hadrons laptons) and nuclei
              .Define("Particles",                   RDFUtils::GENIE::AllGenieParticles, {"StdHepPdg","StdHepStatus","StdHepP4"})
              //initial state
@@ -392,11 +403,15 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsForHydrogenCarbonSampleSelection(ROO
     /* These variables allows the separation of interacions occurring on free proton (H)
     from those occuring on Carbon. Variables are explained in arXiv:2102.03346v1 and arXiv:1809.08752v2[Petti] */
     //____________________________________________________________________________
+    return df
             // FinalHadronicSystemP4_TT : projection of FinalHadronicSystemP4 onto DoubleTransverseAxis perpendicular to neutrino direction
-    return df.Define("DoubleTransverseAxis",       RDFUtils::TLVectorCrossProduct, {"InitialStateNeutrinoP4","FinalStateMuonsP4"})
+             .Define("DoubleTransverseAxis",       RDFUtils::TLVectorCrossProduct, {"InitialStateNeutrinoP4","FinalStateMuonsP4"})
              .Define("FinalHadronicSystemP4_TT",   "DoubleTransverseAxis.Dot(FinalHadronicSystemP4.Vect())")
             // Initial Nucleon Momentum "P_N"
              .Define("BeamDirection",              "InitialStateNeutrinoP4.Vect() * (1./InitialStateNeutrinoP4.Vect().Mag())")
+             .Define("BeamDirectionX", "BeamDirection.X()") // FOR CHECK
+             .Define("BeamDirectionY", "BeamDirection.Y()") // FOR CHECK
+             .Define("BeamDirectionZ", "BeamDirection.Z()") // FOR CHECK
              .Define("FinalHadronicSystemPL",      "BeamDirection * (FinalHadronicSystemP4.Vect().Dot(BeamDirection))") // component parallel to beam direction
              .Define("FinalStateMuonsPL",          "BeamDirection * (FinalStateMuonsP4.Vect().Dot(BeamDirection))") // component parallel to beam direction
              .Define("FinalHadronicSystemPT",      "FinalHadronicSystemP4.Vect() - FinalHadronicSystemPL")
@@ -405,6 +420,10 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsForHydrogenCarbonSampleSelection(ROO
              .Define("FinalStateDeltaPT",          "FinalStateMuonsPT + FinalHadronicSystemPT")
              .Define("FinalStateP4",               "FinalHadronicSystemP4 + FinalStateMuonsP4")
              .Define("InitialNucleonMomentum",     RDFUtils::GENIE::GetInitialNucleonMomentum, {"FinalStateP4", "FinalStatePL","FinalStateDeltaPT","InteractionTargetPDG"})
+             /*angle of emission*/
+             .Define("FinalStateMuonEmissionAngle",             "FinalStateMuonsP4.Vect().Angle(BeamDirection)")
+             .Define("FinalStateHadronicSystemEmissionAngle",   "FinalHadronicSystemP4.Vect().Angle(BeamDirection)")
+             .Define("FinalStateHadronicSystemVSMuonsAngle",    "FinalHadronicSystemP4.Vect().Angle(FinalStateMuonsP4.Vect())")
               /*Transverse boosting angle*/
              .Define("TransverseBoostingAngle",    "TMath::ACos((((-1.)*FinalStateMuonsPT).Dot(FinalStateDeltaPT))/FinalStateMuonsPT.Mag()/FinalStateDeltaPT.Mag())")
              // Transverse boosting angle "\deltaPt"
@@ -593,6 +612,16 @@ ROOT::RDF::RNode RDFUtils::FASTRECO::AddColumnsFromFASTRECO(ROOT::RDF::RNode& df
 
 //RDFUtils::GEO______________________________________________________________________
 
+std::string RDFUtils::GEO::GetVolumeFromCoordinates(double x, double y, double z){
+    
+    if(!geo){
+        std::cout<<"GEO not initialized in "<<__FILE__<<" "<<__LINE__<<"\n";
+        throw "";
+    }
+   
+    return geo->FindNode(x*100., y*100., z*100.)->GetVolume()->GetName();
+}
+
 std::string RDFUtils::GEO::GetMaterialFromCoordinates(double x, double y, double z){
     
     if(!geo){
@@ -601,4 +630,44 @@ std::string RDFUtils::GEO::GetMaterialFromCoordinates(double x, double y, double
     }
    
     return geo->FindNode(x*100., y*100., z*100.)->GetVolume()->GetMaterial()->GetName();
+}
+
+//RDFUtils::EDEPSIM_______________________________________________________________
+
+int RDFUtils::EDEPSIM::NofEventsPerSpill(const ROOT::VecOps::RVec<TG4PrimaryVertex>& vertices){
+    return vertices.size();
+}
+
+template<int coordinate>
+ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::PrimariesVertex(const ROOT::VecOps::RVec<TG4PrimaryVertex>& vertices)
+{
+    ROOT::VecOps::RVec<double> vertices_positions;
+    for(auto& vertex: vertices)
+    {
+        auto vertex_position = vertex.GetPosition();
+        vertices_positions.emplace_back(vertex_position[coordinate]);
+    }
+    return vertices_positions;
+}
+
+ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::PrimariesVertexTimeDiff(ROOT::VecOps::RVec<double>& primaries_time)
+{
+    ROOT::VecOps::RVec<double> time_diff;
+
+    for(auto i=1u; i<primaries_time.size(); i++)
+    {
+        time_diff.emplace_back(primaries_time[i]-primaries_time[i-1]);
+    }
+    return time_diff;
+}
+
+ROOT::RDF::RNode RDFUtils::EDEPSIM::AddColumnsFromEDEPSIM(ROOT::RDF::RNode& df){
+    return df
+             .Define("NofEventsPerSpill", RDFUtils::EDEPSIM::NofEventsPerSpill, {"Primaries"})
+             .Define("PrimariesVertexX", RDFUtils::EDEPSIM::PrimariesVertex<0>,{"Primaries"})
+             .Define("PrimariesVertexY", RDFUtils::EDEPSIM::PrimariesVertex<1>,{"Primaries"})
+             .Define("PrimariesVertexZ", RDFUtils::EDEPSIM::PrimariesVertex<2>,{"Primaries"})
+             .Define("PrimariesVertexT", RDFUtils::EDEPSIM::PrimariesVertex<3>,{"Primaries"})
+             .Define("PrimariesVertexTimeDiff",RDFUtils::EDEPSIM::PrimariesVertexTimeDiff,{"PrimariesVertexT"})
+             ;
 }

@@ -1,7 +1,8 @@
 #include "GenieUtils.h"
 
 std::string GenieUtils::PDG2Name(int pdg){
-    std::string name = genie::PDGLibrary::Instance()->Find(pdg)->GetName();
+    genie::PDGLibrary* instance = genie::PDGLibrary::Instance();
+    std::string name = instance->Find(pdg)->GetName();
     return name;
 }
 

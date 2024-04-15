@@ -4,6 +4,7 @@
 #include <string>
 
 #include "GenieUtils.h"
+#include "TSystem.h"
 #include "RecoUtils.h"
 #include "struct.h" // struct sandreco
 #include "evtinfo.h" // struct fastreco
@@ -16,10 +17,57 @@
 #include "TLorentzVector.h"
 #include "TVector2.h"
 #include "TVector3.h"
+#include "TG4Event.h"
+#include "TG4HitSegment.h"
+
+namespace Color {
+    enum Code {
+        FG_RED      = 31,
+        FG_GREEN    = 32,
+        FG_BLUE     = 34,
+        FG_DEFAULT  = 39,
+        BG_RED      = 41,
+        BG_GREEN    = 42,
+        BG_BLUE     = 44,
+        BG_DEFAULT  = 49
+    };
+    class Modifier {
+        Code code;
+    public:
+        Modifier(Code pCode) : code(pCode) {}
+        friend std::ostream&
+        operator<<(std::ostream& os, const Modifier& mod) {
+            return os << "\033[" << mod.code << "m";
+        }
+    };
+}
+
+Color::Modifier def(Color::FG_DEFAULT);
+Color::Modifier red(Color::FG_RED); // warnings
+Color::Modifier green(Color::FG_GREEN); // opeartions
+Color::Modifier blue(Color::FG_BLUE); // results
+
+void LOG(TString i, const char* out){
+    if(i.Contains("I")){ // info
+        std::cout << green << "[INFO] " << out << def << std::endl;
+        std::cout << "\n";
+    }else if(i.Contains("i")){
+        std::cout << green << " |___ " << out << def << std::endl;
+        std::cout << "\n";
+    }else if(i.Contains("R")){ // result
+        std::cout << blue << "[RESULT] " << out << def << std::endl;
+        std::cout << "\n";
+    }else if(i.Contains("W")){ // waring
+        std::cout << red << "[WARNING] " << out << def << std::endl;
+        std::cout << "\n";
+    }else{
+        std::cout << out;
+    }
+}
 
 namespace RDFUtils{//RDFUtils
 
-ROOT::RDataFrame InitDF(const char* production, const char* tree_name);
+ROOT::RDataFrame InitDF(TString production, const char* tree_name, unsigned int file_index_start = 0, unsigned int file_index_stop = 10);
 
 void PrintColumns(ROOT::RDataFrame& df);
 
@@ -129,7 +177,22 @@ namespace GEO{//GEO
 
 std::string GetMaterialFromCoordinates(double x, double y, double z);
 
-}
+std::string GetVolumeFromCoordinates(double x, double y, double z);
+
+}//GEO
+
+namespace EDEPSIM{//EDEPSIM
+
+ROOT::RDF::RNode AddColumnsFromEDEPSIM(ROOT::RDF::RNode& df);
+
+template<int coordinate>
+ROOT::VecOps::RVec<double> PrimariesVertex(const ROOT::VecOps::RVec<TG4PrimaryVertex>& vertices);
+
+ROOT::VecOps::RVec<double> PrimariesVertexTimeDiff(ROOT::VecOps::RVec<double>& primaries_time);
+
+int NofEventsPerSpill(const ROOT::VecOps::RVec<TG4PrimaryVertex>& vertices);
+
+}//EDEPSIM
 
 }//RDFUtils
 

@@ -30,7 +30,8 @@ target_link_libraries(GenieUtils PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::Tre
                       GElas GGiBUU GReinSehgal GQPM GBodekYang GEVGModules GQEL GRES GDIS GCoh
                       GDfrc GMEC GNuE GNuGamma GAlvarezRuso GHadronTransp GBergerSehgal GSingleKaon GMuELoss  
                       xml2
-                      log4cpp)
+                      log4cpp
+                      EDepSim::edepsim_io)
 
 # Creates a libRecoUtils shared library
 add_library(RecoUtils SHARED src/RecoUtils.cpp)
@@ -54,6 +55,9 @@ target_link_libraries(GeoUtils PUBLIC ROOT::RIO ROOT::Net ROOT::ROOTDataFrame ED
 
 add_executable(AnalyseGenie src/AnalyseGenie.cpp)
 target_link_libraries(AnalyseGenie PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils)
+
+add_executable(AnalyseEDepSim src/AnalyseEDepSim.cpp)
+target_link_libraries(AnalyseEDepSim PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils)
 
 add_executable(AnalyseFastReco src/AnalyseFastReco.cpp)
 target_link_libraries(AnalyseFastReco PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics RDataFrameUtils GeoUtils)
