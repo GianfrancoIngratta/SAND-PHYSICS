@@ -96,6 +96,8 @@ namespace GENIE{//GENIE
 
 std::string InteractionTarget(const ROOT::VecOps::RVec<int>& pdg);
 
+int NeutrinoFlavor(const ROOT::VecOps::RVec<int>& pdg);
+
 std::string EventType(TObjString& t);
 
 ROOT::VecOps::RVec<genie::GHepParticle> AllGenieParticles(const ROOT::VecOps::RVec<int>& pdg,

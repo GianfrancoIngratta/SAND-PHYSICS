@@ -1,9 +1,7 @@
 #include "GenieUtils.h"
 
 std::string GenieUtils::PDG2Name(int pdg){
-    genie::PDGLibrary* instance = genie::PDGLibrary::Instance();
-    std::string name = instance->Find(pdg)->GetName();
-    return name;
+    return database->Find(pdg)->GetName();
 }
 
 genie::GHepParticle GenieUtils::GenieParticle(int pdg, 

@@ -112,7 +112,13 @@ TLorentzVector RDFUtils::VectorFilterByHighest(const ROOT::VecOps::RVec<double>&
 //RDFUtils::GENIE_________________________________________________________________
 
 std::string RDFUtils::GENIE::InteractionTarget(const ROOT::VecOps::RVec<int>& pdg){
+    // return target with which neutrino interact
     return GenieUtils::PDG2Name(pdg[1]);
+}
+
+int RDFUtils::GENIE::NeutrinoFlavor(const ROOT::VecOps::RVec<int>& pdg){
+    // return interacting neutrino flavor
+    return pdg[0];
 }
 
 int RDFUtils::GENIE::NofFinalStateParticles(const ROOT::VecOps::RVec<int>& pdg){
@@ -137,6 +143,10 @@ std::string RDFUtils::GENIE::EventType(TObjString& s){
 ROOT::VecOps::RVec<genie::GHepParticle> RDFUtils::GENIE::AllGenieParticles(const ROOT::VecOps::RVec<int>& pdg,
                                                                            const ROOT::VecOps::RVec<int>& status,
                                                                            const ROOT::VecOps::RVec<double>& P4){
+    /*
+        Construct an istance genie::GHepParticle for each particle in the genie output.
+        The class genie::GHepParticle is more helpfull for the analysis
+    */                                                                            
     ROOT::VecOps::RVec<genie::GHepParticle> particles;
 
     for(auto i=0u; i<pdg.size(); i++){
@@ -199,6 +209,7 @@ GenieUtils::event_topology RDFUtils::GENIE::GetFinalStateTopology(const ROOT::Ve
 
 template<int PDG>
 ROOT::VecOps::RVec<genie::GHepParticle> RDFUtils::GENIE::GetParticlesWithPDG(const ROOT::VecOps::RVec<genie::GHepParticle>& particles){
+    // return GHepParticle whose pdg is PDG
     
     ROOT::VecOps::RVec<genie::GHepParticle> filtered_particles;
 
@@ -266,8 +277,7 @@ ROOT::VecOps::RVec<int> RDFUtils::GENIE::GetPDG(const ROOT::VecOps::RVec<genie::
 
 ROOT::VecOps::RVec<TLorentzVector> RDFUtils::GENIE::GetMomentum(const ROOT::VecOps::RVec<genie::GHepParticle>& particles)
 {
-    // input : particles
-    // output : particles momentum TLorentzVector
+    // return momentum (LorentzVector) of each of inout GHepParticle
     ROOT::VecOps::RVec<TLorentzVector> momenta;
     for(auto& p : particles){
         TLorentzVector momentum = *p.GetP4();
@@ -282,8 +292,8 @@ double RDFUtils::GENIE::GetInitialNucleonMomentum(const TLorentzVector& FinalSta
                                                   int InteractionTarget){
 /*total initial nucleon momentum as calculated in arXiv:2102.03346v1 (T2K collaboration)*/
 
-    double target_nucleus_mass = genie::PDGLibrary::Instance()->Find(InteractionTarget)->Mass();
-    double proton_mass = genie::PDGLibrary::Instance()->Find(genie::kPdgProton)->Mass();
+    double target_nucleus_mass = GenieUtils::database->Find(InteractionTarget)->Mass();
+    double proton_mass = GenieUtils::database->Find(genie::kPdgProton)->Mass();
     double proton_mean_excitation_energy = 26.1 * 1E-3; // 26.1 MeV for Carbon
     double residual_nucleus_mass = target_nucleus_mass - proton_mass + proton_mean_excitation_energy;
     double final_state_energy = FinalStateMomentum.T();
@@ -296,6 +306,7 @@ double RDFUtils::GENIE::GetInitialNucleonMomentum(const TLorentzVector& FinalSta
 }
 
 TLorentzVector RDFUtils::GENIE::SumLorentzVectors(const ROOT::VecOps::RVec<TLorentzVector>& VTL){
+    // return the sum of N TLorentzVectors
     TLorentzVector sum = {0.,0.,0.,0.};
     for(auto& TL : VTL) sum += TL;
     return sum;
@@ -311,14 +322,17 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              .Define("Interaction_vtxZ","EvtVtx[2]")
              .Define("Interaction_vtxT","EvtVtx[3]")
              .Define("EventType",                   RDFUtils::GENIE::EventType, {"EvtCode"})
+             .Define("NeutrinoFlavor",              RDFUtils::GENIE::NeutrinoFlavor, {"StdHepPdg"})
              .Define("InteractionTarget",           RDFUtils::GENIE::InteractionTarget, {"StdHepPdg"})
              .Define("InteractionTargetPDG",        "StdHepPdg[1]")
              .Define("InteractionTargetFromGEO",    RDFUtils::GEO::GetMaterialFromCoordinates, {"Interaction_vtxX","Interaction_vtxY","Interaction_vtxZ"})
              .Define("InteractionVolume",           RDFUtils::GEO::GetVolumeFromCoordinates, {"Interaction_vtxX","Interaction_vtxY","Interaction_vtxZ"})
-             // all particles (hadrons laptons) and nuclei
+             // all particles: hadrons laptons and nuclei
              .Define("Particles",                   RDFUtils::GENIE::AllGenieParticles, {"StdHepPdg","StdHepStatus","StdHepP4"})
-             //initial state
-             /* generator-level initial state */
+             /*
+                initial state ___________________________________________________________________________________________________
+                generator-level initial state
+             */
              .Define("InitialStateParticles",       RDFUtils::GENIE::GetParticlesWithStatus<genie::kIStInitialState>, {"Particles"})
              .Define("InitialStateParticlesPDG",    RDFUtils::GENIE::GetPDG, {"InitialStateParticles"})
              .Define("InitialStateParticlesP",      RDFUtils::GENIE::GetMomentum, {"InitialStateParticles"})
@@ -329,12 +343,17 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              .Define("InitialStateP4",              RDFUtils::GENIE::SumLorentzVectors, {"InitialStateParticlesP"})
              .Define("InitialStateMomentum", "InitialStateP4.Vect().Mag()")
              .Define("InitialStateEnergy",          RDFUtils::GetColumnSum, {"InitialStateParticlesE"})
-             /*incoming neutrino*/
-             .Define("InitialStateNeutrino",        RDFUtils::GENIE::GetParticlesWithPDG<14>, {"InitialStateParticles"})
-             .Define("InitialStateNeutrinoP",       RDFUtils::GENIE::GetMomentum, {"InitialStateNeutrino"})
-             .Define("InitialStateNeutrinoP4",      RDFUtils::GENIE::SumLorentzVectors, {"InitialStateNeutrinoP"}) // just to obtain a TLVector instead of vector<TLVector>
-             //final state state particles
-             /* generator-level final state: particles to be tracked by detector-level MC */
+             /* incoming neutrinos */
+             .Define("InitialStateNuMu",            RDFUtils::GENIE::GetParticlesWithPDG<14>, {"InitialStateParticles"})
+             .Define("InitialStateNuMu_P",          RDFUtils::GENIE::GetMomentum, {"InitialStateNuMu"})
+             .Define("InitialStateNuMu_P4",         RDFUtils::GENIE::SumLorentzVectors, {"InitialStateNuMu_P"}) // just to obtain a TLVector instead of vector<TLVector>
+             .Define("InitialStateAntiNuMu",        RDFUtils::GENIE::GetParticlesWithPDG<-14>, {"InitialStateParticles"})
+             .Define("InitialStateAntiNuMu_P",      RDFUtils::GENIE::GetMomentum, {"InitialStateAntiNuMu"})
+             .Define("InitialStateAntiNuMu_P4",     RDFUtils::GENIE::SumLorentzVectors, {"InitialStateAntiNuMu_P"})
+             /*
+                final state state particles _____________________________________________________________________________________
+                generator-level final state: particles to be tracked by detector-level MC
+             */
              .Define("StableFinalStateParticles",   RDFUtils::GENIE::GetParticlesWithStatus<genie::kIStStableFinalState>, {"Particles"})
              .Define("StableFinalStateParticlesPDG",RDFUtils::GENIE::GetPDG, {"StableFinalStateParticles"})
              .Define("StableFinalStateParticlesP",  RDFUtils::GENIE::GetMomentum, {"StableFinalStateParticles"})
@@ -343,10 +362,12 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              .Define("StableFinalStateParticlesPz", RDFUtils::GetComponent<2>, {"StableFinalStateParticlesP"})
              .Define("StableFinalStateParticlesE",  RDFUtils::GetComponent<3>, {"StableFinalStateParticlesP"})
              .Define("StableFinalStateP4",          RDFUtils::GENIE::SumLorentzVectors, {"StableFinalStateParticlesP"})
-             .Define("StableFinalStateMomentum", "StableFinalStateP4.Vect().Mag()")
+             .Define("StableFinalStateMomentum",    "StableFinalStateP4.Vect().Mag()")
              .Define("StableFinalStateEnergy",      RDFUtils::GetColumnSum, {"StableFinalStateParticlesE"})
-             // final state nuclear remnant
-             /* low energy nuclear fragments entering the record collectively as a 'hadronic blob' pseudo-particle */
+             /*
+                final state nuclear remnant _____________________________________________________________________________________
+                low energy nuclear fragments entering the record collectively as a 'hadronic blob' pseudo-particle
+             */
              .Define("FinalStateNuclearRemnant",    RDFUtils::GENIE::GetParticlesWithStatus<genie::kIStFinalStateNuclearRemnant>, {"Particles"})
              .Define("FinalStateNuclearRemnantPDG", RDFUtils::GENIE::GetPDG, {"FinalStateNuclearRemnant"})
              .Define("FinalStateNuclearRemnantP",   RDFUtils::GENIE::GetMomentum, {"FinalStateNuclearRemnant"})
@@ -357,14 +378,20 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              .Define("FinalStateNuclearP4",         RDFUtils::GENIE::SumLorentzVectors, {"FinalStateNuclearRemnantP"})
              .Define("FinalStateNuclearMomentum", "FinalStateNuclearP4.Vect().Mag()")
              .Define("FinalStateNuclearEnergy",     RDFUtils::GetColumnSum, {"FinalStateNuclearRemnantE"})
-             // EVENT TOPOLOGY
-             /* organize final states */
+             /*
+                EVENT TOPOLOGY __________________________________________________________________________________________________
+                organize final states
+             */
              .Define("FinalStateTopology",          RDFUtils::GENIE::GetFinalStateTopology, {"StableFinalStateParticlesPDG"})
              .Define("FinalStateTopologyName",      [](GenieUtils::event_topology t){return t.GetTopologyName();}, {"FinalStateTopology"})
              /*mu*/
              .Define("FinalStateMuons",             RDFUtils::GENIE::GetParticlesWithPDG<13>, {"StableFinalStateParticles"})
              .Define("FinalStateMuonsP",            RDFUtils::GENIE::GetMomentum, {"FinalStateMuons"})
              .Define("FinalStateMuonsP4",           RDFUtils::GENIE::SumLorentzVectors, {"FinalStateMuonsP"}) // just to obtain a TLVector instead of vector<TLVector>
+             /*antimu*/
+             .Define("FinalStateAntiMuons",         RDFUtils::GENIE::GetParticlesWithPDG<-13>, {"StableFinalStateParticles"})
+             .Define("FinalStateAntiMuonsP",        RDFUtils::GENIE::GetMomentum, {"FinalStateAntiMuons"})
+             .Define("FinalStateAntiMuonsP4",       RDFUtils::GENIE::SumLorentzVectors, {"FinalStateAntiMuonsP"}) // just to obtain a TLVector instead of vector<TLVector>
              /*protons*/
              .Define("FinalStateProtons",           RDFUtils::GENIE::GetParticlesWithPDG<2212>, {"StableFinalStateParticles"})
              .Define("FinalStateProtonsP",          RDFUtils::GENIE::GetMomentum, {"FinalStateProtons"})
@@ -381,21 +408,21 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              .Define("FinalStateElectronPositrons", RDFUtils::GENIE::GetParticlesWithPDG<11>, {"StableFinalStateParticles"})
              .Define("FinalStateElectronPositronsP",RDFUtils::GENIE::GetMomentum, {"StableFinalStateParticles"})
              /*photons*/
-             .Define("FinalStatePhotons",          RDFUtils::GENIE::GetParticlesWithPDG<22>, {"StableFinalStateParticles"})
-             .Define("FinalStatePhotonsP",         RDFUtils::GENIE::GetMomentum, {"FinalStatePhotons"})
+             .Define("FinalStatePhotons",           RDFUtils::GENIE::GetParticlesWithPDG<22>, {"StableFinalStateParticles"})
+             .Define("FinalStatePhotonsP",          RDFUtils::GENIE::GetMomentum, {"FinalStatePhotons"})
              /*exhotic mesons : K0,KL,KS,K+-...*/ 
-             .Define("FinalStateExhoticMesons",    RDFUtils::GENIE::GetExhoticMesons, {"StableFinalStateParticles"})
-             .Define("FinalStateExhoticMesonsP",   RDFUtils::GENIE::GetMomentum, {"FinalStateExhoticMesons"})
+             .Define("FinalStateExhoticMesons",     RDFUtils::GENIE::GetExhoticMesons, {"StableFinalStateParticles"})
+             .Define("FinalStateExhoticMesonsP",    RDFUtils::GENIE::GetMomentum, {"FinalStateExhoticMesons"})
              /*exhotic hadrons : sigma, lambda, ...*/ 
-             .Define("FinalStateExhoticHadrons",   RDFUtils::GENIE::GetExhoticHadrons, {"StableFinalStateParticles"})
-             .Define("FinalStateExhoticHadronsP",  RDFUtils::GENIE::GetMomentum, {"FinalStateExhoticHadrons"})
-             /*recoiled nuclei */ 
-             .Define("FinalStateNuclei",           RDFUtils::GENIE::GetRecoiledNuclei, {"StableFinalStateParticles"})
-             .Define("FinalStateNucleiP",          RDFUtils::GENIE::GetMomentum, {"FinalStateNuclei"})
+             .Define("FinalStateExhoticHadrons",    RDFUtils::GENIE::GetExhoticHadrons, {"StableFinalStateParticles"})
+             .Define("FinalStateExhoticHadronsP",   RDFUtils::GENIE::GetMomentum, {"FinalStateExhoticHadrons"})
+             /*recoiled nuclei*/ 
+             .Define("FinalStateNuclei",            RDFUtils::GENIE::GetRecoiledNuclei, {"StableFinalStateParticles"})
+             .Define("FinalStateNucleiP",           RDFUtils::GENIE::GetMomentum, {"FinalStateNuclei"})
              /* hadronic system : sum of stable final state expet muons, electromagnetic stuff, and nuclear remnant*/
-             .Define("FinalHadronicSystem",        RDFUtils::GENIE::GetFinalHadronicSystem, {"StableFinalStateParticles"})
-             .Define("FinalHadronicSystemP",       RDFUtils::GENIE::GetMomentum, {"FinalHadronicSystem"})
-             .Define("FinalHadronicSystemP4",      RDFUtils::GENIE::SumLorentzVectors, {"FinalHadronicSystemP"}) 
+             .Define("FinalHadronicSystem",         RDFUtils::GENIE::GetFinalHadronicSystem, {"StableFinalStateParticles"})
+             .Define("FinalHadronicSystemP",        RDFUtils::GENIE::GetMomentum, {"FinalHadronicSystem"})
+             .Define("FinalHadronicSystemP4",       RDFUtils::GENIE::SumLorentzVectors, {"FinalHadronicSystemP"}) 
              ;
 }
 
@@ -405,10 +432,10 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsForHydrogenCarbonSampleSelection(ROO
     //____________________________________________________________________________
     return df
             // FinalHadronicSystemP4_TT : projection of FinalHadronicSystemP4 onto DoubleTransverseAxis perpendicular to neutrino direction
-             .Define("DoubleTransverseAxis",       RDFUtils::TLVectorCrossProduct, {"InitialStateNeutrinoP4","FinalStateMuonsP4"})
+             .Define("DoubleTransverseAxis",       RDFUtils::TLVectorCrossProduct, {"InitialStateNuMu_P4","FinalStateMuonsP4"})
              .Define("FinalHadronicSystemP4_TT",   "DoubleTransverseAxis.Dot(FinalHadronicSystemP4.Vect())")
             // Initial Nucleon Momentum "P_N"
-             .Define("BeamDirection",              "InitialStateNeutrinoP4.Vect() * (1./InitialStateNeutrinoP4.Vect().Mag())")
+             .Define("BeamDirection",              "InitialStateNuMu_P4.Vect() * (1./InitialStateNuMu_P4.Vect().Mag())")
              .Define("BeamDirectionX", "BeamDirection.X()") // FOR CHECK
              .Define("BeamDirectionY", "BeamDirection.Y()") // FOR CHECK
              .Define("BeamDirectionZ", "BeamDirection.Z()") // FOR CHECK
@@ -419,7 +446,7 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsForHydrogenCarbonSampleSelection(ROO
              .Define("FinalStatePL",               "FinalHadronicSystemPL + FinalStateMuonsPL")
              .Define("FinalStateDeltaPT",          "FinalStateMuonsPT + FinalHadronicSystemPT")
              .Define("FinalStateP4",               "FinalHadronicSystemP4 + FinalStateMuonsP4")
-             .Define("InitialNucleonMomentum",     RDFUtils::GENIE::GetInitialNucleonMomentum, {"FinalStateP4", "FinalStatePL","FinalStateDeltaPT","InteractionTargetPDG"})
+            //  .Define("InitialNucleonMomentum",     RDFUtils::GENIE::GetInitialNucleonMomentum, {"FinalStateP4", "FinalStatePL","FinalStateDeltaPT","InteractionTargetPDG"})
              /*angle of emission*/
              .Define("FinalStateMuonEmissionAngle",             "FinalStateMuonsP4.Vect().Angle(BeamDirection)")
              .Define("FinalStateHadronicSystemEmissionAngle",   "FinalHadronicSystemP4.Vect().Angle(BeamDirection)")
@@ -628,6 +655,10 @@ std::string RDFUtils::GEO::GetMaterialFromCoordinates(double x, double y, double
         std::cout<<"GEO not initialized in "<<__FILE__<<" "<<__LINE__<<"\n";
         throw "";
     }
+
+    auto navigator = geo->GetCurrentNavigator();
+
+    if(!navigator) navigator = geo->AddNavigator();
    
     return geo->FindNode(x*100., y*100., z*100.)->GetVolume()->GetMaterial()->GetName();
 }

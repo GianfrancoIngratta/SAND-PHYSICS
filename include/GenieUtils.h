@@ -2,6 +2,7 @@
 #define GENIE_UTILS_H
 
 #include <string>
+#include <mutex>
 
 #include "TString.h"
 #include "GHEP/GHepParticle.h"
@@ -13,6 +14,8 @@
 #include "PDG/PDGUtils.h"
 
 namespace GenieUtils{
+
+auto database = genie::PDGLibrary::Instance();
 
 std::string PDG2Name(int pdg);
 

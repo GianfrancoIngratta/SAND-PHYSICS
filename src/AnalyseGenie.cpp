@@ -78,16 +78,16 @@ int main(int argc, char* argv[]){
         index++;
     }
 
-    // if you have multiple files enable multiple thread pocessing
+    LOG("I", "Reading geometry");        
+    geo = TGeoManager::Import(geometry);
 
+    // if you have multiple files enable multiple thread pocessing
     if(TString::Format("%s",fInput).Contains("*")){
         LOG("I","Enabling multiple threading");
         ROOT::EnableImplicitMT();
+        geo->SetMaxThreads(100);
         stop = start + 10u;
         };
-
-    LOG("I", "Reading geometry");        
-    geo = TGeoManager::Import(geometry);
 
     LOG("I", "Initialize ROOT DataFrame");
     auto df = RDFUtils::InitDF(fInput, "gRooTracker", start, stop);
@@ -103,16 +103,23 @@ int main(int argc, char* argv[]){
                                             "Interaction_vtxY",
                                             "Interaction_vtxZ",
                                             "EventType",
+                                            "NeutrinoFlavor",
                                             "InteractionTarget", // no thread safe
                                             "InteractionTargetFromGEO", // no thread safe
-                                            "InteractionVolume",
+                                            "InteractionVolume", // no thread safe
+                                            // incoming neutrinos
+                                            "InitialStateNuMu_P4",
+                                            "InitialStateAntiNuMu_P4",
+                                            // outgoing muons
+                                            "FinalStateMuonsP4",
+                                            "FinalStateAntiMuonsP4",
                                             });
 
     // dfG.Snapshot("myTree",fOutput_.Data(), {"InteractionTarget",
     //                                "InteractionTargetFromGEO",
     //                                "EventType",
     //                                // initial state particles
-    //                                "InitialStateNeutrinoP4",
+    //                                "InitialStateNuMu_P4",
     //                                "InitialStateParticlesPDG",
     //                                "InitialStateParticlesE",
     //                                "InitialStateMomentum",
