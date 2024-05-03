@@ -2,8 +2,6 @@
 #include <string>
 
 #include "RDataFrameUtils.h"
-#include "GenieUtils.h"
-#include "GeoUtils.h"
 #include "TFile.h"
 
 TGeoManager* geo = nullptr;
@@ -18,7 +16,6 @@ int main(int argc, char* argv[]){
         throw "";
     }
 
-    // target production
     // read user inputs
 
     const char* fInput = argv[1];
@@ -86,7 +83,7 @@ int main(int argc, char* argv[]){
         LOG("I","Enabling multiple threading");
         ROOT::EnableImplicitMT();
         geo->SetMaxThreads(100);
-        stop = start + 10u;
+        stop = start + 999u;
         };
 
     LOG("I", "Initialize ROOT DataFrame");
@@ -99,67 +96,35 @@ int main(int argc, char* argv[]){
     // auto dfG_SolidHydrogen = RDFUtils::GENIE::AddColumnsForHydrogenCarbonSampleSelection(dfG); // add columns for Hydrogen sample selection
     LOG("I", "Writing ouput file");
     dfG.Snapshot("gtrac_extended",fOutput, {
+                                            "isCCEvent",
                                             "Interaction_vtxX",
                                             "Interaction_vtxY",
                                             "Interaction_vtxZ",
                                             "EventType",
                                             "NeutrinoFlavor",
-                                            "InteractionTarget", // no thread safe
-                                            "InteractionTargetFromGEO", // no thread safe
-                                            "InteractionVolume", // no thread safe
-                                            // incoming neutrinos
-                                            "InitialStateNuMu_P4",
-                                            "InitialStateAntiNuMu_P4",
-                                            // outgoing muons
-                                            "FinalStateMuonsP4",
-                                            "FinalStateAntiMuonsP4",
+                                            "InteractionTarget",
+                                            "InteractionTargetPDG",
+                                            "InteractionTargetFromGEO",
+                                            "InteractionVolume",
+                                            // initial state particles
+                                            "InitialStateParticlesNames",
+                                            "InitialStateParticlesPDG",
+                                            "InitialStateParticlesP4",
+                                            // interacting neutrino
+                                            "IncomingNuMu_P4",
+                                            "IncomingAntiNuMu_P4",
+                                            // Struck Nucleon inside the target
+                                            "NucleonTargetP4",
+                                            "NucleonTargetName",
+                                            // final stable particles 
+                                            "StableFinalStateParticlesName",
+                                            "StableFinalStateParticlesPDG",
+                                            "StableFinalStateParticlesP4",
+                                            // final hadronic system
+                                            "FinalStateHadronicSystemTopology_name",
+                                            // // primary state hadronic system
+                                            "PrimaryStateHadronicSystemTopology_name",
                                             });
-
-    // dfG.Snapshot("myTree",fOutput_.Data(), {"InteractionTarget",
-    //                                "InteractionTargetFromGEO",
-    //                                "EventType",
-    //                                // initial state particles
-    //                                "InitialStateNuMu_P4",
-    //                                "InitialStateParticlesPDG",
-    //                                "InitialStateParticlesE",
-    //                                "InitialStateMomentum",
-    //                                "InitialStateEnergy",
-    //                                // stable final state particles
-    //                                "StableFinalStateParticlesPDG",
-    //                                "StableFinalStateParticlesE",
-    //                                "StableFinalStateMomentum",
-    //                                "StableFinalStateEnergy",
-    //                                // final state nuclear remnant
-    //                                "FinalStateNuclearRemnantPDG",
-    //                                "FinalStateNuclearRemnantE",
-    //                                "FinalStateNuclearMomentum",
-    //                                "FinalStateNuclearEnergy",
-    //                                });
-    
-    // dfG_SolidHydrogen.Snapshot("myTree", fOutput_4KinSelection.Data(), {
-    //                                                                     "InteractionTarget",
-    //                                                                     "BeamDirectionX",
-    //                                                                     "BeamDirectionY",
-    //                                                                     "BeamDirectionZ",
-    //                                                                     "EventType",
-    //                                                                     "FinalStateTopologyName",
-    //                                                                     "FinalHadronicSystemP4_TT",
-    //                                                                     "FinalStateMuonEmissionAngle",
-    //                                                                     "FinalStateHadronicSystemEmissionAngle",
-    //                                                                     "FinalStateHadronicSystemVSMuonsAngle",
-    //                                                                     "InitialNucleonMomentum",
-    //                                                                     "TransverseBoostingAngle",
-    //                                                                     "Asimmetry_RmH",
-    // });
-
-    // TString fOutput_1mu_1pr_1pi = TString::Format("test_1mu_1pr_1pi.root");
-
-    // // // example of topology name : "1mu_0pr_1ne_2pi_0em_0ex_0nu"
-    // dfG.Filter([](TString s){return s.Contains("1mu_1pr_0ne_1pi_0em_0ex_0nu");}, {"FinalStateTopologyName"})
-    //    .Snapshot("selection", fOutput_1mu_1pr_1pi.Data(), {"FinalStateTopologyName",
-    //                                                          "InteractionTarget",
-    //                                                          "FinalHadronicSystemP4_TT",
-    //                                                         });                                   
 
     return 0;
 }

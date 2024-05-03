@@ -3,11 +3,11 @@
 
 #include <string>
 
-#include "GenieUtils.h"
 #include "TSystem.h"
-#include "RecoUtils.h"
-#include "struct.h" // struct sandreco
-#include "evtinfo.h" // struct fastreco
+
+#include "GenieUtils.h"
+#include "GeoUtils.h"
+// #include "SANDRecoUtils.h" // helix fitting
 
 #include "ROOT/RDF/RInterface.hxx"
 #include "ROOT/RDataFrame.hxx"
@@ -20,7 +20,7 @@
 #include "TG4Event.h"
 #include "TG4HitSegment.h"
 
-namespace Color {
+namespace TextColor {
     enum Code {
         FG_RED      = 31,
         FG_GREEN    = 32,
@@ -42,23 +42,23 @@ namespace Color {
     };
 }
 
-Color::Modifier def(Color::FG_DEFAULT);
-Color::Modifier red(Color::FG_RED); // warnings
-Color::Modifier green(Color::FG_GREEN); // opeartions
-Color::Modifier blue(Color::FG_BLUE); // results
+static TextColor::Modifier def_(TextColor::FG_DEFAULT);
+static TextColor::Modifier red_(TextColor::FG_RED); // warnings
+static TextColor::Modifier green_(TextColor::FG_GREEN); // opeartions
+static TextColor::Modifier blue_(TextColor::FG_BLUE); // results
 
-void LOG(TString i, const char* out){
+inline void LOG(TString i, const char* out){
     if(i.Contains("I")){ // info
-        std::cout << green << "[INFO] " << out << def << std::endl;
+        std::cout << green_ << "[INFO] " << out << def_ << std::endl;
         std::cout << "\n";
     }else if(i.Contains("i")){
-        std::cout << green << " |___ " << out << def << std::endl;
+        std::cout << green_ << " |___ " << out << def_ << std::endl;
         std::cout << "\n";
     }else if(i.Contains("R")){ // result
-        std::cout << blue << "[RESULT] " << out << def << std::endl;
+        std::cout << blue_ << "[RESULT] " << out << def_ << std::endl;
         std::cout << "\n";
     }else if(i.Contains("W")){ // waring
-        std::cout << red << "[WARNING] " << out << def << std::endl;
+        std::cout << red_ << "[WARNING] " << out << def_ << std::endl;
         std::cout << "\n";
     }else{
         std::cout << out;
@@ -94,15 +94,24 @@ TLorentzVector VectorFilterByHighest(const ROOT::VecOps::RVec<double>& filter,
 
 namespace GENIE{//GENIE
 
+// bool IsUnphysical(genie::NtpMCEventRecord& m);
+
 std::string InteractionTarget(const ROOT::VecOps::RVec<int>& pdg);
 
 int NeutrinoFlavor(const ROOT::VecOps::RVec<int>& pdg);
 
 std::string EventType(TObjString& t);
 
+bool IsCC(TObjString& s);
+
 ROOT::VecOps::RVec<genie::GHepParticle> AllGenieParticles(const ROOT::VecOps::RVec<int>& pdg,
                                                           const ROOT::VecOps::RVec<int>& status,
-                                                          const ROOT::VecOps::RVec<double>& P4);                                                
+                                                          const ROOT::VecOps::RVec<double>& P4,
+                                                          const ROOT::VecOps::RVec<double>& X4,
+                                                          const ROOT::VecOps::RVec<int>& FirstMother,
+                                                          const ROOT::VecOps::RVec<int>& LastMother,
+                                                          const ROOT::VecOps::RVec<int>& FirstDaugther,
+                                                          const ROOT::VecOps::RVec<int>& Lastdaugther);                                               
 
 template<genie::GHepStatus_t STATUS>
 ROOT::VecOps::RVec<genie::GHepParticle> GetParticlesWithStatus(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
@@ -110,15 +119,28 @@ ROOT::VecOps::RVec<genie::GHepParticle> GetParticlesWithStatus(const ROOT::VecOp
 template<int PDG>
 ROOT::VecOps::RVec<genie::GHepParticle> GetParticlesWithPDG(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
+template<int PDG>
+ROOT::VecOps::RVec<genie::GHepParticle> ExcludePDG(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
+
+ROOT::VecOps::RVec<std::string> PDG2Name(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
+
 ROOT::VecOps::RVec<genie::GHepParticle> GetExhoticMesons(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
 ROOT::VecOps::RVec<genie::GHepParticle> GetExhoticHadrons(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
 ROOT::VecOps::RVec<genie::GHepParticle> GetRecoiledNuclei(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
+ROOT::VecOps::RVec<genie::GHepParticle> FinalStateHadronicSystem(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
+
+template<genie::GHepStatus_t STATUS>
+ROOT::VecOps::RVec<genie::GHepParticle> PrimaryStateHadronicSystem_status(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
+
+ROOT::VecOps::RVec<genie::GHepParticle> PrimaryStateHadronicSystem(const ROOT::VecOps::RVec<genie::GHepParticle>& particles, 
+                                                                   std::string event_type);
+
 ROOT::VecOps::RVec<genie::GHepParticle> GetFinalHadronicSystem(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
-GenieUtils::event_topology GetFinalStateTopology(const ROOT::VecOps::RVec<int>& pdgs);
+GenieUtils::event_topology GetInteractionTopology(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
 ROOT::VecOps::RVec<int> GetPDG(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
@@ -140,40 +162,22 @@ ROOT::RDF::RNode AddColumnsForHydrogenCarbonSampleSelection(ROOT::RDF::RNode& df
 
 }//GENIE
 
-namespace SANDRECO{//SANDRECO
+// namespace SANDRECO{//SANDRECO
 
-ROOT::VecOps::RVec<particle> ParticleGoodTrackFit(const ROOT::VecOps::RVec<particle>& particles);
+// ROOT::VecOps::RVec<particle> ParticleGoodTrackFit(const ROOT::VecOps::RVec<particle>& particles);
 
-ROOT::VecOps::RVec<particle> FilterPrimaries(const ROOT::VecOps::RVec<particle>& particles);
+// ROOT::VecOps::RVec<particle> FilterPrimaries(const ROOT::VecOps::RVec<particle>& particles);
 
-template<int PDG>
-ROOT::VecOps::RVec<particle> GetParticlesWithPDG(const ROOT::VecOps::RVec<particle>& particles);
+// template<int PDG>
+// ROOT::VecOps::RVec<particle> GetParticlesWithPDG(const ROOT::VecOps::RVec<particle>& particles);
 
-ROOT::VecOps::RVec<TLorentzVector> GetMomentum(const ROOT::VecOps::RVec<particle>& particles);
+// ROOT::VecOps::RVec<TLorentzVector> GetMomentum(const ROOT::VecOps::RVec<particle>& particles);
 
-ROOT::VecOps::RVec<TLorentzVector> GetTrackVertex(const ROOT::VecOps::RVec<particle>& particles);
+// ROOT::VecOps::RVec<TLorentzVector> GetTrackVertex(const ROOT::VecOps::RVec<particle>& particles);
 
-ROOT::RDF::RNode AddColumnsFromSANDRECO(ROOT::RDF::RNode& df);
+// ROOT::RDF::RNode AddColumnsFromSANDRECO(ROOT::RDF::RNode& df);
 
-}//SANDRECO
-
-namespace FASTRECO{//FASTRECO
-
-template<int PDG>
-ROOT::VecOps::RVec<fast::particle> GetParticlesWithPDG(const std::map<int, fast::particle>& particle_map);
-
-ROOT::VecOps::RVec<TVector3> GetTrackVertex(const ROOT::VecOps::RVec<fast::particle>& particles);
-
-template<int coord>
-double GetEventVertex(const ROOT::VecOps::RVec<TVector3>& vertices);
-
-ROOT::VecOps::RVec<TLorentzVector> GetTrue4Momentum(const ROOT::VecOps::RVec<fast::particle>& particles);
-
-ROOT::VecOps::RVec<TLorentzVector> GetReco4Momentum(const ROOT::VecOps::RVec<fast::particle>& particles);
-
-ROOT::RDF::RNode AddColumnsFromFASTRECO(ROOT::RDF::RNode& df);
-
-}//FASTRECO
+// }//SANDRECO
 
 namespace GEO{//GEO
 

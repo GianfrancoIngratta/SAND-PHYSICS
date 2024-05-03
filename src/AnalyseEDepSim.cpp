@@ -2,8 +2,8 @@
 #include <string>
 
 #include "RDataFrameUtils.h"
-#include "GenieUtils.h"
-#include "GeoUtils.h"
+// #include "GenieUtils.h"
+// #include "GeoUtils.h"
 #include "TFile.h"
 
 TGeoManager* geo = nullptr;
@@ -82,7 +82,7 @@ int main(int argc, char* argv[]){
     if(TString::Format("%s",fInput).Contains("*")){
         LOG("I","Enabling multiple threading");
         ROOT::EnableImplicitMT();
-        stop = start + 10u;
+        stop = start + 999u;
         };
     
     LOG("I", "Reading geometry");
