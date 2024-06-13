@@ -7,6 +7,7 @@
 
 #include "GenieUtils.h"
 #include "GeoUtils.h"
+#include "EDepSimUtils.h"
 // #include "SANDRecoUtils.h" // helix fitting
 
 #include "ROOT/RDF/RInterface.hxx"
@@ -89,8 +90,7 @@ ROOT::VecOps::RVec<double> VectorSubtractConst(const ROOT::VecOps::RVec<double>&
 TLorentzVector VectorFilterByHighest(const ROOT::VecOps::RVec<double>& filter,
                                      const ROOT::VecOps::RVec<TLorentzVector>& v);
 
-// ROOT::VecOps::RVec<double> GetResolution(const ROOT::VecOps::RVec<double>& reco,
-//                                          const ROOT::VecOps::RVec<double>& true);
+double SumDuble(const ROOT::VecOps::RVec<double>& v);
 
 namespace GENIE{//GENIE
 
@@ -124,13 +124,15 @@ ROOT::VecOps::RVec<genie::GHepParticle> ExcludePDG(const ROOT::VecOps::RVec<geni
 
 ROOT::VecOps::RVec<std::string> PDG2Name(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
-ROOT::VecOps::RVec<genie::GHepParticle> GetExhoticMesons(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
+genie::GHepParticle GetIncomingNeutrino(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
-ROOT::VecOps::RVec<genie::GHepParticle> GetExhoticHadrons(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
+genie::GHepParticle GetFinalChargedLepton(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
-ROOT::VecOps::RVec<genie::GHepParticle> GetRecoiledNuclei(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
+ROOT::VecOps::RVec<genie::GHepParticle> GetInitialState(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
 ROOT::VecOps::RVec<genie::GHepParticle> FinalStateHadronicSystem(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
+
+genie::GHepParticle GetNucleonTarget(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
 template<genie::GHepStatus_t STATUS>
 ROOT::VecOps::RVec<genie::GHepParticle> PrimaryStateHadronicSystem_status(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
@@ -138,22 +140,21 @@ ROOT::VecOps::RVec<genie::GHepParticle> PrimaryStateHadronicSystem_status(const 
 ROOT::VecOps::RVec<genie::GHepParticle> PrimaryStateHadronicSystem(const ROOT::VecOps::RVec<genie::GHepParticle>& particles, 
                                                                    std::string event_type);
 
-ROOT::VecOps::RVec<genie::GHepParticle> GetFinalHadronicSystem(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
-
 GenieUtils::event_topology GetInteractionTopology(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
 ROOT::VecOps::RVec<int> GetPDG(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
 ROOT::VecOps::RVec<TLorentzVector> GetMomentum(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
+ROOT::VecOps::RVec<double> GetKinE(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
+
 TLorentzVector SumLorentzVectors(const ROOT::VecOps::RVec<TLorentzVector>& VTL);
 
 int NofFinalStateParticles(const ROOT::VecOps::RVec<int>& pdg);
 
-double GetInitialNucleonMomentum(const TLorentzVector& FinalStateMomentum,
-                                 const TVector3& FinalStateLongitudinalMomentum,
-                                 const TVector3& FinalStateDeltaPT,
-                                 int InteractionTarget);
+TVector3 GetTransverseComponent(const TLorentzVector& v1, const TLorentzVector v2);
+
+ROOT::VecOps::RVec<double> DotProductWithAxis(const TVector3& axis, const ROOT::VecOps::RVec<TLorentzVector>& V);
 
 ROOT::RDF::RNode AddColumnsFromGENIE(ROOT::RDF::RNode& df);
 
@@ -189,6 +190,7 @@ std::string GetVolumeFromCoordinates(double x, double y, double z);
 
 namespace EDEPSIM{//EDEPSIM
 
+namespace SPILL{// EDEPSIM::SPILL
 ROOT::RDF::RNode AddColumnsFromEDEPSIM(ROOT::RDF::RNode& df);
 
 template<int coordinate>
@@ -196,7 +198,43 @@ ROOT::VecOps::RVec<double> PrimariesVertex(const ROOT::VecOps::RVec<TG4PrimaryVe
 
 ROOT::VecOps::RVec<double> PrimariesVertexTimeDiff(ROOT::VecOps::RVec<double>& primaries_time);
 
+ROOT::VecOps::RVec<std::string> EventType(const ROOT::VecOps::RVec<TG4PrimaryVertex>& V);
+
+ROOT::VecOps::RVec<std::string> FileName(const ROOT::VecOps::RVec<TG4PrimaryVertex>& V);
+
 int NofEventsPerSpill(const ROOT::VecOps::RVec<TG4PrimaryVertex>& vertices);
+} // SPILL
+
+namespace NOSPILL{ // EDEPSIM::NOSPILL
+
+ROOT::RDF::RNode AddColumnsFromEDEPSIM(ROOT::RDF::RNode& df);
+
+std::string EventType(const ROOT::VecOps::RVec<TG4PrimaryVertex>& V);
+
+std::string FileName(const ROOT::VecOps::RVec<TG4PrimaryVertex>& V);
+
+int NofPrimaries(const ROOT::VecOps::RVec<TG4PrimaryVertex>& v);
+
+ROOT::VecOps::RVec<int> GetPrimariesPDG(const ROOT::VecOps::RVec<TG4PrimaryVertex>& v);
+
+ROOT::VecOps::RVec<TLorentzVector> GetPrimariesP4(const ROOT::VecOps::RVec<TG4PrimaryVertex>& v);
+
+ROOT::VecOps::RVec<int> GetPrimariesTrackId(const ROOT::VecOps::RVec<TG4PrimaryVertex>& v);
+
+ROOT::VecOps::RVec<std::string> PDG2Name(const ROOT::VecOps::RVec<int>& pdgs);
+
+ROOT::VecOps::RVec<EDepUtils::track_hits> GetPrimariesHits(TG4Event& ev, const ROOT::VecOps::RVec<int>& ids, const ROOT::VecOps::RVec<int>& pdgs);
+
+ROOT::VecOps::RVec<ROOT::VecOps::RVec<TG4HitSegment>> GroupHitsByPrimary(TG4Event& ev, const ROOT::VecOps::RVec<int>& ids);
+
+ROOT::VecOps::RVec<double> GetPrimariesEDepECAL(const ROOT::VecOps::RVec<EDepUtils::track_hits>& vector_track_hits);
+
+ROOT::VecOps::RVec<double> GetPrimariesFirstTimeECAL(const ROOT::VecOps::RVec<EDepUtils::track_hits>& vector_track_hits);
+
+template<int coordinate>
+ROOT::VecOps::RVec<double> GetECALHitPos(const ROOT::VecOps::RVec<EDepUtils::track_hits>& vector_primary_hits);
+
+} // NOSPILL
 
 }//EDEPSIM
 

@@ -49,12 +49,15 @@ struct event_topology
     // C12, 016, Recoiled Nuclei ...
     int NofOther = 0;
 
-    long int unique_code(){
+    // long int unique_code(){
+    int unique_code(){
     /*
         encode event topology with a long int
     */                                  
-        long int code = 0;
-        long int factor = 1;
+        // long int code = 0;
+        int code = 0;
+        // long int factor = 1;
+        int factor = 1;
         for(auto n : {NofProtons, // factor : 1
                       NofNeutrons, // factor : 10
                       NofPiP, // factor : 10^2
