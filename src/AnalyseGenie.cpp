@@ -88,7 +88,8 @@ int main(int argc, char* argv[]){
         };
 
     LOG("I", "Initialize ROOT DataFrame");
-    auto df = RDFUtils::InitDF(fInput, "gRooTracker", start, start + 999u);
+    auto chain_genie = RDFUtils::InitTChain(fInput, "gRooTracker", start, start + 999u); 
+    auto df = RDFUtils::InitDF(chain_genie);
 
     auto dfC = RDFUtils::AddConstantsToDF(df); // add some columns with usefull constants
 
@@ -115,21 +116,18 @@ int main(int argc, char* argv[]){
                                             "InitialStateNames",
                                             "InitialStateMomenta",
                                             "InitialStateTotal4Momentum",
+                                            "InitialStateEmissionAngle",
                                             // final state lepton
                                             "FinalStateLeptonPDG",
                                             "FinalStateLeptonNames",
                                             "FinalStateLepton4Momentum",
-                                            // // interacting neutrino
-                                            // "IncomingNuMu_P4",
-                                            // "IncomingAntiNuMu_P4",
-                                            // // Struck Nucleon inside the target
-                                            // "NucleonTargetP4",
-                                            // "NucleonTargetName",
-                                            // primary state hadronic system
+                                            "FinalStateLeptonEmissionAngle",
+                                            // prmary state hadronic system 
                                             "PrimaryStateHadronicSystemPDG",
                                             "PrimaryStateHadronicSystemNames",
                                             "PrimaryStateHadronicSystemMomenta",
                                             "PrimaryStateHadronicSystemTotal4Momentum",
+                                            "PrimaryStateHadronicSystemEmissionAngle",
                                             "PrimaryStateHadronicSystemTotalKinE",
                                             "PrimaryStateHadronicSystemTopology_code",
                                             "PrimaryStateHadronicSystemTopology_name",
@@ -138,6 +136,7 @@ int main(int argc, char* argv[]){
                                             "FinalStateHadronicSystemNames",
                                             "FinalStateHadronicSystemMomenta",
                                             "FinalStateHadronicSystemTotal4Momentum",
+                                            "FinalStateHadronicSystemEmissionAngle",
                                             "FinalStateHadronicSystemTotalKinE",
                                             "FinalStateHadronicSystemTopology_code",
                                             "FinalStateHadronicSystemTopology_name",
@@ -149,11 +148,15 @@ int main(int argc, char* argv[]){
                                             "PrimaryStateTotal4Momantum",
                                             "FinalStateTotal4Momantum",
                                             // for channel selection
+                                            "ExpectedNeutrinoP4FromMuon",
+                                            "ExpectedHadronSystP3",
+                                            "ExpectedHadronSystEnergy",
                                             "FinalStateLeptonTransverseP",
                                             "FinalStateHadronicSystemTransverseP",
                                             "MissingTransverseMomentum",
                                             "RmH",
                                             "DoubleTransverseMomentumImbalance",
+                                            "ExpectedNeutronArrivalPositionECAL",
                                             });
 
     return 0;

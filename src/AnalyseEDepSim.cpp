@@ -82,19 +82,23 @@ int main(int argc, char* argv[]){
     LOG("I", "Reading geometry");
     geo = TGeoManager::Import("/storage/gpfs_data/neutrino/users/gi/dunendggd/SAND_opt3_DRIFT1.root");
 
-    auto fInput = "/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/events-in-SANDtracker.*.edep-sim.root";
+    auto fInput_genie = "/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/events-in-SANDtracker.*.gtrac.root";
+    auto fInput_edep = "/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/events-in-SANDtracker.*.edep-sim.root";
 
     auto fOutput = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/events-in-SANDtracker.0.edep-sim.analysed.root";
 
     // if you have multiple files enable multiple thread pocessing
-    if(TString::Format("%s",fInput).Contains("*")){
+    if(TString::Format("%s",fInput_genie).Contains("*")){
         LOG("I","Enabling multiple threading");
         ROOT::EnableImplicitMT();
         geo->SetMaxThreads(100);
-        };
+    };
 
     LOG("I", "Initialize ROOT DataFrame");
-    auto df = RDFUtils::InitDF(fInput, "EDepSimEvents", start, start + 999u);
+    auto chain_genie = RDFUtils::InitTChain(fInput_genie, "gRooTracker", start, start + 999u); 
+    auto chain_edep = RDFUtils::InitTChain(fInput_edep, "EDepSimEvents", start, start + 999u); 
+    chain_edep->AddFriend(chain_genie, "genie");
+    auto df = RDFUtils::InitDF(chain_edep);
 
     // RDFUtils::PrintColumns(df);
 
@@ -102,28 +106,55 @@ int main(int argc, char* argv[]){
 
     auto dfC = RDFUtils::AddConstantsToDF(df); // add some columns with usefull constants
 
-    auto dfEDEP = RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(dfC);
+    auto dfGENIE = RDFUtils::GENIE::AddColumnsFromGENIE(dfC);
+
+    auto dfEDEP = RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(dfGENIE);
     
     LOG("I", "Writing ouput file");
-    dfEDEP.Snapshot("edep_extended", fOutput, { "FileName",
+    dfEDEP.Snapshot("edep_extended", fOutput, { 
+                                                "FileName",
                                                 "EventId",
                                                 "EventType",
+                                                "CCQEonHydrogen",
                                                 "NofEvents",
-                                                "PrimariesVertexX",
-                                                "PrimariesVertexY",
-                                                "PrimariesVertexZ",
-                                                "PrimariesVertexT",
-                                                // Primary infos
-                                                "PrimariesName",
-                                                "PrimariesPDG",
-                                                "PrimariesP4",
+                                                /*
+                                                    GENIE INFO
+                                                */
+                                                "Interaction_vtxX",
+                                                "Interaction_vtxY",
+                                                "Interaction_vtxZ",
+                                                "Interaction_vtxT",
+                                                "IncomingNeutrinoP4",
+                                                "InteractionVolume",
+                                                "FinalStateLeptonPDG",
+                                                "FinalStateLeptonNames",
+                                                "FinalStateLepton4Momentum",
+                                                "FinalStateLeptonEmissionAngle",
                                                 "NofPrimaries",
-                                                "PrimariesHitsX",
-                                                "PrimariesHitsY",
-                                                "PrimariesHitsZ",
-                                                "PrimariesFirstTimeECAL",
+                                                "FinalStateHadronicSystemPDG", 
+                                                "FinalStateHadronicSystemNames", 
+                                                "FinalStateHadronicSystemMomenta", 
+                                                "FinalStateHadronicSystemTotal4Momentum", 
+                                                "FinalStateHadronicSystemEmissionAngle", 
+                                                "FinalStateHadronicSystemTotalKinE", 
+                                                /*
+                                                    EDEP INFO
+                                                */
+                                                "PrimariesPDG",
                                                 "PrimariesTrackId",
+                                                "PrimariesP4",
+                                                "PrimariesFirstHitECAL",
                                                 "PrimariesEDepECAL",
+                                                "PrimariesEmissionAngle",
+                                                /*
+                                                    PREDICTIONS FOR CHANNEL antinu on H
+                                                */
+                                                "ExpectedNeutrinoP4FromMuon",
+                                                "ExpectedHadronSystP3",
+                                                "ExpectedHadronSystEnergy",
+                                                "ExpectedNeutronArrivalPositionECAL",
+                                                "MissingTransverseMomentum",
+                                                "DoubleTransverseMomentumImbalance",
 
     });                                                    
 

@@ -13,6 +13,7 @@
 #include "ROOT/RDF/RInterface.hxx"
 #include "ROOT/RDataFrame.hxx"
 #include "TString.h"
+#include "TChain.h"
 #include "TObject.h"
 #include "TObjString.h"
 #include "TLorentzVector.h"
@@ -68,7 +69,13 @@ inline void LOG(TString i, const char* out){
 
 namespace RDFUtils{//RDFUtils
 
-ROOT::RDataFrame InitDF(TString production, const char* tree_name, unsigned int file_index_start = 0, unsigned int file_index_stop = 10);
+// ROOT::RDataFrame InitDF(TString production, const char* tree_name, unsigned int file_index_start = 0, unsigned int file_index_stop = 10);
+TChain* InitTChain(TString production,
+                            const char* tree_name,
+                            unsigned int file_index_start,
+                            unsigned int file_index_stop);
+
+ROOT::RDataFrame InitDF(TChain* input_chain);
 
 void PrintColumns(ROOT::RDataFrame& df);
 
@@ -156,10 +163,14 @@ TVector3 GetTransverseComponent(const TLorentzVector& v1, const TLorentzVector v
 
 ROOT::VecOps::RVec<double> DotProductWithAxis(const TVector3& axis, const ROOT::VecOps::RVec<TLorentzVector>& V);
 
+TLorentzVector GetNup4FromMu(double proton_mass, double neutron_mass, double muon_mass,
+                             const TLorentzVector& lepton, const TVector3 nu_direction);
+
+TVector3 NeutronArrivalPosECAL(std::string units, double vtx_x, double vtx_y, double vtx_z, const TVector3& neutron_momentum);                             
+
 ROOT::RDF::RNode AddColumnsFromGENIE(ROOT::RDF::RNode& df);
 
 ROOT::RDF::RNode AddColumnsForHydrogenCarbonSampleSelection(ROOT::RDF::RNode& df); // these is expected to have columns from AddColumnsFromGENIE output
-
 
 }//GENIE
 
@@ -184,11 +195,17 @@ namespace GEO{//GEO
 
 std::string GetMaterialFromCoordinates(double x, double y, double z);
 
-std::string GetVolumeFromCoordinates(double x, double y, double z);
+std::string GetVolumeFromCoordinates(std::string, double x, double y, double z);
 
 }//GEO
 
 namespace EDEPSIM{//EDEPSIM
+
+// TVector3 GetExpectedNeutronFromMu(const TLorentzVector& lepton);
+
+// double GetBetaFromMomentum(const TVector3 p, double mass);
+
+double NeutrinoEnergyFromCCQEonH(const TLorentzVector& muon, double muon_angle);
 
 namespace SPILL{// EDEPSIM::SPILL
 ROOT::RDF::RNode AddColumnsFromEDEPSIM(ROOT::RDF::RNode& df);
@@ -211,6 +228,8 @@ ROOT::RDF::RNode AddColumnsFromEDEPSIM(ROOT::RDF::RNode& df);
 
 std::string EventType(const ROOT::VecOps::RVec<TG4PrimaryVertex>& V);
 
+bool IsCCQEonH(const ROOT::VecOps::RVec<TG4PrimaryVertex>& V);
+
 std::string FileName(const ROOT::VecOps::RVec<TG4PrimaryVertex>& V);
 
 int NofPrimaries(const ROOT::VecOps::RVec<TG4PrimaryVertex>& v);
@@ -218,6 +237,12 @@ int NofPrimaries(const ROOT::VecOps::RVec<TG4PrimaryVertex>& v);
 ROOT::VecOps::RVec<int> GetPrimariesPDG(const ROOT::VecOps::RVec<TG4PrimaryVertex>& v);
 
 ROOT::VecOps::RVec<TLorentzVector> GetPrimariesP4(const ROOT::VecOps::RVec<TG4PrimaryVertex>& v);
+
+TLorentzVector GetPrimaryHadronicP4(const ROOT::VecOps::RVec<TLorentzVector>& momenta, const ROOT::VecOps::RVec<int> pdgs);
+
+TLorentzVector GetPrimaryLeptonP4(const ROOT::VecOps::RVec<TLorentzVector>& momenta, const ROOT::VecOps::RVec<int> pdgs);
+
+ROOT::VecOps::RVec<double> GetEmissionAngle(const TVector3 nuDirection, const ROOT::VecOps::RVec<TLorentzVector>& primariesP4);
 
 ROOT::VecOps::RVec<int> GetPrimariesTrackId(const ROOT::VecOps::RVec<TG4PrimaryVertex>& v);
 
@@ -229,7 +254,7 @@ ROOT::VecOps::RVec<ROOT::VecOps::RVec<TG4HitSegment>> GroupHitsByPrimary(TG4Even
 
 ROOT::VecOps::RVec<double> GetPrimariesEDepECAL(const ROOT::VecOps::RVec<EDepUtils::track_hits>& vector_track_hits);
 
-ROOT::VecOps::RVec<double> GetPrimariesFirstTimeECAL(const ROOT::VecOps::RVec<EDepUtils::track_hits>& vector_track_hits);
+ROOT::VecOps::RVec<TLorentzVector> GetPrimariesFirstHitECAL(const ROOT::VecOps::RVec<EDepUtils::track_hits>& vector_track_hits);
 
 template<int coordinate>
 ROOT::VecOps::RVec<double> GetECALHitPos(const ROOT::VecOps::RVec<EDepUtils::track_hits>& vector_primary_hits);

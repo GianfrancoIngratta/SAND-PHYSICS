@@ -17,6 +17,8 @@ namespace GenieUtils{
 
 static auto database = genie::PDGLibrary::Instance();
 
+Double_t GetMass(int pdg);
+
 std::string PDG2Name(int pdg);
 
 struct event_topology

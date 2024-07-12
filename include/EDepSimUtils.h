@@ -6,7 +6,6 @@
 
 namespace EDepUtils{
 
-
 struct track_hits
 {   
     int track_id = -999;
@@ -18,6 +17,8 @@ struct track_hits
     
     // time and position associated to each hit
     std::vector<TLorentzVector> hit_LorentzVector = {};
+
+    std::vector<std::string> hit_volName = {};
 };
 
 }

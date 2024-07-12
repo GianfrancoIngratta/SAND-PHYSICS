@@ -4,6 +4,10 @@ std::string GenieUtils::PDG2Name(int pdg){
     return database->Find(pdg)->GetName();
 }
 
+Double_t GenieUtils::GetMass(int pdg){
+    return database->Find(pdg)->Mass();;
+}
+
 void GenieUtils::UpdateTopology(GenieUtils::event_topology& t, int pdg){
     if(pdg == genie::kPdgProton || pdg == genie::kPdgAntiProton ){
         t.NofProtons++;

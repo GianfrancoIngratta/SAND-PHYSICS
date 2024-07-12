@@ -7,50 +7,34 @@ TGeoManager* geo = nullptr;
 
 //RDFUtils______________________________________________________________________
 
-ROOT::RDataFrame RDFUtils::InitDF(TString production, 
-                                  const char* tree_name, 
-                                  unsigned int file_index_start, 
-                                  unsigned int file_index_stop){
+TChain* RDFUtils::InitTChain(TString production,
+                            const char* tree_name,
+                            unsigned int file_index_start,
+                            unsigned int file_index_stop){
     
     TChain* chain = new TChain(tree_name, tree_name);
-    TChain* chain_friend = new TChain("gtree", "gtree");
-
-    if(production.Contains("*")){
-        // chain a given number of file of a production
-        for(unsigned int i = file_index_start; i < file_index_stop; i++){
-            auto file = TString::Format(production.ReplaceAll("*","%d"), i, i);
-            if (!gSystem->AccessPathName(file.Data())){
-                chain->Add(file);
-            }else{
-                LOG("W", TString::Format("Skipping file %s", file.Data()).Data());
-            }
-            if (production.Contains("gtrac")){ // processing genie output
-                auto file_friend = TString::Format(file.ReplaceAll(".gtrac.root",".ghep.overlayed.root"));
-                if (!gSystem->AccessPathName(file_friend.Data())) chain_friend->Add(file_friend);
-            }
-        }
-    }else{
-        chain->Add(production.Data());
-        if (production.Contains("gtrac")){
-            auto file_friend = TString::Format(production.ReplaceAll(".gtrac.root",".ghep.overlayed.root"));
-            LOG("ii", TString::Format("file friend %s",file_friend.Data()));
-            if (!gSystem->AccessPathName(file_friend.Data())){
-                chain_friend->Add(file_friend);
-                LOG("ii", "file_friend Added to chain_friend");
-                chain->AddFriend(chain_friend, "gtree");
-                LOG("ii", "chain_friend ghep Added to chai gtrac");
-            }
+    if(!production.Contains("*")){
+        LOG("W", "Pass multiple files of a production using * ");
+        throw "";
+    }
+    for(unsigned int i = file_index_start; i < file_index_stop; i++){
+        auto file = TString::Format(production.ReplaceAll("*","%d"), i, i);
+        if (!gSystem->AccessPathName(file.Data())){
+            chain->Add(file);
+        }else{
+            LOG("W", TString::Format("Skipping file %s", file.Data()).Data());
         }
     }
-    std::cout << "tree name : " << tree_name << " number of events : " << chain ->GetEntries() << "\n";
-    
-    ROOT::RDataFrame* df = new ROOT::RDataFrame(*chain);
+    std::cout << "tree name : " << tree_name << " number of events in chain : " << chain ->GetEntries() << "\n";
+    return chain;                        
+}
 
+ROOT::RDataFrame RDFUtils::InitDF(TChain* input_chain){
+    ROOT::RDataFrame* df = new ROOT::RDataFrame(*input_chain);
     if(!df){
         std::cout<<"DF NOT initialized in file "<<__FILE__<<" line "<<__LINE__<<"\n";
         throw "";
-        }
-
+    }
     return *df;
 }
 
@@ -517,8 +501,148 @@ ROOT::VecOps::RVec<double> RDFUtils::GENIE::DotProductWithAxis(const TVector3& a
     return products;
 }
 
+TLorentzVector RDFUtils::GENIE::GetNup4FromMu(double proton_mass, double neutron_mass, double muon_mass, 
+                                              const TLorentzVector& lepton, const TVector3 nu_versor){
+    TVector3 leptonP3 = lepton.Vect();
+    double mu_emission_angle = nu_versor.Angle(leptonP3);
+    double neutron_mass2 = neutron_mass * neutron_mass;
+    double proton_mass2 = proton_mass * proton_mass;
+    double muon_mass2 = muon_mass * muon_mass;
+    
+    double numerator = neutron_mass2 - proton_mass2 - muon_mass2 + 2 * lepton.T() * proton_mass;
+    double denominator = 2 * (proton_mass - lepton.T() + leptonP3.Mag() * cos(mu_emission_angle));
+    double calculated_nu_E = numerator / denominator;
+    
+    TVector3 nu_P3 = calculated_nu_E * nu_versor;
+    TLorentzVector nu_P4 = {nu_P3.X(), nu_P3.Y(), nu_P3.Z(), calculated_nu_E};
+    return nu_P4;
+}
+TVector3 IntersectWithInfCylinder(const TVector3& vtx, const TVector3& neutron_direction) {
+    TVector3 start_point(vtx.X() - GeoUtils::DRIFT::SAND_CENTER_X, 
+                         vtx.Y() - GeoUtils::DRIFT::SAND_CENTER_Y, 
+                         vtx.Z() - GeoUtils::DRIFT::SAND_CENTER_Z);
+    double A = neutron_direction.Z() * neutron_direction.Z() + neutron_direction.Y() * neutron_direction.Y();
+    double B = 2 * (start_point.Z() * neutron_direction.Z() + start_point.Y() * neutron_direction.Y());
+    double C = start_point.Z() * start_point.Z() + start_point.Y() * start_point.Y() - 
+               (GeoUtils::SAND_INNER_VOL_DIAMETER / 2.0) * (GeoUtils::SAND_INNER_VOL_DIAMETER / 2.0);
+    double discriminant = B * B - 4 * A * C;
+
+    if (discriminant < 0) {
+        std::cerr << "No real intersection.\n";
+        return TVector3(); // Valore di ritorno predefinito, potrebbe essere migliorato a seconda dell'uso
+    }
+
+    double t1 = (-B + sqrt(discriminant)) / (2 * A);
+    double t2 = (-B - sqrt(discriminant)) / (2 * A);
+
+    if (t1 < 0 && t2 < 0) {
+        std::cerr << "t1 and t2 are negative\n";
+        return TVector3(); // Valore di ritorno predefinito
+    } else if (t1 < 0) {
+        return vtx + t2 * neutron_direction;
+    } else {
+        return vtx + t1 * neutron_direction;
+    }
+}
+
+TVector3 RDFUtils::GENIE::NeutronArrivalPosECAL(std::string units, double vtx_x, double vtx_y, double vtx_z, const TVector3& neutron_momentum) {
+    TVector3 start_point(vtx_x, vtx_y, vtx_z);
+    if (units == "m") {
+        start_point *= 1e3;
+    } else if (units == "cm") {
+        start_point *= 10;
+    } else if (units == "mm") {
+        start_point *= 1;
+    } else {
+        std::cerr << "Error: Unsupported unit \"" << units << "\". Supported units are m, cm, mm.\n";
+        throw std::invalid_argument("Unsupported unit");
+    }
+
+    TVector3 neutron_direction = neutron_momentum.Unit();
+    TVector3 intersection = IntersectWithInfCylinder(start_point, neutron_direction);
+
+    if (fabs(intersection.X() - GeoUtils::DRIFT::SAND_CENTER_X) <= GeoUtils::SAND_INNER_VOL_X_LENGTH / 2.0) {
+        return intersection;
+    } else { // intersect with one of the 2 endcaps
+        double t1 = (GeoUtils::SAND_INNER_VOL_X_LENGTH / 2.0 - vtx_x) / neutron_direction.X();
+        double t2 = (-GeoUtils::SAND_INNER_VOL_X_LENGTH / 2.0 - vtx_x) / neutron_direction.X();
+        if (neutron_direction.X() > 0) {
+            return start_point + t1 * neutron_direction;
+        } else {
+            return start_point + t2 * neutron_direction;
+        }
+    }
+}
+
+// TVector3 RDFUtils::GENIE::NeutronArrivalPosECAL(std::string units, double vtx_x, double vtx_y, double vtx_z, const TVector3& neutron_momentum) {
+//     TVector3 neutron_direction = neutron_momentum.Unit();
+//     TVector3 start_point = {vtx_x, vtx_y, vtx_z};
+//     TVector3 ArrivalPointECAL = {0.,0.,0.};
+//     double step = 0.;
+
+//     if(units == "m") {
+//         step = 0.01;
+//     } else if(units == "cm") {
+//         step = 1.;
+//     } else if(units == "mm") {
+//         step = 10.;
+//     } else {
+//         std::cerr << "Error: Unsupported unit \"" << units << "\". Supported units are m, cm, mm.\n";
+//         throw std::invalid_argument("Unsupported unit");
+//     }
+
+//     int max_iter = 2000; // Increased to a reasonable value
+//     int iter_count = 0;
+//     bool Got2ECAL = false;
+//     // auto navigator = geo->AddNavigator(); // This is not used in the provided code
+
+//     auto current_position = start_point;
+//     // std::cout << "\n";
+//     // std::cout << "-------- new neutron ------- \n";
+//     // std::cout << "starting point " <<
+//     // TString(navigator->FindNode(vtx_x * 100., vtx_y * 100., vtx_z * 100.)->GetName()) <<"\n";
+//     while ((!Got2ECAL)) {
+
+//         if(iter_count > max_iter) break;
+
+//         bool isInSANDInnerVol = GeoUtils::IsInSANDInnerVol(units, current_position.X(), current_position.Y(), current_position.Z());
+        
+//         if(!isInSANDInnerVol) {
+//             TString volume = RDFUtils::GEO::GetVolumeFromCoordinates(units, current_position.X(), current_position.Y(), current_position.Z());
+//             // auto volume = TString(navigator->FindNode(current_position.X() * 100., current_position.Y() * 100., current_position.Z() * 100.)->GetName());
+//             // std::cout << volume << "\n";
+//             if(volume.Contains("ECAL")) {
+//                 Got2ECAL = true;
+//                 ArrivalPointECAL = current_position;
+//             } else {
+//                 // std::cerr << "point ("
+//                 //           << current_position.X() << ", "
+//                 //           << current_position.Y() << ", "
+//                 //           << current_position.Z() << " )"
+//                 //           << " Error: Volume is outside but not ECAL.\n";
+//                 // break;
+//                 // throw std::runtime_error("Neutron is outside but not in ECAL");
+//             }
+//         }
+//         current_position += step * neutron_direction;
+//         iter_count++;
+//     }
+//     return ArrivalPointECAL;
+// }
+
 ROOT::RDF::RNode RDFUtils::AddConstantsToDF(ROOT::RDataFrame& df){
-    return df.Define("SomeUsefullConstant","1.");
+    return df
+            // units
+            .Define("GENIE_UNIT_LEGTH",   [](){std::string u = "m";return u;})
+            .Define("GENIE_UNIT_ENERGY",  [](){std::string u = "GeV";return u;})
+            .Define("EDEP_UNIT_LEGTH",    [](){std::string m = "mm";return m;})
+            .Define("EDEP_UNIT_ENERGY",   [](){std::string m = "MeV";return m;})
+            .Define("TGEO_UNIT_LEGTH",    [](){std::string m = "cm";return m;})
+            //
+            .Define("PROTON_MASS_GeV",    [](){return GenieUtils::GetMass(2212);})
+            .Define("NEUTRON_MASS_GeV",   [](){return GenieUtils::GetMass(2112);})
+            .Define("MUON_MASS_GeV",      [](){return GenieUtils::GetMass(13);})
+            ;
 }
 
 ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
@@ -529,19 +653,27 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              .Define("isCCEvent",                   RDFUtils::GENIE::IsCC, {"EvtCode"})
              .Define("EventType",                   RDFUtils::GENIE::EventType, {"EvtCode"})
              .Define("InteractionTargetPDG",        "StdHepPdg[1]")
-             // !! CHANNEL OF INTEREST : CCQE events on Hydrogen
+             // !!! CHANNEL OF INTEREST : CCQE events on Hydrogen
              .Define("CCQEonHydrogen", [](std::string event_type, int target_pdg){return (event_type=="QES")*(target_pdg==2212);}, {"EventType", "InteractionTargetPDG"})
              .Define("Interaction_vtxX","EvtVtx[0]")
              .Define("Interaction_vtxY","EvtVtx[1]")
              .Define("Interaction_vtxZ","EvtVtx[2]")
              .Define("Interaction_vtxT","EvtVtx[3]")
+             .Define("InteractionVolume",           RDFUtils::GEO::GetVolumeFromCoordinates, {"GENIE_UNIT_LEGTH",
+                                                                                              "Interaction_vtxX",
+                                                                                              "Interaction_vtxY",
+                                                                                              "Interaction_vtxZ"})
              // !!! FIDUCIAL VOLUME CUT !!!
-             .Define("isInFiducialVolume",          GeoUtils::DRIFT::IsInFiducialVolume, {"Interaction_vtxX","Interaction_vtxY","Interaction_vtxZ"})
+             .Define("isInFiducialVolume",          GeoUtils::DRIFT::IsInFiducialVolume, {"InteractionVolume",
+                                                                                          "GENIE_UNIT_LEGTH",
+                                                                                          "Interaction_vtxX",
+                                                                                          "Interaction_vtxY",
+                                                                                          "Interaction_vtxZ"})
              .Filter("isInFiducialVolume")
+             // !!!
              .Define("InteractionTarget",           RDFUtils::GENIE::InteractionTarget, {"StdHepPdg"})
              // there is some problem with this -> TGeoMananger doesn't localize proprly the volume if file is .gdml and not .root
              .Define("InteractionTargetFromGEO",    RDFUtils::GEO::GetMaterialFromCoordinates, {"Interaction_vtxX","Interaction_vtxY","Interaction_vtxZ"})
-             .Define("InteractionVolume",           RDFUtils::GEO::GetVolumeFromCoordinates, {"Interaction_vtxX","Interaction_vtxY","Interaction_vtxZ"})
              // all particles: hadrons laptons and nuclei
              .Define("Particles",                   RDFUtils::GENIE::AllGenieParticles, {"StdHepPdg",
                                                                                          "StdHepStatus",
@@ -559,6 +691,7 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              .Define("IncomingNeutrinoPDG",         [](const genie::GHepParticle& nu){return nu.Pdg();}, {"IncomingNeutrino"})
              .Define("IncomingNeutrinoName",        [](const int nu_pdg){return GenieUtils::PDG2Name(nu_pdg);}, {"IncomingNeutrinoPDG"})
              .Define("IncomingNeutrinoP4",          [](const genie::GHepParticle& nu){return *nu.GetP4();}, {"IncomingNeutrino"})
+             .Define("NuDirection", "IncomingNeutrinoP4.Vect().Unit()")
              /* 
                 nucleon target (free proton - i.e. interaction on H - is NOT included using genie::kIStNucleonTarget in the category by GENIE) 
              */
@@ -574,6 +707,7 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              .Define("InitialStateNames",                       RDFUtils::GENIE::PDG2Name, {"InitialState"})
              .Define("InitialStateMomenta",                     RDFUtils::GENIE::GetMomentum, {"InitialState"})
              .Define("InitialStateTotal4Momentum",              RDFUtils::GENIE::SumLorentzVectors, {"InitialStateMomenta"})
+             .Define("InitialStateEmissionAngle",               [](TVector3 nu, TLorentzVector v){return nu.Angle(v.Vect());},{"NuDirection","InitialStateTotal4Momentum"})
              /*
                 final state lepton
              */
@@ -581,6 +715,7 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              .Define("FinalStateLeptonPDG",                     [](const genie::GHepParticle& l){return l.Pdg();}, {"FinalStateLepton"})
              .Define("FinalStateLeptonNames",                   [](const int l_pdg){return GenieUtils::PDG2Name(l_pdg);}, {"FinalStateLeptonPDG"})
              .Define("FinalStateLepton4Momentum",               [](const genie::GHepParticle& l){return *l.GetP4();}, {"FinalStateLepton"})
+             .Define("FinalStateLeptonEmissionAngle",           [](TVector3 nu, TLorentzVector v){return nu.Angle(v.Vect());},{"NuDirection","FinalStateLepton4Momentum"})
              /*
                 primary state hadronic system
              */
@@ -589,6 +724,7 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              .Define("PrimaryStateHadronicSystemNames",         RDFUtils::GENIE::PDG2Name, {"PrimaryStateHadronicSystem"})
              .Define("PrimaryStateHadronicSystemMomenta",       RDFUtils::GENIE::GetMomentum, {"PrimaryStateHadronicSystem"})
              .Define("PrimaryStateHadronicSystemTotal4Momentum",RDFUtils::GENIE::SumLorentzVectors, {"PrimaryStateHadronicSystemMomenta"})
+             .Define("PrimaryStateHadronicSystemEmissionAngle", [](TVector3 nu, TLorentzVector v){return nu.Angle(v.Vect());},{"NuDirection","PrimaryStateHadronicSystemTotal4Momentum"})
              .Define("PrimaryStateHadronicSystemKinE",          RDFUtils::GENIE::GetKinE, {"PrimaryStateHadronicSystem"})
              .Define("PrimaryStateHadronicSystemTotalKinE",     RDFUtils::SumDuble, {"PrimaryStateHadronicSystemKinE"})
              .Define("PrimaryStateHadronicSystemTopology",      RDFUtils::GENIE::GetInteractionTopology, {"PrimaryStateHadronicSystem"})
@@ -602,6 +738,7 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              .Define("FinalStateHadronicSystemNames",           RDFUtils::GENIE::PDG2Name, {"FinalStateHadronicSystem"})
              .Define("FinalStateHadronicSystemMomenta",         RDFUtils::GENIE::GetMomentum, {"FinalStateHadronicSystem"})
              .Define("FinalStateHadronicSystemTotal4Momentum",  RDFUtils::GENIE::SumLorentzVectors, {"FinalStateHadronicSystemMomenta"})
+             .Define("FinalStateHadronicSystemEmissionAngle",   [](TVector3 nu, TLorentzVector v){return nu.Angle(v.Vect());},{"NuDirection","FinalStateHadronicSystemTotal4Momentum"})
              .Define("FinalStateHadronicSystemKinE",            RDFUtils::GENIE::GetKinE, {"FinalStateHadronicSystem"})
              .Define("FinalStateHadronicSystemTotalKinE",       RDFUtils::SumDuble, {"FinalStateHadronicSystemKinE"})
              .Define("FinalStateHadronicSystemTopology",        RDFUtils::GENIE::GetInteractionTopology, {"FinalStateHadronicSystem"})
@@ -625,18 +762,29 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              /*
                 For channel selection
              */
+            // Prediction on neutrons
+             .Define("ExpectedNeutrinoP4FromMuon",                 RDFUtils::GENIE::GetNup4FromMu, {"PROTON_MASS_GeV",
+                                                                                                     "NEUTRON_MASS_GeV",
+                                                                                                     "MUON_MASS_GeV",
+                                                                                                     "FinalStateLepton4Momentum",
+                                                                                                     "NuDirection",
+                                                                                                     })
+             .Define("ExpectedHadronSystP3",                       "ExpectedNeutrinoP4FromMuon.Vect() - FinalStateLepton4Momentum.Vect()")
+             .Define("ExpectedHadronSystEnergy",                   "ExpectedNeutrinoP4FromMuon.T() + PROTON_MASS_GeV - FinalStateLepton4Momentum.T()")
+             .Define("ExpectedNeutronArrivalPositionECAL",         RDFUtils::GENIE::NeutronArrivalPosECAL, {"GENIE_UNIT_LEGTH",
+                                                                                                             "Interaction_vtxX",
+                                                                                                             "Interaction_vtxY",
+                                                                                                             "Interaction_vtxZ",
+                                                                                                             "ExpectedHadronSystP3"})                                                                                                  
             // A Novel Approach to Neutrino-Hydrogen Measurements
-             .Define("NuDirection", "IncomingNeutrinoP4.Vect().Unit()")
-            //  .Define("FinalStateLeptonTransverseP",             RDFUtils::GENIE::GetTransverseComponent, {"IncomingNeutrinoP4", "FinalStateLepton4Momentum"})
-            //  .Define("FinalStateHadronicSystemTransverseP",     RDFUtils::GENIE::GetTransverseComponent, {"IncomingNeutrinoP4", "FinalStateHadronicSystemTotal4Momentum"})
-             .Define("FinalStateLeptonTransverseP", "FinalStateLepton4Momentum.Vect() - FinalStateLepton4Momentum.Vect().Dot(NuDirection) * NuDirection")
-             .Define("FinalStateHadronicSystemTransverseP", "FinalStateHadronicSystemTotal4Momentum.Vect() - FinalStateHadronicSystemTotal4Momentum.Vect().Dot(NuDirection) * NuDirection")
-             .Define("MissingTransverseMomentum", "(FinalStateLeptonTransverseP + FinalStateHadronicSystemTransverseP).Mag()")
-             .Define("RmH", "(MissingTransverseMomentum - FinalStateHadronicSystemTransverseP.Mag())/(MissingTransverseMomentum + FinalStateHadronicSystemTransverseP.Mag())")
+             .Define("FinalStateLeptonTransverseP",                 "FinalStateLepton4Momentum.Vect() - FinalStateLepton4Momentum.Vect().Dot(NuDirection) * NuDirection")
+             .Define("FinalStateHadronicSystemTransverseP",         "FinalStateHadronicSystemTotal4Momentum.Vect() - FinalStateHadronicSystemTotal4Momentum.Vect().Dot(NuDirection) * NuDirection")
+             .Define("MissingTransverseMomentum",                   "(FinalStateLeptonTransverseP + FinalStateHadronicSystemTransverseP).Mag()")
+             .Define("RmH",                                         "(MissingTransverseMomentum - FinalStateHadronicSystemTransverseP.Mag())/(MissingTransverseMomentum + FinalStateHadronicSystemTransverseP.Mag())")
              // https://arxiv.org/pdf/1507.00967
-             .Define("DoubleTransverseAxis", "(NuDirection.Cross(FinalStateLepton4Momentum.Vect())).Unit()")
-             .Define("FinalStateHadronicSystem_DoubleTransverseP", RDFUtils::GENIE::DotProductWithAxis, {"DoubleTransverseAxis","FinalStateHadronicSystemMomenta"})
-             .Define("DoubleTransverseMomentumImbalance", RDFUtils::SumDuble, {"FinalStateHadronicSystem_DoubleTransverseP"})
+             .Define("DoubleTransverseAxis",                        "(NuDirection.Cross(FinalStateLepton4Momentum.Vect())).Unit()")
+             .Define("FinalStateHadronicSystem_DoubleTransverseP",  RDFUtils::GENIE::DotProductWithAxis, {"DoubleTransverseAxis","FinalStateHadronicSystemMomenta"})
+             .Define("DoubleTransverseMomentumImbalance",           RDFUtils::SumDuble, {"FinalStateHadronicSystem_DoubleTransverseP"})
              ;
 }
 
@@ -652,14 +800,28 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsForHydrogenCarbonSampleSelection(ROO
 
 //RDFUtils::GEO______________________________________________________________________
 
-std::string RDFUtils::GEO::GetVolumeFromCoordinates(double x, double y, double z){
+std::string RDFUtils::GEO::GetVolumeFromCoordinates(std::string units, double x, double y, double z){
     
     if(!geo){
         std::cout<<"GEO not initialized in "<<__FILE__<<" "<<__LINE__<<"\n";
         throw "";
     }
+    // convert to cm
+    if(units == "mm"){
+        x = x * 0.1;
+        y = y * 0.1;
+        z = z * 0.1;
+    }else if(units == "m"){
+        x = x * 100.;
+        y = y * 100.;
+        z = z * 100.;
+    }
+    auto navigator = geo->GetCurrentNavigator();
 
-    auto volume = geo->FindNode(x*100., y*100., z*100.)->GetVolume()->GetName();
+    if(!navigator) navigator = geo->AddNavigator();
+
+    // TGeoManager wants cm units
+    auto volume = navigator->FindNode(x, y, z)->GetVolume()->GetName();
    
     // if(TString::Format(volume).Contains("C3H6")){
     //     std::cout << "volume : " << volume << "x, y, z " << x << " " << y << " " << z << "\n";
@@ -685,6 +847,29 @@ std::string RDFUtils::GEO::GetMaterialFromCoordinates(double x, double y, double
 
 //RDFUtils::EDEPSIM_______________________________________________________________
 
+// TVector3 RDFUtils::EDEPSIM::GetExpectedNeutronFromMu(const TLorentzVector& lepton){
+//     TVector3 lepton_vector = lepton.Vect();
+//     TVector3 beam_direction = {0.,0.,1.};
+//     TVector3 transverse2interaction = beam_direction.Cross(lepton_vector);
+//     transverse2interaction = transverse2interaction.Unit();
+//     double neutron_pz = (lepton.X() * transverse2interaction.X() + lepton.Y() * transverse2interaction.Y()) / transverse2interaction.Z();
+//     TVector3 neutron = {-lepton.X(), -lepton.Y(), neutron_pz};
+//     return neutron;
+// }
+
+// double RDFUtils::EDEPSIM::GetBetaFromMomentum(const TVector3 p, double mass){
+//     double gamma = sqrt(1. + (p.Mag()/mass)*(p.Mag()/mass));
+//     return sqrt((gamma*gamma - 1)/gamma);
+// }
+
+double RDFUtils::EDEPSIM::NeutrinoEnergyFromCCQEonH(const TLorentzVector& muon, double muon_angle){
+    double muon_mass = 0.105658;
+    double proton_mass = 0.938272;
+    double neutron_mass = 0.939565;
+    double neutrino_energy = (neutron_mass*neutron_mass - muon_mass*muon_mass - proton_mass*proton_mass + 2*proton_mass*muon.T()) / (2*(proton_mass - muon.T() + muon.Vect().Mag()*cos(muon_angle)));
+    return neutrino_energy;
+}
+
 std::string RDFUtils::EDEPSIM::NOSPILL::EventType(const ROOT::VecOps::RVec<TG4PrimaryVertex>& V){
     TString s = V[0].GetReaction();
     if(s.Contains("DIS")){
@@ -702,6 +887,15 @@ std::string RDFUtils::EDEPSIM::NOSPILL::EventType(const ROOT::VecOps::RVec<TG4Pr
     }
     else{
         return "Other";
+    }
+}
+
+bool RDFUtils::EDEPSIM::NOSPILL::IsCCQEonH(const ROOT::VecOps::RVec<TG4PrimaryVertex>& V){
+    TString s = V[0].GetReaction();
+    if(s.Contains("nu:-14;tgt:1000010010;N:2212;proc:Weak[CC],QES;")){
+        return true;
+    }else{
+        return false;
     }
 }
 
@@ -732,6 +926,35 @@ ROOT::VecOps::RVec<TLorentzVector> RDFUtils::EDEPSIM::NOSPILL::GetPrimariesP4(co
     return P4;
 }
 
+TLorentzVector RDFUtils::EDEPSIM::NOSPILL::GetPrimaryHadronicP4(const ROOT::VecOps::RVec<TLorentzVector>& momenta, 
+                                                                const ROOT::VecOps::RVec<int> pdgs){
+    TLorentzVector hadronic_P4 = {0.,0.,0.,0.};
+    for (auto i = 0u; i < pdgs.size(); i++)
+    {
+        if((fabs(pdgs[i])!=13) & (fabs(pdgs[i])!=12)) hadronic_P4 += momenta[i];
+    }
+    return hadronic_P4;                                                                                            
+}
+
+TLorentzVector RDFUtils::EDEPSIM::NOSPILL::GetPrimaryLeptonP4(const ROOT::VecOps::RVec<TLorentzVector>& momenta, 
+                                                              const ROOT::VecOps::RVec<int> pdgs){
+    TLorentzVector lepton = {0.,0.,0.,0.};                                                            
+    for (auto i = 0u; i < pdgs.size(); i++)
+    {
+        if((fabs(pdgs[i])==13) | (fabs(pdgs[i])==12)) lepton = momenta[i];
+    }
+    return lepton;                                                                  
+}
+
+ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::NOSPILL::GetEmissionAngle(const TVector3 nuDirection, const ROOT::VecOps::RVec<TLorentzVector>& primariesP4){
+    ROOT::VecOps::RVec<double> angles;
+    for (const auto& primaryP4 : primariesP4)
+    {
+        angles.push_back(primaryP4.Vect().Angle(nuDirection));
+    }
+    return angles;
+}
+
 ROOT::VecOps::RVec<std::string> RDFUtils::EDEPSIM::NOSPILL::PDG2Name(const ROOT::VecOps::RVec<int>& pdgs){
     // convert particles pdg into names
     ROOT::VecOps::RVec<std::string> names;
@@ -754,7 +977,6 @@ ROOT::VecOps::RVec<int> RDFUtils::EDEPSIM::NOSPILL::GetPrimariesTrackId(const RO
 ROOT::VecOps::RVec<EDepUtils::track_hits> RDFUtils::EDEPSIM::NOSPILL::GetPrimariesHits(TG4Event& ev, 
                                                                                        const ROOT::VecOps::RVec<int>& ids,
                                                                                        const ROOT::VecOps::RVec<int>& pdgs){
-
     std::map<int, EDepUtils::track_hits> map_grouped_hits;
 
     // initialize the map, each key a primary id
@@ -798,16 +1020,16 @@ ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::NOSPILL::GetPrimariesEDepECAL(cons
     return primaries_edep;
 }
 
-ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::NOSPILL::GetPrimariesFirstTimeECAL(const ROOT::VecOps::RVec<EDepUtils::track_hits>& vector_primary_hits){
-    ROOT::VecOps::RVec<double> primaries_ECAL_t0;
+ROOT::VecOps::RVec<TLorentzVector> RDFUtils::EDEPSIM::NOSPILL::GetPrimariesFirstHitECAL(const ROOT::VecOps::RVec<EDepUtils::track_hits>& vector_primary_hits){
+    ROOT::VecOps::RVec<TLorentzVector> primary_hit_ECAL;
     for(const auto& primary_hits : vector_primary_hits){ // run over each primary
         if(primary_hits.hit_LorentzVector.size()==0){ // primary has no hits in the ecal
-            primaries_ECAL_t0.push_back(-999.);
+            primary_hit_ECAL.push_back({0.,0.,0.,0.});
         }else{
-            primaries_ECAL_t0.push_back(primary_hits.hit_LorentzVector[0].T()); // take the t0 of the first hit
+            primary_hit_ECAL.push_back(primary_hits.hit_LorentzVector[0]); // take the t0 of the first hit
         }
     }
-    return primaries_ECAL_t0;
+    return primary_hit_ECAL;
 }
 
 template<int coordinate>
@@ -825,27 +1047,56 @@ ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::NOSPILL::GetECALHitPos(const ROOT:
 
 ROOT::RDF::RNode RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(ROOT::RDF::RNode& df){
     return df
-             .Define("FileName", RDFUtils::EDEPSIM::NOSPILL::FileName, {"Primaries"})
-             .Define("EventType", RDFUtils::EDEPSIM::NOSPILL::EventType, {"Primaries"})
-             .Define("NofEvents", RDFUtils::EDEPSIM::SPILL::NofEventsPerSpill, {"Primaries"})
-             .Define("PrimariesVertexX", RDFUtils::EDEPSIM::SPILL::PrimariesVertex<0>, {"Primaries"})
-             .Define("PrimariesVertexY", RDFUtils::EDEPSIM::SPILL::PrimariesVertex<1>, {"Primaries"})
-             .Define("PrimariesVertexZ", RDFUtils::EDEPSIM::SPILL::PrimariesVertex<2>, {"Primaries"})
-             .Define("PrimariesVertexT", RDFUtils::EDEPSIM::SPILL::PrimariesVertex<3>, {"Primaries"})
+             .Define("FileName",                RDFUtils::EDEPSIM::NOSPILL::FileName, {"Primaries"})
+             .Define("NofEvents",               RDFUtils::EDEPSIM::SPILL::NofEventsPerSpill, {"Primaries"})
+             .Filter("isInFiducialVolume")                                                                                       
+             .Define("NofPrimaries",            RDFUtils::EDEPSIM::NOSPILL::NofPrimaries, {"Primaries"})
+             .Define("PrimariesPDG",            RDFUtils::EDEPSIM::NOSPILL::GetPrimariesPDG, {"Primaries"})
+             .Define("PrimariesName",           RDFUtils::EDEPSIM::NOSPILL::PDG2Name, {"PrimariesPDG"})
+             .Define("PrimariesTrackId",        RDFUtils::EDEPSIM::NOSPILL::GetPrimariesTrackId, {"Primaries"})
+             .Define("PrimariesP4",             RDFUtils::EDEPSIM::NOSPILL::GetPrimariesP4, {"Primaries"})
+              // ECAL track_hits
+             .Define("PrimariesHitsECAL",       RDFUtils::EDEPSIM::NOSPILL::GetPrimariesHits, {"Event", "PrimariesTrackId", "PrimariesPDG"})
+             .Define("PrimariesHitsX",          RDFUtils::EDEPSIM::NOSPILL::GetECALHitPos<0>, {"PrimariesHitsECAL"})
+             .Define("PrimariesHitsY",          RDFUtils::EDEPSIM::NOSPILL::GetECALHitPos<1>, {"PrimariesHitsECAL"})
+             .Define("PrimariesHitsZ",          RDFUtils::EDEPSIM::NOSPILL::GetECALHitPos<2>, {"PrimariesHitsECAL"})
+            //  .Define("PrimariesHitsECALVol",    RDFUtils::GEO::GetVolumeFromCoordinates, {"EDEP_UNIT_LEGTH",
+            //                                                                               "PrimariesHitsX",
+            //                                                                               "PrimariesHitsY",
+            //                                                                               "PrimariesHitsZ"})
+             .Define("PrimariesEmissionAngle",  RDFUtils::EDEPSIM::NOSPILL::GetEmissionAngle, {"NuDirection", "PrimariesP4"})
+             .Define("PrimariesFirstHitECAL",   RDFUtils::EDEPSIM::NOSPILL::GetPrimariesFirstHitECAL, {"PrimariesHitsECAL"})
+             .Define("PrimariesEDepECAL",       RDFUtils::EDEPSIM::NOSPILL::GetPrimariesEDepECAL, {"PrimariesHitsECAL"})
+            //
+            //  .Define("EventType",               RDFUtils::EDEPSIM::NOSPILL::EventType, {"Primaries"})
+            //  .Define("PrimariesVertexX",        [](const ROOT::VecOps::RVec<TG4PrimaryVertex>& vertices){return vertices[0].GetPosition()[0];}, {"Primaries"})
+            //  .Define("Interaction_vtxX","EvtVtx[0]")
+            //  .Define("Interaction_vtxY","EvtVtx[1]")
+            //  .Define("Interaction_vtxZ","EvtVtx[2]")
+            //  .Define("Interaction_vtxT","EvtVtx[3]")
+             // !!! FIDUCIAL VOLUME CUT !!!
+            //  .Define("InteractionVolume",           RDFUtils::GEO::GetVolumeFromCoordinates, {"GENIE_UNIT_LEGTH",
+            //                                                                                   "Interaction_vtxX",
+            //                                                                                   "Interaction_vtxY",
+            //                                                                                   "Interaction_vtxZ"})
+            //  // !!! FIDUCIAL VOLUME CUT !!!
+            //  .Define("isInFiducialVolume",          GeoUtils::DRIFT::IsInFiducialVolume, {"InteractionVolume",
+            //                                                                               "GENIE_UNIT_LEGTH",
+            //                                                                               "Interaction_vtxX",
+            //                                                                               "Interaction_vtxY",
+            //                                                                               "Interaction_vtxZ"})
              /*
                 All primary particles
-             */
-             .Define("NofPrimaries", RDFUtils::EDEPSIM::NOSPILL::NofPrimaries, {"Primaries"})
-             .Define("PrimariesPDG", RDFUtils::EDEPSIM::NOSPILL::GetPrimariesPDG, {"Primaries"})
-             .Define("PrimariesP4", RDFUtils::EDEPSIM::NOSPILL::GetPrimariesP4, {"Primaries"})
-             .Define("PrimariesName", RDFUtils::EDEPSIM::NOSPILL::PDG2Name, {"PrimariesPDG"})
-             .Define("PrimariesTrackId", RDFUtils::EDEPSIM::NOSPILL::GetPrimariesTrackId, {"Primaries"})
-             .Define("PrimariesHitsECAL", RDFUtils::EDEPSIM::NOSPILL::GetPrimariesHits, {"Event", "PrimariesTrackId", "PrimariesPDG"})
-             .Define("PrimariesHitsX", RDFUtils::EDEPSIM::NOSPILL::GetECALHitPos<0>, {"PrimariesHitsECAL"})
-             .Define("PrimariesHitsY", RDFUtils::EDEPSIM::NOSPILL::GetECALHitPos<1>, {"PrimariesHitsECAL"})
-             .Define("PrimariesHitsZ", RDFUtils::EDEPSIM::NOSPILL::GetECALHitPos<2>, {"PrimariesHitsECAL"})
-             .Define("PrimariesFirstTimeECAL", RDFUtils::EDEPSIM::NOSPILL::GetPrimariesFirstTimeECAL, {"PrimariesHitsECAL"})
-             .Define("PrimariesEDepECAL", RDFUtils::EDEPSIM::NOSPILL::GetPrimariesEDepECAL, {"PrimariesHitsECAL"})
+            //  */
+            //  .Define("CCQEonHydrogen",          RDFUtils::EDEPSIM::NOSPILL::IsCCQEonH,  {"Primaries"})
+            //  .Define("NeutrinoP4",              RDFUtils::GENIE::SumLorentzVectors, {"PrimariesP4"})
+            //  .Define("NeutrinoE", "NeutrinoP4[3]")
+            //  .Define("NeutrinoDirection",       "NeutrinoP4.Vect().Unit()")
+            //  .Define("PrimaryLeptonP4",         RDFUtils::EDEPSIM::NOSPILL::GetPrimaryLeptonP4,   {"PrimariesP4", "PrimariesPDG"})
+            //  .Define("PrimaryHadronicSystP4",   RDFUtils::EDEPSIM::NOSPILL::GetPrimaryHadronicP4, {"PrimariesP4", "PrimariesPDG"})
+            //  .Define("PrimaryHadronicSystEmissionAngle", [](const TLorentzVector& v,const TLorentzVector& w){return v.Vect().Angle(w.Vect());}, {"NeutrinoP4", "PrimaryHadronicSystP4"})
+            //  .Define("PrimaryLeptonEmissionAngle", "PrimariesEmissionAngle[0]")
+             // EXPECTED PRIMARY NEUTRON FROM INTERACTION ON ARGO
              ;
 }
 
