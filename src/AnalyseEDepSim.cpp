@@ -83,9 +83,12 @@ int main(int argc, char* argv[]){
     geo = TGeoManager::Import("/storage/gpfs_data/neutrino/users/gi/dunendggd/SAND_opt3_DRIFT1.root");
 
     auto fInput_genie = "/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/events-in-SANDtracker.*.gtrac.root";
+
     auto fInput_edep = "/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/events-in-SANDtracker.*.edep-sim.root";
 
     auto fOutput = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/events-in-SANDtracker.0.edep-sim.analysed.root";
+    
+    auto fOutput2 = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/events-in-SANDtracker.0.edep-sim.analysed2.root";
 
     // if you have multiple files enable multiple thread pocessing
     if(TString::Format("%s",fInput_genie).Contains("*")){
@@ -111,6 +114,15 @@ int main(int argc, char* argv[]){
     auto dfEDEP = RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(dfGENIE);
     
     LOG("I", "Writing ouput file");
+
+    // dfEDEP.Snapshot("edep_extended", fOutput2, {"FileName",
+    //                                             "EventId",
+    //                                             "EventType",
+    //                                             "CCQEonHydrogen",
+    //                                             "NofEvents",
+    //                                             "InteractionVolume",
+    //                                             });
+
     dfEDEP.Snapshot("edep_extended", fOutput, { 
                                                 "FileName",
                                                 "EventId",
@@ -126,11 +138,13 @@ int main(int argc, char* argv[]){
                                                 "Interaction_vtxT",
                                                 "IncomingNeutrinoP4",
                                                 "InteractionVolume",
+                                                "InteractionTarget",
                                                 "FinalStateLeptonPDG",
                                                 "FinalStateLeptonNames",
                                                 "FinalStateLepton4Momentum",
                                                 "FinalStateLeptonEmissionAngle",
                                                 "NofPrimaries",
+                                                "NofFinalStateChargedParticles",
                                                 "FinalStateHadronicSystemPDG", 
                                                 "FinalStateHadronicSystemNames", 
                                                 "FinalStateHadronicSystemMomenta", 

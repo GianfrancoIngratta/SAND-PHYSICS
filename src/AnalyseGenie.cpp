@@ -120,6 +120,7 @@ int main(int argc, char* argv[]){
                                             // final state lepton
                                             "FinalStateLeptonPDG",
                                             "FinalStateLeptonNames",
+                                            "NofFinalStateChargedParticles",
                                             "FinalStateLepton4Momentum",
                                             "FinalStateLeptonEmissionAngle",
                                             // prmary state hadronic system 

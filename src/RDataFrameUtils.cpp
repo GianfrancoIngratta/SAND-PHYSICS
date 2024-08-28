@@ -224,6 +224,19 @@ ROOT::VecOps::RVec<genie::GHepParticle> RDFUtils::GENIE::AllGenieParticles(const
     return particles;                                                                            
 }
 
+int RDFUtils::GENIE::CountChargedParticles(const genie::GHepParticle& fs_lepton, 
+                                           const ROOT::VecOps::RVec<genie::GHepParticle>& fs_HadronicSystem){
+    // count nof final state charged particles
+    int count = 0;
+    int lepton_charge = GenieUtils::database->Find(fs_lepton.Pdg())->Charge();
+    if(lepton_charge != 0) count++;
+    for(const auto& hadron : fs_HadronicSystem){
+            auto hadron_charge = GenieUtils::database->Find(hadron.Pdg())->Charge();
+            if(hadron_charge != 0) count++;
+    }
+    return count;
+}
+
 template<genie::GHepStatus_t STATUS>
 ROOT::VecOps::RVec<genie::GHepParticle> RDFUtils::GENIE::GetParticlesWithStatus(const ROOT::VecOps::RVec<genie::GHepParticle>& particles){
     /*
@@ -331,7 +344,7 @@ ROOT::VecOps::RVec<genie::GHepParticle> RDFUtils::GENIE::GetInitialState(const R
    return initial_state;
 }
 
-genie::GHepParticle RDFUtils::GENIE::GetFinalChargedLepton(const ROOT::VecOps::RVec<genie::GHepParticle>& particles){
+genie::GHepParticle RDFUtils::GENIE::GetFinalStateLepton(const ROOT::VecOps::RVec<genie::GHepParticle>& particles){
     genie::GHepParticle fs_lepton;
     for(auto& particle : particles){
         if((particle.Status() == genie::kIStStableFinalState) & (particle.FirstMother() == 0)){
@@ -683,7 +696,7 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
                                                                                          "StdHepLm", // last mother
                                                                                          "StdHepFd", // first Daughter
                                                                                          "StdHepLd", // last Daughter
-                                                                                         })
+                                                                                         })                                                                                        
              /*
                 incoming neutrino
              */
@@ -711,7 +724,7 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              /*
                 final state lepton
              */
-             .Define("FinalStateLepton",                        RDFUtils::GENIE::GetFinalChargedLepton, {"Particles"})
+             .Define("FinalStateLepton",                        RDFUtils::GENIE::GetFinalStateLepton, {"Particles"})
              .Define("FinalStateLeptonPDG",                     [](const genie::GHepParticle& l){return l.Pdg();}, {"FinalStateLepton"})
              .Define("FinalStateLeptonNames",                   [](const int l_pdg){return GenieUtils::PDG2Name(l_pdg);}, {"FinalStateLeptonPDG"})
              .Define("FinalStateLepton4Momentum",               [](const genie::GHepParticle& l){return *l.GetP4();}, {"FinalStateLepton"})
@@ -762,6 +775,8 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              /*
                 For channel selection
              */
+            // charge multiplicity
+            .Define("NofFinalStateChargedParticles",               RDFUtils::GENIE::CountChargedParticles, {"FinalStateLepton","FinalStateHadronicSystem"}) 
             // Prediction on neutrons
              .Define("ExpectedNeutrinoP4FromMuon",                 RDFUtils::GENIE::GetNup4FromMu, {"PROTON_MASS_GeV",
                                                                                                      "NEUTRON_MASS_GeV",
@@ -1168,4 +1183,65 @@ ROOT::RDF::RNode RDFUtils::EDEPSIM::SPILL::AddColumnsFromEDEPSIM(ROOT::RDF::RNod
              .Define("PrimariesVertexT", RDFUtils::EDEPSIM::SPILL::PrimariesVertex<3>,{"Primaries"})
              .Define("PrimariesVertexTimeDiff", RDFUtils::EDEPSIM::SPILL::PrimariesVertexTimeDiff,{"PrimariesVertexT"})
              ;
+}
+
+//RDFUtils::DIGIT_______________________________________________________________
+
+int RDFUtils::DIGIT::NofFiredECALMods(const ROOT::VecOps::RVec<int>& fired_cells_modules){
+    std::map<int, int> fired_modules_map;
+    for(const auto mod : fired_cells_modules){
+        fired_modules_map[mod] += 1;
+    }
+    int nof_fired_modules = fired_modules_map.size();
+    return nof_fired_modules;
+}
+
+std::vector<int> RDFUtils::DIGIT::FiredECALMods(const ROOT::VecOps::RVec<int>& fired_cells_modules){
+    std::map<int, int> fired_modules_map;
+    std::vector<int> fired_modules;
+    for(const auto mod : fired_cells_modules){
+        fired_modules_map[mod] += 1;
+    }
+    for (const auto& pair : fired_modules_map) {
+        fired_modules.push_back(pair.first);
+    }
+    return fired_modules;
+}
+
+int RDFUtils::DIGIT::NofClusters(const ROOT::VecOps::RVec<cluster>& clusters){
+    return clusters.size();
+}
+
+ROOT::VecOps::RVec<TLorentzVector> RDFUtils::DIGIT::Cluster2Vertex4Distance(double x,
+                                                                            double y,
+                                                                            double z,
+                                                                            double t,
+                                                                            const ROOT::VecOps::RVec<cluster>& clusters){
+    TLorentzVector vertex = {x*1e3, y*1e3, z*1e3, t*1e3};
+    ROOT::VecOps::RVec<TLorentzVector> differences;
+    for(const auto& cluster : clusters){
+        TLorentzVector cluster_X4 = {cluster.x, cluster.y, cluster.z, cluster.t};
+        differences.push_back(vertex - cluster_X4);
+    }
+    return differences;                                                                       
+}
+
+ROOT::VecOps::RVec<TLorentzVector> RDFUtils::DIGIT::GetClusterX4(const ROOT::VecOps::RVec<cluster>& clusters){
+    ROOT::VecOps::RVec<TLorentzVector> X4;
+    for(const auto& cluster : clusters) X4.push_back({cluster.x, cluster.y, cluster.z, cluster.t});
+    return X4;
+}
+
+ROOT::RDF::RNode RDFUtils::DIGIT::AddColumnsFromDigit(ROOT::RDF::RNode& df){
+    return df
+            .Define("NofEventFiredModules", RDFUtils::DIGIT::NofFiredECALMods , {"dg_cell.mod"})
+            .Define("EventFiredModules",  RDFUtils::DIGIT::FiredECALMods , {"dg_cell.mod"})
+            .Define("NofEventClusters", RDFUtils::DIGIT::NofClusters, {"cluster"})
+            .Define("ClusterX4", RDFUtils::DIGIT::GetClusterX4, {"cluster"})
+            .Define("Cluster2Vertex4Distance", RDFUtils::DIGIT::Cluster2Vertex4Distance, {"Interaction_vtxX",
+                                                                                          "Interaction_vtxY",
+                                                                                          "Interaction_vtxZ",
+                                                                                          "Interaction_vtxT",
+                                                                                          "cluster"})
+            ;
 }

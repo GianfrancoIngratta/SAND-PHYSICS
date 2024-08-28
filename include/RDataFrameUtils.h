@@ -8,6 +8,7 @@
 #include "GenieUtils.h"
 #include "GeoUtils.h"
 #include "EDepSimUtils.h"
+#include "struct.h"
 // #include "SANDRecoUtils.h" // helix fitting
 
 #include "ROOT/RDF/RInterface.hxx"
@@ -118,7 +119,10 @@ ROOT::VecOps::RVec<genie::GHepParticle> AllGenieParticles(const ROOT::VecOps::RV
                                                           const ROOT::VecOps::RVec<int>& FirstMother,
                                                           const ROOT::VecOps::RVec<int>& LastMother,
                                                           const ROOT::VecOps::RVec<int>& FirstDaugther,
-                                                          const ROOT::VecOps::RVec<int>& Lastdaugther);                                               
+                                                          const ROOT::VecOps::RVec<int>& Lastdaugther);
+
+int CountChargedParticles(const genie::GHepParticle& fs_lepton, 
+                          const ROOT::VecOps::RVec<genie::GHepParticle>& fs_HadronicSystem);
 
 template<genie::GHepStatus_t STATUS>
 ROOT::VecOps::RVec<genie::GHepParticle> GetParticlesWithStatus(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
@@ -133,7 +137,7 @@ ROOT::VecOps::RVec<std::string> PDG2Name(const ROOT::VecOps::RVec<genie::GHepPar
 
 genie::GHepParticle GetIncomingNeutrino(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
-genie::GHepParticle GetFinalChargedLepton(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
+genie::GHepParticle GetFinalStateLepton(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
 ROOT::VecOps::RVec<genie::GHepParticle> GetInitialState(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
@@ -262,6 +266,26 @@ ROOT::VecOps::RVec<double> GetECALHitPos(const ROOT::VecOps::RVec<EDepUtils::tra
 } // NOSPILL
 
 }//EDEPSIM
+
+namespace DIGIT{// DIGIT
+
+ROOT::RDF::RNode AddColumnsFromDigit(ROOT::RDF::RNode& df);
+
+int NofFiredECALMods(const ROOT::VecOps::RVec<int>& fired_cells_modules);
+
+std::vector<int> FiredECALMods(const ROOT::VecOps::RVec<int>& fired_cells_modules);
+
+int NofClusters(const ROOT::VecOps::RVec<cluster>& clusters);
+
+ROOT::VecOps::RVec<TLorentzVector> GetClusterX4(const ROOT::VecOps::RVec<cluster>& clusters);
+
+ROOT::VecOps::RVec<TLorentzVector> Cluster2Vertex4Distance(double x,
+                                                           double y,
+                                                           double z,
+                                                           double t,
+                                                           const ROOT::VecOps::RVec<cluster>& clusters);
+
+}// DIGIT
 
 }//RDFUtils
 

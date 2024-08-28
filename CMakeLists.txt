@@ -17,7 +17,7 @@ find_package(ROOT REQUIRED COMPONENTS Geom Physics Matrix MathCore RIO Net Tree)
 find_package(EDepSim)
 
 # find_package(SandReco)
-# include_directories(${PROJECT_SOURCE_DIR}/include /storage/gpfs_data/neutrino/users/gi/sand-reco/include)
+include_directories(${PROJECT_SOURCE_DIR}/include /storage/gpfs_data/neutrino/users/gi/sand-reco/include)
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -59,6 +59,9 @@ target_link_libraries(AnalyseGenie PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::T
 
 add_executable(AnalyseEDepSim src/AnalyseEDepSim.cpp)
 target_link_libraries(AnalyseEDepSim PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils)
+
+add_executable(AnalyseDigit src/AnalyseDigitize.cpp)
+target_link_libraries(AnalyseDigit PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils)
 
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set (CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}" CACHE PATH "default install path" FORCE )
