@@ -992,6 +992,10 @@ ROOT::VecOps::RVec<int> RDFUtils::EDEPSIM::NOSPILL::GetPrimariesTrackId(const RO
 ROOT::VecOps::RVec<EDepUtils::track_hits> RDFUtils::EDEPSIM::NOSPILL::GetPrimariesHits(TG4Event& ev, 
                                                                                        const ROOT::VecOps::RVec<int>& ids,
                                                                                        const ROOT::VecOps::RVec<int>& pdgs){
+    /*
+        return a vector of trac_hits, that is group hits
+        that belongs to a given primary
+    */
     std::map<int, EDepUtils::track_hits> map_grouped_hits;
 
     // initialize the map, each key a primary id
@@ -1035,13 +1039,21 @@ ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::NOSPILL::GetPrimariesEDepECAL(cons
     return primaries_edep;
 }
 
+TLorentzVector FindEarliestHit(const std::vector<TLorentzVector>& hits){
+    auto minElementIt = std::min_element(hits.begin(), hits.end(), [](const TLorentzVector& a, const TLorentzVector& b) {
+        return a.T() < b.T();
+    });
+    return (minElementIt != hits.end()) ? *minElementIt : TLorentzVector();
+}
+
 ROOT::VecOps::RVec<TLorentzVector> RDFUtils::EDEPSIM::NOSPILL::GetPrimariesFirstHitECAL(const ROOT::VecOps::RVec<EDepUtils::track_hits>& vector_primary_hits){
     ROOT::VecOps::RVec<TLorentzVector> primary_hit_ECAL;
     for(const auto& primary_hits : vector_primary_hits){ // run over each primary
         if(primary_hits.hit_LorentzVector.size()==0){ // primary has no hits in the ecal
             primary_hit_ECAL.push_back({0.,0.,0.,0.});
         }else{
-            primary_hit_ECAL.push_back(primary_hits.hit_LorentzVector[0]); // take the t0 of the first hit
+            // find the earlies hit of a primary
+            primary_hit_ECAL.push_back(FindEarliestHit(primary_hits.hit_LorentzVector)); 
         }
     }
     return primary_hit_ECAL;
@@ -1075,6 +1087,7 @@ ROOT::RDF::RNode RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(ROOT::RDF::RN
              .Define("PrimariesHitsX",          RDFUtils::EDEPSIM::NOSPILL::GetECALHitPos<0>, {"PrimariesHitsECAL"})
              .Define("PrimariesHitsY",          RDFUtils::EDEPSIM::NOSPILL::GetECALHitPos<1>, {"PrimariesHitsECAL"})
              .Define("PrimariesHitsZ",          RDFUtils::EDEPSIM::NOSPILL::GetECALHitPos<2>, {"PrimariesHitsECAL"})
+             // ECAL hits
             //  .Define("PrimariesHitsECALVol",    RDFUtils::GEO::GetVolumeFromCoordinates, {"EDEP_UNIT_LEGTH",
             //                                                                               "PrimariesHitsX",
             //                                                                               "PrimariesHitsY",
@@ -1221,7 +1234,7 @@ ROOT::VecOps::RVec<TLorentzVector> RDFUtils::DIGIT::Cluster2Vertex4Distance(doub
     ROOT::VecOps::RVec<TLorentzVector> differences;
     for(const auto& cluster : clusters){
         TLorentzVector cluster_X4 = {cluster.x, cluster.y, cluster.z, cluster.t};
-        differences.push_back(vertex - cluster_X4);
+        differences.push_back(cluster_X4 - vertex);
     }
     return differences;                                                                       
 }
@@ -1232,10 +1245,50 @@ ROOT::VecOps::RVec<TLorentzVector> RDFUtils::DIGIT::GetClusterX4(const ROOT::Vec
     return X4;
 }
 
+template<int side>
+ROOT::VecOps::RVec<double> RDFUtils::DIGIT::FiredECALGetTDC(const ROOT::VecOps::RVec<dg_cell>& cells){
+    ROOT::VecOps::RVec<double> TDCs;
+    for(const auto& cell : cells){
+        if(side==1){ // cell side 1
+            if(cell.ps1.size()!=0){
+                TDCs.push_back(cell.ps1[0].tdc);
+            }else{
+                TDCs.push_back(0.);
+            }
+        }else{ // cell side 2
+            if(cell.ps2.size()!=0){
+                TDCs.push_back(cell.ps2[0].tdc);
+            }else{
+                TDCs.push_back(0.);
+            }
+        }
+    }
+    return TDCs;
+}
+
+ROOT::VecOps::RVec<int> RDFUtils::DIGIT::IsCellComplete(const ROOT::VecOps::RVec<dg_cell>& cells){
+    ROOT::VecOps::RVec<int> isComplete;
+    for(const auto& cell : cells){
+        if(cell.ps1.size()!=0 & cell.ps2.size()!=0){
+            isComplete.push_back(1);
+        }else{
+            isComplete.push_back(0);
+        }
+    }
+    return isComplete;
+}
+
 ROOT::RDF::RNode RDFUtils::DIGIT::AddColumnsFromDigit(ROOT::RDF::RNode& df){
     return df
             .Define("NofEventFiredModules", RDFUtils::DIGIT::NofFiredECALMods , {"dg_cell.mod"})
             .Define("EventFiredModules",  RDFUtils::DIGIT::FiredECALMods , {"dg_cell.mod"})
+            .Define("Fired_Cells_x", "dg_cell.x")
+            .Define("Fired_Cells_y", "dg_cell.y")
+            .Define("Fired_Cells_z", "dg_cell.z")
+            .Define("isCellComplete", RDFUtils::DIGIT::IsCellComplete, {"dg_cell"})
+            .Define("Fired_Cells_tdc1", RDFUtils::DIGIT::FiredECALGetTDC<1>, {"dg_cell"})
+            .Define("Fired_Cells_tdc2", RDFUtils::DIGIT::FiredECALGetTDC<2>, {"dg_cell"})
+            // ECAL CLUSTER INFO
             .Define("NofEventClusters", RDFUtils::DIGIT::NofClusters, {"cluster"})
             .Define("ClusterX4", RDFUtils::DIGIT::GetClusterX4, {"cluster"})
             .Define("Cluster2Vertex4Distance", RDFUtils::DIGIT::Cluster2Vertex4Distance, {"Interaction_vtxX",

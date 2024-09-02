@@ -11,7 +11,7 @@ TGeoManager* geo = nullptr;
 //___________________________________________________________________
 int main(int argc, char* argv[]){
 
-    unsigned int start = 0;
+    unsigned int start = 2;
     
     LOG("I", "Reading geometry");
     geo = TGeoManager::Import("/storage/gpfs_data/neutrino/users/gi/dunendggd/SAND_opt3_DRIFT1.root");
@@ -78,7 +78,7 @@ int main(int argc, char* argv[]){
                                                 */
                                                 "PrimariesPDG",
     //                                             "PrimariesTrackId",
-    //                                             "PrimariesP4",
+                                                "PrimariesP4",
                                                 "PrimariesFirstHitECAL",
                                                 "PrimariesEDepECAL",
                                                 "PrimariesEmissionAngle",
@@ -89,16 +89,24 @@ int main(int argc, char* argv[]){
                                                 "ExpectedHadronSystP3",
                                                 "ExpectedHadronSystEnergy",
                                                 "ExpectedNeutronArrivalPositionECAL",
-    //                                             "MissingTransverseMomentum",
+                                                "MissingTransverseMomentum",
     //                                             "DoubleTransverseMomentumImbalance",
-                                                   /*
-                                                        DIGIT INFO
-                                                   */
-                                                   "NofEventFiredModules",
-                                                   "EventFiredModules",
-                                                   "NofEventClusters",
-                                                   "ClusterX4",
-                                                   "Cluster2Vertex4Distance",
+                                                 /*
+                                                      DIGIT INFO
+                                                 */
+                                                 "NofEventFiredModules",
+                                                 "EventFiredModules",
+                                                 "Fired_Cells_x",
+                                                 "Fired_Cells_y",
+                                                 "Fired_Cells_z",
+                                                 "Fired_Cells_tdc1",
+                                                 "Fired_Cells_tdc2",
+                                                 /*
+                                                    ECAL CLUSTER INFO
+                                                 */
+                                                 "NofEventClusters",
+                                                 "ClusterX4",
+                                                 "Cluster2Vertex4Distance",
     });                                                    
 
     return 0;

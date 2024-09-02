@@ -275,6 +275,9 @@ int NofFiredECALMods(const ROOT::VecOps::RVec<int>& fired_cells_modules);
 
 std::vector<int> FiredECALMods(const ROOT::VecOps::RVec<int>& fired_cells_modules);
 
+template<int side>
+ROOT::VecOps::RVec<double> FiredECALGetTDC(const ROOT::VecOps::RVec<dg_cell>& cells);
+
 int NofClusters(const ROOT::VecOps::RVec<cluster>& clusters);
 
 ROOT::VecOps::RVec<TLorentzVector> GetClusterX4(const ROOT::VecOps::RVec<cluster>& clusters);
