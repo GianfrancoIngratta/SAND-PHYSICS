@@ -530,7 +530,13 @@ TLorentzVector RDFUtils::GENIE::GetNup4FromMu(double proton_mass, double neutron
     TLorentzVector nu_P4 = {nu_P3.X(), nu_P3.Y(), nu_P3.Z(), calculated_nu_E};
     return nu_P4;
 }
-TVector3 IntersectWithInfCylinder(const TVector3& vtx, const TVector3& neutron_direction) {
+
+double IntersectWithInfCylinder(const TVector3& vtx, const TVector3& neutron_direction) {
+    /*
+        Calculate the intersection btw the neutron that starts from vtx and travels
+        in the direction neutron_direction (versor) and SAND.
+        Take the intersection along the direction of travel, discard the other one.
+    */
     TVector3 start_point(vtx.X() - GeoUtils::DRIFT::SAND_CENTER_X, 
                          vtx.Y() - GeoUtils::DRIFT::SAND_CENTER_Y, 
                          vtx.Z() - GeoUtils::DRIFT::SAND_CENTER_Z);
@@ -542,106 +548,102 @@ TVector3 IntersectWithInfCylinder(const TVector3& vtx, const TVector3& neutron_d
 
     if (discriminant < 0) {
         std::cerr << "No real intersection.\n";
-        return TVector3(); // Valore di ritorno predefinito, potrebbe essere migliorato a seconda dell'uso
+        return 0.; 
     }
 
     double t1 = (-B + sqrt(discriminant)) / (2 * A);
     double t2 = (-B - sqrt(discriminant)) / (2 * A);
 
-    if (t1 < 0 && t2 < 0) {
-        std::cerr << "t1 and t2 are negative\n";
-        return TVector3(); // Valore di ritorno predefinito
-    } else if (t1 < 0) {
-        return vtx + t2 * neutron_direction;
+    if (t1 >= 0 && t2 >= 0) {
+        return std::min(t1, t2); // Prendi la più piccola tra le soluzioni positive
+    } else if (t1 >= 0) {
+        return t1;
+    } else if (t2 >= 0) {
+        return t2;
     } else {
-        return vtx + t1 * neutron_direction;
+        std::cerr << "Both intersections are negative, no valid intersection.\n";
+        return std::numeric_limits<double>::infinity();
     }
+
 }
 
-TVector3 RDFUtils::GENIE::NeutronArrivalPosECAL(std::string units, double vtx_x, double vtx_y, double vtx_z, const TVector3& neutron_momentum) {
+TVector3 RDFUtils::GENIE::NeutronArrivalPosECAL(std::string units, 
+                                                double vtx_x, 
+                                                double vtx_y, 
+                                                double vtx_z, 
+                                                const TVector3& neutron_momentum) {
+    /*
+        Given the neutrino vertex position and the neutron momentum
+        predict where neutron is expected to release energy.
+        !!! THE RETURNED POINT'S UNITS IS mm 
+    */
     TVector3 start_point(vtx_x, vtx_y, vtx_z);
+    // convert to mm
     if (units == "m") {
         start_point *= 1e3;
     } else if (units == "cm") {
-        start_point *= 10;
+        start_point *= 10.;
     } else if (units == "mm") {
-        start_point *= 1;
+        start_point *= 1.;
     } else {
         std::cerr << "Error: Unsupported unit \"" << units << "\". Supported units are m, cm, mm.\n";
         throw std::invalid_argument("Unsupported unit");
     }
 
     TVector3 neutron_direction = neutron_momentum.Unit();
-    TVector3 intersection = IntersectWithInfCylinder(start_point, neutron_direction);
+    double t = IntersectWithInfCylinder(start_point, neutron_direction);
 
-    if (fabs(intersection.X() - GeoUtils::DRIFT::SAND_CENTER_X) <= GeoUtils::SAND_INNER_VOL_X_LENGTH / 2.0) {
-        return intersection;
-    } else { // intersect with one of the 2 endcaps
-        double t1 = (GeoUtils::SAND_INNER_VOL_X_LENGTH / 2.0 - vtx_x) / neutron_direction.X();
-        double t2 = (-GeoUtils::SAND_INNER_VOL_X_LENGTH / 2.0 - vtx_x) / neutron_direction.X();
-        if (neutron_direction.X() > 0) {
-            return start_point + t1 * neutron_direction;
-        } else {
-            return start_point + t2 * neutron_direction;
+    if (fabs(start_point.X() + t * neutron_direction.X() - GeoUtils::DRIFT::SAND_CENTER_X) 
+            >= GeoUtils::SAND_INNER_VOL_X_LENGTH / 2.0) {// neutron intersect ECAL in one of the 2 endcaps
+        
+        double t1 = (GeoUtils::SAND_CENTER_X - start_point.X()
+                   + GeoUtils::SAND_INNER_VOL_X_LENGTH / 2.0) / neutron_direction.X();
+        
+        double t2 = (GeoUtils::SAND_CENTER_X - start_point.X()
+                   - GeoUtils::SAND_INNER_VOL_X_LENGTH / 2.0 ) / neutron_direction.X();
+        if(t1<0){
+            t = t2;
+        }else{
+            t = t1;
         }
     }
+    /*
+        assume neutron release energy somewhere around half thickness ECAL module
+    */
+    t += GeoUtils::ECAL::ECAL_thickness/2.;
+    return start_point + t * neutron_direction;
 }
 
-// TVector3 RDFUtils::GENIE::NeutronArrivalPosECAL(std::string units, double vtx_x, double vtx_y, double vtx_z, const TVector3& neutron_momentum) {
-//     TVector3 neutron_direction = neutron_momentum.Unit();
-//     TVector3 start_point = {vtx_x, vtx_y, vtx_z};
-//     TVector3 ArrivalPointECAL = {0.,0.,0.};
-//     double step = 0.;
+double RDFUtils::GENIE::GetNeutronTOF(std::string units_l,
+                                      std::string units_E,
+                                      const double vtx,
+                                      const double vty,
+                                      const double vtz,
+                                      TVector3 X3,
+                                      TVector3 P3
+                                      ){
+    /*
+        Get Expected neutron tof in ECAL given the vertex poi and it energy
+    */
+    TVector3 vertex = {vtx, vty, vtz};
+    if(units_l == "m"){
+        vertex *= 1e3;
+    }else if(units_l == "cm"){
+        vertex *= 10.;
+    }else{}
+    
+    if(units_E == "GeV") P3 *= 1e3;
+    
+    double c = 299.792; // [mm/ns]
+    double dist = (X3 - vertex).Mag(); // [mm]
+    double Ptot = P3.Mag(); // [MeV]
+    double neutron_mass = GenieUtils::database->Find(2112)->Mass() * 1e3; // [MeV] 
+    double E = sqrt(Ptot*Ptot + neutron_mass*neutron_mass); // [Mev]
+    double gamma = E / neutron_mass;
+    double beta = sqrt(1 - 1/(gamma*gamma));
 
-//     if(units == "m") {
-//         step = 0.01;
-//     } else if(units == "cm") {
-//         step = 1.;
-//     } else if(units == "mm") {
-//         step = 10.;
-//     } else {
-//         std::cerr << "Error: Unsupported unit \"" << units << "\". Supported units are m, cm, mm.\n";
-//         throw std::invalid_argument("Unsupported unit");
-//     }
-
-//     int max_iter = 2000; // Increased to a reasonable value
-//     int iter_count = 0;
-//     bool Got2ECAL = false;
-//     // auto navigator = geo->AddNavigator(); // This is not used in the provided code
-
-//     auto current_position = start_point;
-//     // std::cout << "\n";
-//     // std::cout << "-------- new neutron ------- \n";
-//     // std::cout << "starting point " <<
-//     // TString(navigator->FindNode(vtx_x * 100., vtx_y * 100., vtx_z * 100.)->GetName()) <<"\n";
-//     while ((!Got2ECAL)) {
-
-//         if(iter_count > max_iter) break;
-
-//         bool isInSANDInnerVol = GeoUtils::IsInSANDInnerVol(units, current_position.X(), current_position.Y(), current_position.Z());
-        
-//         if(!isInSANDInnerVol) {
-//             TString volume = RDFUtils::GEO::GetVolumeFromCoordinates(units, current_position.X(), current_position.Y(), current_position.Z());
-//             // auto volume = TString(navigator->FindNode(current_position.X() * 100., current_position.Y() * 100., current_position.Z() * 100.)->GetName());
-//             // std::cout << volume << "\n";
-//             if(volume.Contains("ECAL")) {
-//                 Got2ECAL = true;
-//                 ArrivalPointECAL = current_position;
-//             } else {
-//                 // std::cerr << "point ("
-//                 //           << current_position.X() << ", "
-//                 //           << current_position.Y() << ", "
-//                 //           << current_position.Z() << " )"
-//                 //           << " Error: Volume is outside but not ECAL.\n";
-//                 // break;
-//                 // throw std::runtime_error("Neutron is outside but not in ECAL");
-//             }
-//         }
-//         current_position += step * neutron_direction;
-//         iter_count++;
-//     }
-//     return ArrivalPointECAL;
-// }
+    return dist / (beta * c); // [ns]
+}
 
 ROOT::RDF::RNode RDFUtils::AddConstantsToDF(ROOT::RDataFrame& df){
     return df
@@ -757,41 +759,50 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              .Define("FinalStateHadronicSystemTopology",        RDFUtils::GENIE::GetInteractionTopology, {"FinalStateHadronicSystem"})
              .Define("FinalStateHadronicSystemTopology_code",   [](GenieUtils::event_topology t){return t.unique_code();}, {"FinalStateHadronicSystemTopology"})
              .Define("FinalStateHadronicSystemTopology_name",   [](GenieUtils::event_topology t){return t.Name();}, {"FinalStateHadronicSystemTopology"})
-             /*
+              /*
                 final state nuclear remnant
                 low energy nuclear fragments entering the record collectively as a 'hadronic blob' pseudo-particle
-             */
+              */
              .Define("NuclearRemnant",                RDFUtils::GENIE::GetParticlesWithStatus<genie::kIStFinalStateNuclearRemnant>, {"Particles"})
              .Define("NuclearRemnantPDG",             RDFUtils::GENIE::GetPDG, {"NuclearRemnant"})
              .Define("NuclearRemnantMomenta",         RDFUtils::GENIE::GetMomentum, {"NuclearRemnant"})
              .Define("NuclearTotal4Momentum",         RDFUtils::GENIE::SumLorentzVectors, {"NuclearRemnantMomenta"})
              .Define("NuclearRemnantKinE",            RDFUtils::GENIE::GetKinE, {"NuclearRemnant"})
              .Define("NuclearRemnantTotalKinE",       RDFUtils::SumDuble, {"NuclearRemnantKinE"})
-             /*
+              /*
                 Overall variables to check overall energy conservation
-             */
+              */
              .Define("PrimaryStateTotal4Momantum" , "FinalStateLepton4Momentum + PrimaryStateHadronicSystemTotal4Momentum")
              .Define("FinalStateTotal4Momantum" , "FinalStateLepton4Momentum + FinalStateHadronicSystemTotal4Momentum + NuclearTotal4Momentum")
-             /*
+              /*
                 For channel selection
-             */
-            // charge multiplicity
-            .Define("NofFinalStateChargedParticles",               RDFUtils::GENIE::CountChargedParticles, {"FinalStateLepton","FinalStateHadronicSystem"}) 
-            // Prediction on neutrons
-             .Define("ExpectedNeutrinoP4FromMuon",                 RDFUtils::GENIE::GetNup4FromMu, {"PROTON_MASS_GeV",
+              */
+             // charge multiplicity
+             .Define("NofFinalStateChargedParticles",               RDFUtils::GENIE::CountChargedParticles, {"FinalStateLepton","FinalStateHadronicSystem"}) 
+             // Prediction on neutrons
+             .Define("ExpectedNeutrinoP4FromMuon",                  RDFUtils::GENIE::GetNup4FromMu, {"PROTON_MASS_GeV",
                                                                                                      "NEUTRON_MASS_GeV",
                                                                                                      "MUON_MASS_GeV",
                                                                                                      "FinalStateLepton4Momentum",
                                                                                                      "NuDirection",
                                                                                                      })
-             .Define("ExpectedHadronSystP3",                       "ExpectedNeutrinoP4FromMuon.Vect() - FinalStateLepton4Momentum.Vect()")
-             .Define("ExpectedHadronSystEnergy",                   "ExpectedNeutrinoP4FromMuon.T() + PROTON_MASS_GeV - FinalStateLepton4Momentum.T()")
-             .Define("ExpectedNeutronArrivalPositionECAL",         RDFUtils::GENIE::NeutronArrivalPosECAL, {"GENIE_UNIT_LEGTH",
+             .Define("ExpectedHadronSystP3",                        "ExpectedNeutrinoP4FromMuon.Vect() - FinalStateLepton4Momentum.Vect()")
+             .Define("ExpectedHadronSystEnergy",                    "ExpectedNeutrinoP4FromMuon.T() + PROTON_MASS_GeV - FinalStateLepton4Momentum.T()")
+             .Define("ExpectedNeutronArrivalPositionECAL",          RDFUtils::GENIE::NeutronArrivalPosECAL, {"GENIE_UNIT_LEGTH",
                                                                                                              "Interaction_vtxX",
                                                                                                              "Interaction_vtxY",
                                                                                                              "Interaction_vtxZ",
-                                                                                                             "ExpectedHadronSystP3"})                                                                                                  
-            // A Novel Approach to Neutrino-Hydrogen Measurements
+                                                                                                             "ExpectedHadronSystP3"})
+             .Define("ExpectedNeutronTOF",                          RDFUtils::GENIE::GetNeutronTOF, {"GENIE_UNIT_LEGTH",
+                                                                                                     "GENIE_UNIT_ENERGY",
+                                                                                                     "Interaction_vtxX",
+                                                                                                     "Interaction_vtxY",
+                                                                                                     "Interaction_vtxZ",
+                                                                                                     "ExpectedNeutronArrivalPositionECAL",
+                                                                                                     "ExpectedHadronSystP3"})                                                                                                             
+             .Define("ExpectedFiredModuleByNeutron",                GeoUtils::ECAL::GetModuleIdFromPoint, {"EDEP_UNIT_LEGTH",
+                                                                                                           "ExpectedNeutronArrivalPositionECAL"})                                                                                                                                                                                                
+             // A Novel Approach to Neutrino-Hydrogen Measurements
              .Define("FinalStateLeptonTransverseP",                 "FinalStateLepton4Momentum.Vect() - FinalStateLepton4Momentum.Vect().Dot(NuDirection) * NuDirection")
              .Define("FinalStateHadronicSystemTransverseP",         "FinalStateHadronicSystemTotal4Momentum.Vect() - FinalStateHadronicSystemTotal4Momentum.Vect().Dot(NuDirection) * NuDirection")
              .Define("MissingTransverseMomentum",                   "(FinalStateLeptonTransverseP + FinalStateHadronicSystemTransverseP).Mag()")
@@ -821,15 +832,25 @@ std::string RDFUtils::GEO::GetVolumeFromCoordinates(std::string units, double x,
         std::cout<<"GEO not initialized in "<<__FILE__<<" "<<__LINE__<<"\n";
         throw "";
     }
-    // convert to cm
-    if(units == "mm"){
-        x = x * 0.1;
-        y = y * 0.1;
-        z = z * 0.1;
+    // // convert to cm
+    // if(units == "mm"){
+    //     x = x * 0.1;
+    //     y = y * 0.1;
+    //     z = z * 0.1;
+    // }else if(units == "m"){
+    //     x = x * 100.;
+    //     y = y * 100.;
+    //     z = z * 100.;
+    // }
+    // convert to mm
+    if(units == "cm"){
+        x = x * 10.;
+        y = y * 10.;
+        z = z * 10.;
     }else if(units == "m"){
-        x = x * 100.;
-        y = y * 100.;
-        z = z * 100.;
+        x = x * 1000.;
+        y = y * 1000.;
+        z = z * 1000.;
     }
     auto navigator = geo->GetCurrentNavigator();
 
@@ -855,27 +876,12 @@ std::string RDFUtils::GEO::GetMaterialFromCoordinates(double x, double y, double
 
     if(!navigator) navigator = geo->AddNavigator();
 
-    auto material = geo->FindNode(x*100., y*100., z*100.)->GetVolume()->GetMaterial()->GetName();
+    auto material = navigator->FindNode(x*100., y*100., z*100.)->GetVolume()->GetMaterial()->GetName();
 
     return material;
 }
 
 //RDFUtils::EDEPSIM_______________________________________________________________
-
-// TVector3 RDFUtils::EDEPSIM::GetExpectedNeutronFromMu(const TLorentzVector& lepton){
-//     TVector3 lepton_vector = lepton.Vect();
-//     TVector3 beam_direction = {0.,0.,1.};
-//     TVector3 transverse2interaction = beam_direction.Cross(lepton_vector);
-//     transverse2interaction = transverse2interaction.Unit();
-//     double neutron_pz = (lepton.X() * transverse2interaction.X() + lepton.Y() * transverse2interaction.Y()) / transverse2interaction.Z();
-//     TVector3 neutron = {-lepton.X(), -lepton.Y(), neutron_pz};
-//     return neutron;
-// }
-
-// double RDFUtils::EDEPSIM::GetBetaFromMomentum(const TVector3 p, double mass){
-//     double gamma = sqrt(1. + (p.Mag()/mass)*(p.Mag()/mass));
-//     return sqrt((gamma*gamma - 1)/gamma);
-// }
 
 double RDFUtils::EDEPSIM::NeutrinoEnergyFromCCQEonH(const TLorentzVector& muon, double muon_angle){
     double muon_mass = 0.105658;
@@ -1266,10 +1272,61 @@ ROOT::VecOps::RVec<double> RDFUtils::DIGIT::FiredECALGetTDC(const ROOT::VecOps::
     return TDCs;
 }
 
+ROOT::VecOps::RVec<TLorentzVector> RDFUtils::DIGIT::ReconstructHitFromCell(const ROOT::VecOps::RVec<dg_cell>& cells){
+    ROOT::VecOps::RVec<TLorentzVector> reco_hits;
+    for (const auto& cell : cells)
+    {
+        int broken_side = 0;
+        double tdc1 = 0., tdc2 = 0.;
+        TLorentzVector hit_reco;
+
+        if(!GeoUtils::ECAL::isCellComplete(cell, broken_side)){ // broken cell
+            // what we do in case of broke cells ?
+        } else{ // complete cell
+            tdc1 = cell.ps1.at(0).tdc;
+            tdc2 = cell.ps2.at(0).tdc;
+        }
+        // if(cell.id < 25000){ // Barrel
+        if(cell.mod < 30){ // Barrel
+            hit_reco = {cell.x - GeoUtils::ECAL::XfromTDC(tdc1, tdc2),
+                        cell.y,
+                        cell.z,
+                        GeoUtils::ECAL::TfromTDC(tdc1, tdc2, cell.l)};
+        }else{ // Endcap
+            hit_reco = {cell.x,
+                        cell.y - GeoUtils::ECAL::XfromTDC(tdc1, tdc2),
+                        cell.z,
+                        GeoUtils::ECAL::TfromTDC(tdc1, tdc2, cell.l)};
+        }
+        reco_hits.push_back(hit_reco);
+    }
+    return reco_hits;
+}
+
+ROOT::VecOps::RVec<double> RDFUtils::DIGIT::STDistance(const TVector3& expected_neutron_hit3,
+                                                       const double exp_neutron_tof,
+                                                       const ROOT::VecOps::RVec<TLorentzVector>& cells_reco_hits){
+    /*
+        Return the space time distance btw 
+        reconstruted hits from cells' tdc 
+        and the expected neutron hit
+    */
+   ROOT::VecOps::RVec<double> ds2; // space-time distances
+   double c = 299.792; // ligth speed [mm/ns]
+   TLorentzVector expected_neutron_hit = {expected_neutron_hit3, exp_neutron_tof};
+   for (const auto& cell_reco_hit : cells_reco_hits)
+   {
+        TLorentzVector delta = expected_neutron_hit - cell_reco_hit;
+        double d = (delta.T()*c) * (delta.T()*c) - delta.Vect().Mag2(); 
+        ds2.push_back(d);
+   }
+   return ds2;
+}
+
 ROOT::VecOps::RVec<int> RDFUtils::DIGIT::IsCellComplete(const ROOT::VecOps::RVec<dg_cell>& cells){
     ROOT::VecOps::RVec<int> isComplete;
     for(const auto& cell : cells){
-        if(cell.ps1.size()!=0 & cell.ps2.size()!=0){
+        if((cell.ps1.size()!=0) & (cell.ps2.size()!=0)){
             isComplete.push_back(1);
         }else{
             isComplete.push_back(0);
@@ -1280,18 +1337,24 @@ ROOT::VecOps::RVec<int> RDFUtils::DIGIT::IsCellComplete(const ROOT::VecOps::RVec
 
 ROOT::RDF::RNode RDFUtils::DIGIT::AddColumnsFromDigit(ROOT::RDF::RNode& df){
     return df
-            .Define("NofEventFiredModules", RDFUtils::DIGIT::NofFiredECALMods , {"dg_cell.mod"})
-            .Define("EventFiredModules",  RDFUtils::DIGIT::FiredECALMods , {"dg_cell.mod"})
-            .Define("Fired_Cells_x", "dg_cell.x")
-            .Define("Fired_Cells_y", "dg_cell.y")
-            .Define("Fired_Cells_z", "dg_cell.z")
-            .Define("isCellComplete", RDFUtils::DIGIT::IsCellComplete, {"dg_cell"})
-            .Define("Fired_Cells_tdc1", RDFUtils::DIGIT::FiredECALGetTDC<1>, {"dg_cell"})
-            .Define("Fired_Cells_tdc2", RDFUtils::DIGIT::FiredECALGetTDC<2>, {"dg_cell"})
+            .Define("NofEventFiredModules",         RDFUtils::DIGIT::NofFiredECALMods , {"dg_cell.mod"})
+            .Define("EventFiredModules",            RDFUtils::DIGIT::FiredECALMods , {"dg_cell.mod"})
+            .Define("Fired_Cells_mod",              "dg_cell.mod")
+            .Define("Fired_Cells_id",               "dg_cell.id")
+            .Define("Fired_Cells_x",                "dg_cell.x")
+            .Define("Fired_Cells_y",                "dg_cell.y")
+            .Define("Fired_Cells_z",                "dg_cell.z")
+            .Define("isCellComplete",               RDFUtils::DIGIT::IsCellComplete, {"dg_cell"})
+            .Define("Fired_Cells_tdc1",             RDFUtils::DIGIT::FiredECALGetTDC<1>, {"dg_cell"})
+            .Define("Fired_Cells_tdc2",             RDFUtils::DIGIT::FiredECALGetTDC<2>, {"dg_cell"})
+            .Define("Cell_Reconstructed_hits",      RDFUtils::DIGIT::ReconstructHitFromCell, {"dg_cell"})
+            .Define("STDistToNeutronExpectedHit",   RDFUtils::DIGIT::STDistance, {"ExpectedNeutronArrivalPositionECAL",
+                                                                                  "ExpectedNeutronTOF",
+                                                                                  "Cell_Reconstructed_hits"})
             // ECAL CLUSTER INFO
-            .Define("NofEventClusters", RDFUtils::DIGIT::NofClusters, {"cluster"})
-            .Define("ClusterX4", RDFUtils::DIGIT::GetClusterX4, {"cluster"})
-            .Define("Cluster2Vertex4Distance", RDFUtils::DIGIT::Cluster2Vertex4Distance, {"Interaction_vtxX",
+            .Define("NofEventClusters",             RDFUtils::DIGIT::NofClusters, {"cluster"})
+            .Define("ClusterX4",                    RDFUtils::DIGIT::GetClusterX4, {"cluster"})
+            .Define("Cluster2Vertex4Distance",      RDFUtils::DIGIT::Cluster2Vertex4Distance, {"Interaction_vtxX",
                                                                                           "Interaction_vtxY",
                                                                                           "Interaction_vtxZ",
                                                                                           "Interaction_vtxT",

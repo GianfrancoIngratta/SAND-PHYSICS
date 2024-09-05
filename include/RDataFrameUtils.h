@@ -121,6 +121,15 @@ ROOT::VecOps::RVec<genie::GHepParticle> AllGenieParticles(const ROOT::VecOps::RV
                                                           const ROOT::VecOps::RVec<int>& FirstDaugther,
                                                           const ROOT::VecOps::RVec<int>& Lastdaugther);
 
+double GetNeutronTOF(std::string units_l,
+                     std::string units_E,
+                     const double vtx,
+                     const double vty,
+                     const double vtz,
+                     TVector3 X3,
+                     TVector3 P3
+                     );
+
 int CountChargedParticles(const genie::GHepParticle& fs_lepton, 
                           const ROOT::VecOps::RVec<genie::GHepParticle>& fs_HadronicSystem);
 
@@ -273,6 +282,10 @@ ROOT::RDF::RNode AddColumnsFromDigit(ROOT::RDF::RNode& df);
 
 int NofFiredECALMods(const ROOT::VecOps::RVec<int>& fired_cells_modules);
 
+ROOT::VecOps::RVec<TLorentzVector> ReconstructHitFromCell(const ROOT::VecOps::RVec<dg_cell>& cells);
+
+ROOT::VecOps::RVec<int> IsCellComplete(const ROOT::VecOps::RVec<dg_cell>& cells);
+
 std::vector<int> FiredECALMods(const ROOT::VecOps::RVec<int>& fired_cells_modules);
 
 template<int side>
@@ -287,6 +300,10 @@ ROOT::VecOps::RVec<TLorentzVector> Cluster2Vertex4Distance(double x,
                                                            double z,
                                                            double t,
                                                            const ROOT::VecOps::RVec<cluster>& clusters);
+
+ROOT::VecOps::RVec<double> STDistance(const TVector3& expected_neutron_hit3,
+                                      const double exp_neutron_tof,
+                                      const ROOT::VecOps::RVec<TLorentzVector>& cells_reco_hits);                                                       
 
 }// DIGIT
 

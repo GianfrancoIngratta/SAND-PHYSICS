@@ -14,7 +14,10 @@ int main(int argc, char* argv[]){
     unsigned int start = 2;
     
     LOG("I", "Reading geometry");
-    geo = TGeoManager::Import("/storage/gpfs_data/neutrino/users/gi/dunendggd/SAND_opt3_DRIFT1.root");
+    // geo = TGeoManager::Import("/storage/gpfs_data/neutrino/users/gi/dunendggd/SAND_opt3_DRIFT1.root");
+    // geo = TGeoManager::Import("/storage/gpfs_data/neutrino/users/gi/dunendggd/SAND_opt3_DRIFT1.gdml");
+    TFile f("/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/events-in-SANDtracker.2.edep-sim.root", "READ");
+    geo = (TGeoManager*)f.Get("EDepSimGeometry");
 
     auto fInput_genie = "/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/events-in-SANDtracker.*.gtrac.root";
     auto fInput_edep = "/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/events-in-SANDtracker.*.edep-sim.root";
@@ -22,7 +25,7 @@ int main(int argc, char* argv[]){
     auto fInput_ecal_cluster = "/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/events-in-SANDtracker.*.ecal-cluster.root";
 
     auto fOutput = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/events-in-SANDtracker.0.ecal-digit.analysed.root";
-
+    
     // if you have multiple files enable multiple thread pocessing
     if(TString::Format("%s",fInput_digit).Contains("*")){
         LOG("I","Enabling multiple threading");
@@ -89,6 +92,7 @@ int main(int argc, char* argv[]){
                                                 "ExpectedHadronSystP3",
                                                 "ExpectedHadronSystEnergy",
                                                 "ExpectedNeutronArrivalPositionECAL",
+                                                "ExpectedFiredModuleByNeutron",
                                                 "MissingTransverseMomentum",
     //                                             "DoubleTransverseMomentumImbalance",
                                                  /*
@@ -96,11 +100,16 @@ int main(int argc, char* argv[]){
                                                  */
                                                  "NofEventFiredModules",
                                                  "EventFiredModules",
+                                                 "Fired_Cells_mod",
+                                                 "Fired_Cells_id",
                                                  "Fired_Cells_x",
                                                  "Fired_Cells_y",
                                                  "Fired_Cells_z",
                                                  "Fired_Cells_tdc1",
                                                  "Fired_Cells_tdc2",
+                                                 "isCellComplete",
+                                                 "Cell_Reconstructed_hits",
+                                                 "STDistToNeutronExpectedHit",
                                                  /*
                                                     ECAL CLUSTER INFO
                                                  */
