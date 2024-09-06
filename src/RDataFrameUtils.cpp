@@ -1352,12 +1352,12 @@ ROOT::RDF::RNode RDFUtils::DIGIT::AddColumnsFromDigit(ROOT::RDF::RNode& df){
                                                                                   "ExpectedNeutronTOF",
                                                                                   "Cell_Reconstructed_hits"})
             // ECAL CLUSTER INFO
-            .Define("NofEventClusters",             RDFUtils::DIGIT::NofClusters, {"cluster"})
-            .Define("ClusterX4",                    RDFUtils::DIGIT::GetClusterX4, {"cluster"})
-            .Define("Cluster2Vertex4Distance",      RDFUtils::DIGIT::Cluster2Vertex4Distance, {"Interaction_vtxX",
-                                                                                          "Interaction_vtxY",
-                                                                                          "Interaction_vtxZ",
-                                                                                          "Interaction_vtxT",
-                                                                                          "cluster"})
+            // .Define("NofEventClusters",             RDFUtils::DIGIT::NofClusters, {"cluster"})
+            // .Define("ClusterX4",                    RDFUtils::DIGIT::GetClusterX4, {"cluster"})
+            // .Define("Cluster2Vertex4Distance",      RDFUtils::DIGIT::Cluster2Vertex4Distance, {"Interaction_vtxX",
+            //                                                                               "Interaction_vtxY",
+            //                                                                               "Interaction_vtxZ",
+            //                                                                               "Interaction_vtxT",
+            //                                                                               "cluster"})
             ;
 }

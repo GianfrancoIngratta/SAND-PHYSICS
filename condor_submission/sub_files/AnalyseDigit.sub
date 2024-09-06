@@ -1,0 +1,10 @@
+# Unix submit description file
+# arguments               = $(Item)
+executable              = /storage/gpfs_data/neutrino/users/gi/sand-physics/condor_submission/sub_files/AnalyseDigit.sub
+transfer_input_files    = /opt/exp_software/neutrino/LHAPDF6/usr/lib64/libLHAPDF-6.2.1.so
+log                     = /storage/gpfs_data/neutrino/users/gi/sand-physics/condor_submission/logs/AnalyseDigit.log
+output                  = /storage/gpfs_data/neutrino/users/gi/sand-physics/condor_submission/logs/AnalyseDigit.out
+error                   = /storage/gpfs_data/neutrino/users/gi/sand-physics/condor_submission/logs/AnalyseDigit.err
+should_transfer_files   = Yes
+when_to_transfer_output = ON_EXIT
+queue

@@ -16,7 +16,7 @@ int main(int argc, char* argv[]){
     LOG("I", "Reading geometry");
     // geo = TGeoManager::Import("/storage/gpfs_data/neutrino/users/gi/dunendggd/SAND_opt3_DRIFT1.root");
     // geo = TGeoManager::Import("/storage/gpfs_data/neutrino/users/gi/dunendggd/SAND_opt3_DRIFT1.gdml");
-    TFile f("/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/events-in-SANDtracker.2.edep-sim.root", "READ");
+    TFile f("/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/events-in-SANDtracker.1.edep-sim.root", "READ");
     geo = (TGeoManager*)f.Get("EDepSimGeometry");
 
     auto fInput_genie = "/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/events-in-SANDtracker.*.gtrac.root";
@@ -34,14 +34,14 @@ int main(int argc, char* argv[]){
     };
 
     LOG("I", "Initialize ROOT DataFrame");
-    auto chain_genie = RDFUtils::InitTChain(fInput_genie, "gRooTracker", start, start + 1u);
-    auto chain_edep = RDFUtils::InitTChain(fInput_edep, "EDepSimEvents", start, start + 1u);
-    auto chain_digit = RDFUtils::InitTChain(fInput_digit, "tDigit", start, start + 1u); 
-    auto chain_cluster = RDFUtils::InitTChain(fInput_ecal_cluster, "tReco", start, start + 1u); 
+    auto chain_genie = RDFUtils::InitTChain(fInput_genie, "gRooTracker", start, start + 999u);
+    auto chain_edep = RDFUtils::InitTChain(fInput_edep, "EDepSimEvents", start, start + 999u);
+    auto chain_digit = RDFUtils::InitTChain(fInput_digit, "tDigit", start, start + 999u); 
+    // auto chain_cluster = RDFUtils::InitTChain(fInput_ecal_cluster, "tReco", start, start + 999u); 
     
     chain_digit->AddFriend(chain_genie, "genie");
     chain_digit->AddFriend(chain_edep, "edep");
-    chain_digit->AddFriend(chain_cluster, "cluster");
+    // chain_digit->AddFriend(chain_cluster, "cluster");
     
     auto df = RDFUtils::InitDF(chain_digit);
 
@@ -113,9 +113,9 @@ int main(int argc, char* argv[]){
                                                  /*
                                                     ECAL CLUSTER INFO
                                                  */
-                                                 "NofEventClusters",
-                                                 "ClusterX4",
-                                                 "Cluster2Vertex4Distance",
+                                                //  "NofEventClusters",
+                                                //  "ClusterX4",
+                                                //  "Cluster2Vertex4Distance",
     });                                                    
 
     return 0;
