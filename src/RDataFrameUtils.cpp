@@ -105,6 +105,31 @@ double RDFUtils::SumDuble(const ROOT::VecOps::RVec<double>& v){
     return sum;
 }
 
+ROOT::VecOps::RVec<int> RDFUtils::IsNULLTLV(const ROOT::VecOps::RVec<TLorentzVector>& V){
+    ROOT::VecOps::RVec<bool> isNULL;
+    for(auto const& v : V){
+        if(v.Mag() == 0.){
+            isNULL.push_back(1);
+        }else{
+            isNULL.push_back(0);
+        }
+    }
+    return isNULL;
+}
+
+ROOT::VecOps::RVec<int> RDFUtils::CompareVectors(const ROOT::VecOps::RVec<double>& V1, 
+                                                  const ROOT::VecOps::RVec<double>& V2){
+    ROOT::VecOps::RVec<bool> isEqual;
+    for (size_t i = 0; i < V1.size(); i++)
+    {
+        if(V1[i]==V2[i]){
+            isEqual.push_back(1);
+        }else{
+            isEqual.push_back(0);
+        }
+    }
+    return isEqual;
+}
 
 //RDFUtils::GENIE_________________________________________________________________
 
@@ -832,33 +857,34 @@ std::string RDFUtils::GEO::GetVolumeFromCoordinates(std::string units, double x,
         std::cout<<"GEO not initialized in "<<__FILE__<<" "<<__LINE__<<"\n";
         throw "";
     }
-    // // convert to cm
-    // if(units == "mm"){
-    //     x = x * 0.1;
-    //     y = y * 0.1;
-    //     z = z * 0.1;
-    // }else if(units == "m"){
-    //     x = x * 100.;
-    //     y = y * 100.;
-    //     z = z * 100.;
-    // }
-    // convert to mm
-    if(units == "cm"){
-        x = x * 10.;
-        y = y * 10.;
-        z = z * 10.;
+    // convert to cm
+    if(units == "mm"){
+        x = x * 0.1;
+        y = y * 0.1;
+        z = z * 0.1;
     }else if(units == "m"){
-        x = x * 1000.;
-        y = y * 1000.;
-        z = z * 1000.;
+        x = x * 100.;
+        y = y * 100.;
+        z = z * 100.;
     }
+    // // convert to mm
+    // if(units == "cm"){
+    //     x = x * 10.;
+    //     y = y * 10.;
+    //     z = z * 10.;
+    // }else if(units == "m"){
+    //     x = x * 1000.;
+    //     y = y * 1000.;
+    //     z = z * 1000.;
+    // }
     auto navigator = geo->GetCurrentNavigator();
 
     if(!navigator) navigator = geo->AddNavigator();
 
     // TGeoManager wants cm units
     auto volume = navigator->FindNode(x, y, z)->GetVolume()->GetName();
-   
+    
+
     // if(TString::Format(volume).Contains("C3H6")){
     //     std::cout << "volume : " << volume << "x, y, z " << x << " " << y << " " << z << "\n";
     // }
@@ -1013,19 +1039,22 @@ ROOT::VecOps::RVec<EDepUtils::track_hits> RDFUtils::EDEPSIM::NOSPILL::GetPrimari
         map_grouped_hits[ids[i]] = t;
     }
 
+    int j = 0;
     for(auto hit: ev.SegmentDetectors["EMCalSci"]){
         // retreive the track id of the most important particle associated with this hit
-        auto hit_id = hit.GetPrimaryId();
+        auto hit_primary_id = hit.GetPrimaryId();
 
         // check if the track id associated to the hit belongs to one of the primaries id
-        auto it = std::find(ids.begin(), ids.end(), hit_id);
+        auto it = std::find(ids.begin(), ids.end(), hit_primary_id);
 
         if (it != ids.end()){
-            // update info of EDepUtils::track_hits that belongs to the primary whose id is hit_id
+            // update info of EDepUtils::track_hits that belongs to the primary whose id is hit_primary_id
             auto hit_middle = (hit.GetStop() + hit.GetStart())*0.5;
-            map_grouped_hits[hit_id].hit_edep.push_back(hit.GetEnergyDeposit());
-            map_grouped_hits[hit_id].hit_LorentzVector.push_back(hit_middle);
+            map_grouped_hits[hit_primary_id].h_indices.push_back(j);
+            map_grouped_hits[hit_primary_id].hit_edep.push_back(hit.GetEnergyDeposit());
+            map_grouped_hits[hit_primary_id].hit_LorentzVector.push_back(hit_middle);
         }
+        j++;
     }
 
     ROOT::VecOps::RVec<EDepUtils::track_hits> T;
@@ -1043,6 +1072,30 @@ ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::NOSPILL::GetPrimariesEDepECAL(cons
         primaries_edep.push_back(de);
     }
     return primaries_edep;
+}
+
+ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::NOSPILL::GetDirectionInECAL(const TVector3& nu_direcion,
+                                                                           const double vtxX,
+                                                                           const double vtxY,
+                                                                           const double vtxZ,
+                                                                           const ROOT::VecOps::RVec<TLorentzVector> primaries_first_hit){
+    /*
+        Get direction of primaries in ECAL wrt neutrino direction
+    */      
+    ROOT::VecOps::RVec<double> directions;                                                                      
+    for(const auto first_hit : primaries_first_hit){
+        // if no hit in ECAL defaul is null TLV, return default directopn -999.
+        if(first_hit.Mag() == 0.){
+            directions.push_back(-999.);
+        }else{
+            TVector3 hit2vtx = {first_hit.Vect().X() - vtxX * 1e3,
+                                first_hit.Vect().Y() - vtxY * 1e3,
+                                first_hit.Vect().Z() - vtxZ * 1e3};
+
+            directions.push_back(hit2vtx.Angle(nu_direcion));
+        }
+    }
+    return directions;
 }
 
 TLorentzVector FindEarliestHit(const std::vector<TLorentzVector>& hits){
@@ -1078,59 +1131,56 @@ ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::NOSPILL::GetECALHitPos(const ROOT:
     return vertices;
 }
 
+ROOT::VecOps::RVec<int> RDFUtils::EDEPSIM::GetHitTrajectoryId(const ROOT::VecOps::RVec<int>& pmts_hindex, 
+                                                    TG4Event& ev){
+
+    ROOT::VecOps::RVec<int> track_ids;
+    for(const auto& pmt_hindex : pmts_hindex){ // index is the id of the hit that genrated the tdc
+        if(pmt_hindex == -999){ // pmt has not any tdc
+            track_ids.push_back(-999);
+        }else{
+            int j = 0;
+            for(auto& hit : ev.SegmentDetectors["EMCalSci"]){
+                if(pmt_hindex == j){
+                    track_ids.push_back(hit.GetPrimaryId());
+                    break;
+                }
+                j++;
+            }
+        }
+    }
+    return track_ids;
+}
+
 ROOT::RDF::RNode RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(ROOT::RDF::RNode& df){
     return df
              .Define("FileName",                RDFUtils::EDEPSIM::NOSPILL::FileName, {"Primaries"})
              .Define("NofEvents",               RDFUtils::EDEPSIM::SPILL::NofEventsPerSpill, {"Primaries"})
-             .Filter("isInFiducialVolume")                                                                                       
              .Define("NofPrimaries",            RDFUtils::EDEPSIM::NOSPILL::NofPrimaries, {"Primaries"})
              .Define("PrimariesPDG",            RDFUtils::EDEPSIM::NOSPILL::GetPrimariesPDG, {"Primaries"})
              .Define("PrimariesName",           RDFUtils::EDEPSIM::NOSPILL::PDG2Name, {"PrimariesPDG"})
              .Define("PrimariesTrackId",        RDFUtils::EDEPSIM::NOSPILL::GetPrimariesTrackId, {"Primaries"})
              .Define("PrimariesP4",             RDFUtils::EDEPSIM::NOSPILL::GetPrimariesP4, {"Primaries"})
+             .Define("Primaries_vtxX",          [](const TLorentzVector& vertex){return vertex.X();},{"Primaries.Position"})
+             .Define("Primaries_vtxY",          [](const TLorentzVector& vertex){return vertex.Y();},{"Primaries.Position"})
+             .Define("Primaries_vtxZ",          [](const TLorentzVector& vertex){return vertex.Z();},{"Primaries.Position"})
+             .Define("Primaries_vtxT",          [](const TLorentzVector& vertex){return vertex.T();},{"Primaries.Position"})
               // ECAL track_hits
              .Define("PrimariesHitsECAL",       RDFUtils::EDEPSIM::NOSPILL::GetPrimariesHits, {"Event", "PrimariesTrackId", "PrimariesPDG"})
              .Define("PrimariesHitsX",          RDFUtils::EDEPSIM::NOSPILL::GetECALHitPos<0>, {"PrimariesHitsECAL"})
              .Define("PrimariesHitsY",          RDFUtils::EDEPSIM::NOSPILL::GetECALHitPos<1>, {"PrimariesHitsECAL"})
              .Define("PrimariesHitsZ",          RDFUtils::EDEPSIM::NOSPILL::GetECALHitPos<2>, {"PrimariesHitsECAL"})
              // ECAL hits
-            //  .Define("PrimariesHitsECALVol",    RDFUtils::GEO::GetVolumeFromCoordinates, {"EDEP_UNIT_LEGTH",
-            //                                                                               "PrimariesHitsX",
-            //                                                                               "PrimariesHitsY",
-            //                                                                               "PrimariesHitsZ"})
              .Define("PrimariesEmissionAngle",  RDFUtils::EDEPSIM::NOSPILL::GetEmissionAngle, {"NuDirection", "PrimariesP4"})
              .Define("PrimariesFirstHitECAL",   RDFUtils::EDEPSIM::NOSPILL::GetPrimariesFirstHitECAL, {"PrimariesHitsECAL"})
+             .Define("PrimaryHasNoECALHit",     RDFUtils::IsNULLTLV, {"PrimariesFirstHitECAL"})
              .Define("PrimariesEDepECAL",       RDFUtils::EDEPSIM::NOSPILL::GetPrimariesEDepECAL, {"PrimariesHitsECAL"})
-            //
-            //  .Define("EventType",               RDFUtils::EDEPSIM::NOSPILL::EventType, {"Primaries"})
-            //  .Define("PrimariesVertexX",        [](const ROOT::VecOps::RVec<TG4PrimaryVertex>& vertices){return vertices[0].GetPosition()[0];}, {"Primaries"})
-            //  .Define("Interaction_vtxX","EvtVtx[0]")
-            //  .Define("Interaction_vtxY","EvtVtx[1]")
-            //  .Define("Interaction_vtxZ","EvtVtx[2]")
-            //  .Define("Interaction_vtxT","EvtVtx[3]")
-             // !!! FIDUCIAL VOLUME CUT !!!
-            //  .Define("InteractionVolume",           RDFUtils::GEO::GetVolumeFromCoordinates, {"GENIE_UNIT_LEGTH",
-            //                                                                                   "Interaction_vtxX",
-            //                                                                                   "Interaction_vtxY",
-            //                                                                                   "Interaction_vtxZ"})
-            //  // !!! FIDUCIAL VOLUME CUT !!!
-            //  .Define("isInFiducialVolume",          GeoUtils::DRIFT::IsInFiducialVolume, {"InteractionVolume",
-            //                                                                               "GENIE_UNIT_LEGTH",
-            //                                                                               "Interaction_vtxX",
-            //                                                                               "Interaction_vtxY",
-            //                                                                               "Interaction_vtxZ"})
-             /*
-                All primary particles
-            //  */
-            //  .Define("CCQEonHydrogen",          RDFUtils::EDEPSIM::NOSPILL::IsCCQEonH,  {"Primaries"})
-            //  .Define("NeutrinoP4",              RDFUtils::GENIE::SumLorentzVectors, {"PrimariesP4"})
-            //  .Define("NeutrinoE", "NeutrinoP4[3]")
-            //  .Define("NeutrinoDirection",       "NeutrinoP4.Vect().Unit()")
-            //  .Define("PrimaryLeptonP4",         RDFUtils::EDEPSIM::NOSPILL::GetPrimaryLeptonP4,   {"PrimariesP4", "PrimariesPDG"})
-            //  .Define("PrimaryHadronicSystP4",   RDFUtils::EDEPSIM::NOSPILL::GetPrimaryHadronicP4, {"PrimariesP4", "PrimariesPDG"})
-            //  .Define("PrimaryHadronicSystEmissionAngle", [](const TLorentzVector& v,const TLorentzVector& w){return v.Vect().Angle(w.Vect());}, {"NeutrinoP4", "PrimaryHadronicSystP4"})
-            //  .Define("PrimaryLeptonEmissionAngle", "PrimariesEmissionAngle[0]")
-             // EXPECTED PRIMARY NEUTRON FROM INTERACTION ON ARGO
+             .Define("PrimariesDirectionInECAL",RDFUtils::EDEPSIM::NOSPILL::GetDirectionInECAL,  {"NuDirection",
+                                                                                                  "Interaction_vtxX",
+                                                                                                  "Interaction_vtxY",
+                                                                                                  "Interaction_vtxZ",
+                                                                                                  "PrimariesFirstHitECAL"})
+             .Define("PrimaryHasChangedDirection", RDFUtils::CompareVectors, {"PrimariesEmissionAngle", "PrimariesDirectionInECAL"})                                                                                                  
              ;
 }
 
@@ -1272,6 +1322,39 @@ ROOT::VecOps::RVec<double> RDFUtils::DIGIT::FiredECALGetTDC(const ROOT::VecOps::
     return TDCs;
 }
 
+int RDFUtils::DIGIT::Get_TDC_hindex(const dg_ps& photo_sensor){
+    for (const auto& pe : photo_sensor.photo_el) {
+        if(pe.time == photo_sensor.tdc){
+            return pe.h_index;
+        }
+    }
+    return -999;
+}   
+
+template<int side>
+ROOT::VecOps::RVec<int> RDFUtils::DIGIT::GetHindexOfTDC(const ROOT::VecOps::RVec<dg_cell>& cells){
+    /*
+        Get hit index that corresponding to the observed TDC
+    */
+    ROOT::VecOps::RVec<int> h_indices;
+    for(const auto& cell : cells){
+        if(side == 1){ // cell side 1
+            if(cell.ps1.size()!=0){
+                h_indices.push_back(RDFUtils::DIGIT::Get_TDC_hindex(cell.ps1[0]));
+            }else{// if cell has no TDC, set defaul index
+                h_indices.push_back(-999);
+            }
+        }else{ // cell side 1
+            if(cell.ps2.size()!=0){
+                h_indices.push_back(RDFUtils::DIGIT::Get_TDC_hindex(cell.ps2[0]));
+            }else{
+                h_indices.push_back(-999);
+            }
+        }
+    }
+    return h_indices;
+}
+
 ROOT::VecOps::RVec<TLorentzVector> RDFUtils::DIGIT::ReconstructHitFromCell(const ROOT::VecOps::RVec<dg_cell>& cells){
     ROOT::VecOps::RVec<TLorentzVector> reco_hits;
     for (const auto& cell : cells)
@@ -1303,24 +1386,30 @@ ROOT::VecOps::RVec<TLorentzVector> RDFUtils::DIGIT::ReconstructHitFromCell(const
     return reco_hits;
 }
 
-ROOT::VecOps::RVec<double> RDFUtils::DIGIT::STDistance(const TVector3& expected_neutron_hit3,
-                                                       const double exp_neutron_tof,
-                                                       const ROOT::VecOps::RVec<TLorentzVector>& cells_reco_hits){
-    /*
-        Return the space time distance btw 
-        reconstruted hits from cells' tdc 
-        and the expected neutron hit
-    */
-   ROOT::VecOps::RVec<double> ds2; // space-time distances
-   double c = 299.792; // ligth speed [mm/ns]
-   TLorentzVector expected_neutron_hit = {expected_neutron_hit3, exp_neutron_tof};
-   for (const auto& cell_reco_hit : cells_reco_hits)
-   {
-        TLorentzVector delta = expected_neutron_hit - cell_reco_hit;
-        double d = (delta.T()*c) * (delta.T()*c) - delta.Vect().Mag2(); 
-        ds2.push_back(d);
-   }
-   return ds2;
+// double RDFUtils::GENIE::GetNeutronTOF(std::string units_l,
+//                                       std::string units_E,
+//                                       const double vtx,
+//                                       const double vty,
+//                                       const double vtz,
+//                                       TVector3 X3,
+//                                       TVector3 P3
+//                                       ){
+
+ROOT::VecOps::RVec<TLorentzVector> RDFUtils::DIGIT::GetNeutronExpectedHit(const double vtx, const double vty, const double vtz, const double vtt,
+                                                                 const TVector3& neutron_expected_P3,
+                                                                 const ROOT::VecOps::RVec<dg_cell>& cells){
+    TLorentzVector vertex = {vtx, vty, vtz, vtt};
+    TVector3 neutron_direction = neutron_expected_P3.Unit();
+    ROOT::VecOps::RVec<TLorentzVector> expected_points;
+    for (const auto& cell : cells)
+    {
+        double t = (cell.z - vertex.Z()) / neutron_direction.Z();
+        TVector3 expected_position = vertex.Vect() + t * neutron_direction;
+        double expeced_tof = RDFUtils::GENIE::GetNeutronTOF("mm", "GeV", vtx, vty, vtz, expected_position, neutron_expected_P3);
+        TLorentzVector expected_X4 = {expected_position, expeced_tof + vertex.T()};
+        expected_points.push_back(expected_X4);
+    }
+    return expected_points;                                                                       
 }
 
 ROOT::VecOps::RVec<int> RDFUtils::DIGIT::IsCellComplete(const ROOT::VecOps::RVec<dg_cell>& cells){
@@ -1346,11 +1435,18 @@ ROOT::RDF::RNode RDFUtils::DIGIT::AddColumnsFromDigit(ROOT::RDF::RNode& df){
             .Define("Fired_Cells_z",                "dg_cell.z")
             .Define("isCellComplete",               RDFUtils::DIGIT::IsCellComplete, {"dg_cell"})
             .Define("Fired_Cells_tdc1",             RDFUtils::DIGIT::FiredECALGetTDC<1>, {"dg_cell"})
+            .Define("Fired_Cell_tdc1_hindex",       RDFUtils::DIGIT::GetHindexOfTDC<1>, {"dg_cell"})
+            .Define("who_produced_tdc1",            RDFUtils::EDEPSIM::GetHitTrajectoryId, {"Fired_Cell_tdc1_hindex", "Event"})
             .Define("Fired_Cells_tdc2",             RDFUtils::DIGIT::FiredECALGetTDC<2>, {"dg_cell"})
+            .Define("Fired_Cell_tdc2_hindex",       RDFUtils::DIGIT::GetHindexOfTDC<2>, {"dg_cell"})
+            .Define("who_produced_tdc2",            RDFUtils::EDEPSIM::GetHitTrajectoryId, {"Fired_Cell_tdc2_hindex", "Event"})
             .Define("Cell_Reconstructed_hits",      RDFUtils::DIGIT::ReconstructHitFromCell, {"dg_cell"})
-            .Define("STDistToNeutronExpectedHit",   RDFUtils::DIGIT::STDistance, {"ExpectedNeutronArrivalPositionECAL",
-                                                                                  "ExpectedNeutronTOF",
-                                                                                  "Cell_Reconstructed_hits"})
+            .Define("ExpectedNeutronHit",           RDFUtils::DIGIT::GetNeutronExpectedHit, {"Primaries_vtxX",
+                                                                                             "Primaries_vtxY",
+                                                                                             "Primaries_vtxZ",
+                                                                                             "Primaries_vtxT",
+                                                                                             "ExpectedHadronSystP3",
+                                                                                             "dg_cell"})
             // ECAL CLUSTER INFO
             // .Define("NofEventClusters",             RDFUtils::DIGIT::NofClusters, {"cluster"})
             // .Define("ClusterX4",                    RDFUtils::DIGIT::GetClusterX4, {"cluster"})

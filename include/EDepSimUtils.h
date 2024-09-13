@@ -10,7 +10,10 @@ struct track_hits
 {   
     int track_id = -999;
 
-    int pdg = -999;    
+    int pdg = -999;
+
+    // list of all hit hindex associated with the track
+    std::vector<int> h_indices = {};
 
     // list of all energy depositions for each single hit
     std::vector<double>  hit_edep = {};

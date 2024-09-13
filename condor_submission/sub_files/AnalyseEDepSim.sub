@@ -1,6 +1,6 @@
 # Unix submit description file
 # arguments               = $(Item)
-executable              = /storage/gpfs_data/neutrino/users/gi/sand-physics/condor_submission/sub_files/AnalyseEDepSim.sub
+executable              = /storage/gpfs_data/neutrino/users/gi/sand-physics/condor_submission/sub_files/AnalyseEDepSim.sh
 # transfer_input_files    = /opt/exp_software/neutrino/LHAPDF6/usr/lib64/libLHAPDF-6.2.1.so, /storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production/macro.template.mac
 transfer_input_files    = /opt/exp_software/neutrino/LHAPDF6/usr/lib64/libLHAPDF-6.2.1.so
 log                     = /storage/gpfs_data/neutrino/users/gi/sand-physics/condor_submission/logs/AnalyseEDepSim.log

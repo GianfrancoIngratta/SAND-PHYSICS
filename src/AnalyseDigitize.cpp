@@ -11,33 +11,45 @@ TGeoManager* geo = nullptr;
 //___________________________________________________________________
 int main(int argc, char* argv[]){
 
-    unsigned int start = 2;
+    // analyse file from file file_start" to "file_start + nof files 
+    unsigned int index;
+    if(argc != 2){
+        LOG("W", "One input number needed to run the executable");
+        throw "";
+    }
+
+    index = atoi(argv[1]);
+    unsigned int files_per_jobs = 100u;
+    unsigned int file_start = index * files_per_jobs;
+    unsigned int file_stop = index * files_per_jobs + files_per_jobs;
+
+    LOG("I", TString::Format("Analyze production from file %d to file %d", file_start, file_stop).Data());
     
     LOG("I", "Reading geometry");
-    // geo = TGeoManager::Import("/storage/gpfs_data/neutrino/users/gi/dunendggd/SAND_opt3_DRIFT1.root");
-    // geo = TGeoManager::Import("/storage/gpfs_data/neutrino/users/gi/dunendggd/SAND_opt3_DRIFT1.gdml");
-    TFile f("/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/events-in-SANDtracker.1.edep-sim.root", "READ");
-    geo = (TGeoManager*)f.Get("EDepSimGeometry");
+    geo = TGeoManager::Import("/storage/gpfs_data/neutrino/users/gi/dunendggd/SAND_opt3_DRIFT1.root");
 
-    auto fInput_genie = "/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/events-in-SANDtracker.*.gtrac.root";
-    auto fInput_edep = "/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/events-in-SANDtracker.*.edep-sim.root";
-    auto fInput_digit = "/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/events-in-SANDtracker.*.ecal-digit.root";
-    auto fInput_ecal_cluster = "/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/events-in-SANDtracker.*.ecal-cluster.root";
+    auto FOLDER_PRODUCTION = "/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/";
+    auto FOLDER_ANALYSIS = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/";
 
-    auto fOutput = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/events-in-SANDtracker.0.ecal-digit.analysed.root";
+    auto fInput_genie =TString::Format("%sevents-in-SANDtracker.*.gtrac.root", FOLDER_PRODUCTION);
+    auto fInput_edep =TString::Format("%sevents-in-SANDtracker.*.edep-sim.root", FOLDER_PRODUCTION);
+    auto fInput_digit =TString::Format("%sevents-in-SANDtracker.*.ecal-digit.root", FOLDER_PRODUCTION);
+    // auto fInput_ecal_cluster = "events-in-SANDtracker.*.ecal-cluster.root";
+    auto fOutput = TString::Format("%sevents-in-SANDtracker.%d.to.%d.ecal-digit.analysed.root",FOLDER_ANALYSIS, file_start, file_stop);
     
     // if you have multiple files enable multiple thread pocessing
-    if(TString::Format("%s",fInput_digit).Contains("*")){
+    // if(TString::Format("%s",fInput_digit).Contains("*")){
+    if(fInput_digit.Contains("*")){
         LOG("I","Enabling multiple threading");
         ROOT::EnableImplicitMT();
         geo->SetMaxThreads(100);
     };
 
     LOG("I", "Initialize ROOT DataFrame");
-    auto chain_genie = RDFUtils::InitTChain(fInput_genie, "gRooTracker", start, start + 999u);
-    auto chain_edep = RDFUtils::InitTChain(fInput_edep, "EDepSimEvents", start, start + 999u);
-    auto chain_digit = RDFUtils::InitTChain(fInput_digit, "tDigit", start, start + 999u); 
-    // auto chain_cluster = RDFUtils::InitTChain(fInput_ecal_cluster, "tReco", start, start + 999u); 
+    auto chain_genie = RDFUtils::InitTChain(fInput_genie, "gRooTracker", file_start, file_stop);
+    auto chain_edep = RDFUtils::InitTChain(fInput_edep, "EDepSimEvents", file_start, file_stop);
+    auto chain_digit = RDFUtils::InitTChain(fInput_digit, "tDigit", file_start, file_stop); 
+    // auto chain_cluster = RDFUtils::InitTChain(fInput_ecal_cluster, "tReco", file_start, file_stop); 
     
     chain_digit->AddFriend(chain_genie, "genie");
     chain_digit->AddFriend(chain_edep, "edep");
@@ -58,7 +70,7 @@ int main(int argc, char* argv[]){
     auto dfDigit = RDFUtils::DIGIT::AddColumnsFromDigit(dfEDEP);
     
     LOG("I", "Writing ouput file");
-    dfDigit.Snapshot("digit_extended", fOutput, {
+    dfDigit.Snapshot("digit_extended", fOutput.Data(), {
                                                 /*
                                                     GENIE INFO
                                                 */
@@ -71,20 +83,23 @@ int main(int argc, char* argv[]){
                                                 "Interaction_vtxY",
                                                 "Interaction_vtxZ",
                                                 "Interaction_vtxT",
-                                                /*
-                                                    GENIE INFO
-                                                */
+                                                "InteractionVolume",
+                                                "NofFinalStateChargedParticles",
                                                 "FinalStateLeptonEmissionAngle",
                                                 "PrimaryStateHadronicSystemTotalKinE",
+                                                "PrimaryStateHadronicSystemTopology_name",
+                                                "InteractionTarget",
                                                 /*
                                                     EDEP INFO
                                                 */
                                                 "PrimariesPDG",
-    //                                             "PrimariesTrackId",
+                                                "PrimariesTrackId",
                                                 "PrimariesP4",
                                                 "PrimariesFirstHitECAL",
                                                 "PrimariesEDepECAL",
                                                 "PrimariesEmissionAngle",
+                                                "PrimaryHasNoECALHit",
+                                                "PrimaryHasChangedDirection",
                                                 /*
                                                     PREDICTIONS FOR CHANNEL antinu on H
                                                 */
@@ -92,24 +107,27 @@ int main(int argc, char* argv[]){
                                                 "ExpectedHadronSystP3",
                                                 "ExpectedHadronSystEnergy",
                                                 "ExpectedNeutronArrivalPositionECAL",
+                                                "ExpectedNeutronTOF",
                                                 "ExpectedFiredModuleByNeutron",
                                                 "MissingTransverseMomentum",
     //                                             "DoubleTransverseMomentumImbalance",
                                                  /*
                                                       DIGIT INFO
                                                  */
-                                                 "NofEventFiredModules",
-                                                 "EventFiredModules",
-                                                 "Fired_Cells_mod",
-                                                 "Fired_Cells_id",
-                                                 "Fired_Cells_x",
-                                                 "Fired_Cells_y",
-                                                 "Fired_Cells_z",
-                                                 "Fired_Cells_tdc1",
-                                                 "Fired_Cells_tdc2",
-                                                 "isCellComplete",
-                                                 "Cell_Reconstructed_hits",
-                                                 "STDistToNeutronExpectedHit",
+                                                "NofEventFiredModules",
+                                                "EventFiredModules",
+                                                "Fired_Cells_mod",
+                                                "Fired_Cells_id",
+                                                "Fired_Cells_x",
+                                                "Fired_Cells_y",
+                                                "Fired_Cells_z",
+                                                "Fired_Cells_tdc1",
+                                                "Fired_Cells_tdc2",
+                                                "who_produced_tdc1",
+                                                "who_produced_tdc2",
+                                                "isCellComplete",
+                                                "Cell_Reconstructed_hits",
+                                                "ExpectedNeutronHit",
                                                  /*
                                                     ECAL CLUSTER INFO
                                                  */

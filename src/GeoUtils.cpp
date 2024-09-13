@@ -74,8 +74,8 @@ int GeoUtils::ECAL::GetModuleIdFromPoint(std::string units, TVector3 point){
         return 30;
     } else {
         // find the coordinates wrt an axis that starts from module 0
-        double point_z = point.Z() * cos(GeoUtils::ECAL::Module_0_starting_angle) + point.Y() * sin(GeoUtils::ECAL::Module_0_starting_angle);
-        double point_y = - point.Z() * sin(GeoUtils::ECAL::Module_0_starting_angle) + point.Y() * cos(GeoUtils::ECAL::Module_0_starting_angle);
+        double point_z = Point2SAND.Z() * cos(GeoUtils::ECAL::Module_0_starting_angle) + Point2SAND.Y() * sin(GeoUtils::ECAL::Module_0_starting_angle);
+        double point_y = - Point2SAND.Z() * sin(GeoUtils::ECAL::Module_0_starting_angle) + Point2SAND.Y() * cos(GeoUtils::ECAL::Module_0_starting_angle);
         // get angle point with z axis from [0,2pi]
         double angle = (point_y >= 0.) ? 
                             TMath::ATan2(point_y, point_z) : TMath::ATan2(point_y, point_z) + 2 * TMath::Pi();

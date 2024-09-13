@@ -100,6 +100,11 @@ TLorentzVector VectorFilterByHighest(const ROOT::VecOps::RVec<double>& filter,
 
 double SumDuble(const ROOT::VecOps::RVec<double>& v);
 
+ROOT::VecOps::RVec<int> CompareVectors(const ROOT::VecOps::RVec<double>& V1, 
+                                        const ROOT::VecOps::RVec<double>& V2);
+
+ROOT::VecOps::RVec<int> IsNULLTLV(const ROOT::VecOps::RVec<TLorentzVector>& V);
+
 namespace GENIE{//GENIE
 
 // bool IsUnphysical(genie::NtpMCEventRecord& m);
@@ -220,6 +225,9 @@ namespace EDEPSIM{//EDEPSIM
 
 double NeutrinoEnergyFromCCQEonH(const TLorentzVector& muon, double muon_angle);
 
+ROOT::VecOps::RVec<int> GetHitTrajectoryId(const ROOT::VecOps::RVec<int>& pmts_hindex, 
+                                 TG4Event& ev);
+
 namespace SPILL{// EDEPSIM::SPILL
 ROOT::RDF::RNode AddColumnsFromEDEPSIM(ROOT::RDF::RNode& df);
 
@@ -272,6 +280,12 @@ ROOT::VecOps::RVec<TLorentzVector> GetPrimariesFirstHitECAL(const ROOT::VecOps::
 template<int coordinate>
 ROOT::VecOps::RVec<double> GetECALHitPos(const ROOT::VecOps::RVec<EDepUtils::track_hits>& vector_primary_hits);
 
+ROOT::VecOps::RVec<double> GetDirectionInECAL(const TVector3& nu_direcion,
+                                              const double vtxX,
+                                              const double vtxY,
+                                              const double vtxZ,
+                                              const ROOT::VecOps::RVec<TLorentzVector> primaries_first_hit);
+
 } // NOSPILL
 
 }//EDEPSIM
@@ -288,8 +302,13 @@ ROOT::VecOps::RVec<int> IsCellComplete(const ROOT::VecOps::RVec<dg_cell>& cells)
 
 std::vector<int> FiredECALMods(const ROOT::VecOps::RVec<int>& fired_cells_modules);
 
+int Get_TDC_hindex(const dg_ps& photo_sensor);
+
 template<int side>
 ROOT::VecOps::RVec<double> FiredECALGetTDC(const ROOT::VecOps::RVec<dg_cell>& cells);
+
+template<int side>
+ROOT::VecOps::RVec<int> GetHindexOfTDC(const ROOT::VecOps::RVec<dg_cell>& cells);
 
 int NofClusters(const ROOT::VecOps::RVec<cluster>& clusters);
 
@@ -301,9 +320,9 @@ ROOT::VecOps::RVec<TLorentzVector> Cluster2Vertex4Distance(double x,
                                                            double t,
                                                            const ROOT::VecOps::RVec<cluster>& clusters);
 
-ROOT::VecOps::RVec<double> STDistance(const TVector3& expected_neutron_hit3,
-                                      const double exp_neutron_tof,
-                                      const ROOT::VecOps::RVec<TLorentzVector>& cells_reco_hits);                                                       
+ROOT::VecOps::RVec<TLorentzVector> GetNeutronExpectedHit(const double vtx, const double vty, const double vtz, const double vtt,
+                                                                 const TVector3& neutron_expected_P3,
+                                                                 const ROOT::VecOps::RVec<dg_cell>& cells);
 
 }// DIGIT
 

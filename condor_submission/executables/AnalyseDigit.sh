@@ -1,5 +1,6 @@
 #!/bin/bash
 # PYTHIA6
+FILE_INDEX_START=$1
 export LD_LIBRARY_PATH=/opt/exp_software/neutrino/PYTHIA6/Pythia6Support/v6_424/lib:${LD_LIBRARY_PATH}
 
 # ROOT
@@ -23,4 +24,4 @@ source /storage/gpfs_data/neutrino/users/gi/sand-reco/setup.sh
 
 cd /storage/gpfs_data/neutrino/users/gi/sand-physics/
 
-./build/bin/AnalyseDigit
+./build/bin/AnalyseDigit ${FILE_INDEX_START}
