@@ -228,6 +228,8 @@ double NeutrinoEnergyFromCCQEonH(const TLorentzVector& muon, double muon_angle);
 ROOT::VecOps::RVec<int> GetHitTrajectoryId(const ROOT::VecOps::RVec<int>& pmts_hindex, 
                                  TG4Event& ev);
 
+ROOT::VecOps::RVec<TLorentzVector> GetHitFromIndex(const ROOT::VecOps::RVec<int>& h_index, TG4Event& ev);                                 
+
 namespace SPILL{// EDEPSIM::SPILL
 ROOT::RDF::RNode AddColumnsFromEDEPSIM(ROOT::RDF::RNode& df);
 
@@ -325,6 +327,14 @@ ROOT::VecOps::RVec<TLorentzVector> GetNeutronExpectedHit(const double vtx, const
                                                                  const ROOT::VecOps::RVec<dg_cell>& cells);
 
 }// DIGIT
+
+namespace RECO{// DRIFT RECO
+
+int GetNofFiredWires(const ROOT::VecOps::RVec<dg_wire>& wires);
+
+ROOT::RDF::RNode AddColumnsFromDriftReco(ROOT::RDF::RNode& df);
+
+}// DRIFT RECO
 
 }//RDFUtils
 

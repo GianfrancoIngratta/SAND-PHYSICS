@@ -1135,21 +1135,49 @@ ROOT::VecOps::RVec<int> RDFUtils::EDEPSIM::GetHitTrajectoryId(const ROOT::VecOps
                                                     TG4Event& ev){
 
     ROOT::VecOps::RVec<int> track_ids;
-    for(const auto& pmt_hindex : pmts_hindex){ // index is the id of the hit that genrated the tdc
-        if(pmt_hindex == -999){ // pmt has not any tdc
+    for(const auto& pmt_hindex : pmts_hindex){ // index is the id of the hit that generated the tdc
+        if(pmt_hindex == -999){ // pmt hasn't any tdc
             track_ids.push_back(-999);
         }else{
-            int j = 0;
-            for(auto& hit : ev.SegmentDetectors["EMCalSci"]){
-                if(pmt_hindex == j){
-                    track_ids.push_back(hit.GetPrimaryId());
-                    break;
-                }
-                j++;
+            // int j = 0;
+            // // run over all hits in ECAL
+            // for(auto& hit : ev.SegmentDetectors["EMCalSci"]){
+            //     if(pmt_hindex == j){
+            //         track_ids.push_back(hit.GetPrimaryId());
+            //         break;
+            //     }
+            //     j++;
+            // }
+            if(pmt_hindex > ev.SegmentDetectors["EMCalSci"].size()){
+                std::cout << "i have no idea why hit index is not in ECAL hits \n";
+                throw "";
             }
+            auto hit_j = ev.SegmentDetectors["EMCalSci"][pmt_hindex];
+            track_ids.push_back(hit_j.GetPrimaryId());
         }
     }
+    if(pmts_hindex.size()!=track_ids.size()){
+        std::cout << "not a 1-1 corrispondance pmt tdc h_index vs track id\n";
+        throw "";
+    }
     return track_ids;
+}
+
+ROOT::VecOps::RVec<TLorentzVector> RDFUtils::EDEPSIM::GetHitFromIndex(const ROOT::VecOps::RVec<int>& h_index, TG4Event& ev){
+    /*
+        Retreive the hit in ECAL cooresponding to index j
+    */
+    ROOT::VecOps::RVec<TLorentzVector> hits;
+    for(const auto& j : h_index){
+        if(j == -999){ // incomplete cell, no tdc recorded
+            hits.push_back({0.,0.,0.,0.}); // dummy TLVector
+        }else{
+            auto hit = ev.SegmentDetectors["EMCalSci"][j];
+            auto middle_hit = (hit.GetStart() + hit.GetStop())*0.5;
+            hits.push_back(middle_hit);
+        }
+    }
+    return hits;
 }
 
 ROOT::RDF::RNode RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(ROOT::RDF::RNode& df){
@@ -1161,10 +1189,10 @@ ROOT::RDF::RNode RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(ROOT::RDF::RN
              .Define("PrimariesName",           RDFUtils::EDEPSIM::NOSPILL::PDG2Name, {"PrimariesPDG"})
              .Define("PrimariesTrackId",        RDFUtils::EDEPSIM::NOSPILL::GetPrimariesTrackId, {"Primaries"})
              .Define("PrimariesP4",             RDFUtils::EDEPSIM::NOSPILL::GetPrimariesP4, {"Primaries"})
-             .Define("Primaries_vtxX",          [](const TLorentzVector& vertex){return vertex.X();},{"Primaries.Position"})
-             .Define("Primaries_vtxY",          [](const TLorentzVector& vertex){return vertex.Y();},{"Primaries.Position"})
-             .Define("Primaries_vtxZ",          [](const TLorentzVector& vertex){return vertex.Z();},{"Primaries.Position"})
-             .Define("Primaries_vtxT",          [](const TLorentzVector& vertex){return vertex.T();},{"Primaries.Position"})
+             .Define("Primaries_vtxX",          [](const ROOT::VecOps::RVec<TLorentzVector>& vertices){return vertices[0].X();},{"Primaries.Position"})
+             .Define("Primaries_vtxY",          [](const ROOT::VecOps::RVec<TLorentzVector>& vertices){return vertices[0].Y();},{"Primaries.Position"})
+             .Define("Primaries_vtxZ",          [](const ROOT::VecOps::RVec<TLorentzVector>& vertices){return vertices[0].Z();},{"Primaries.Position"})
+             .Define("Primaries_vtxT",          [](const ROOT::VecOps::RVec<TLorentzVector>& vertices){return vertices[0].T();},{"Primaries.Position"})
               // ECAL track_hits
              .Define("PrimariesHitsECAL",       RDFUtils::EDEPSIM::NOSPILL::GetPrimariesHits, {"Event", "PrimariesTrackId", "PrimariesPDG"})
              .Define("PrimariesHitsX",          RDFUtils::EDEPSIM::NOSPILL::GetECALHitPos<0>, {"PrimariesHitsECAL"})
@@ -1344,12 +1372,15 @@ ROOT::VecOps::RVec<int> RDFUtils::DIGIT::GetHindexOfTDC(const ROOT::VecOps::RVec
             }else{// if cell has no TDC, set defaul index
                 h_indices.push_back(-999);
             }
-        }else{ // cell side 1
+        }else if(side == 2){ // cell side 1
             if(cell.ps2.size()!=0){
                 h_indices.push_back(RDFUtils::DIGIT::Get_TDC_hindex(cell.ps2[0]));
             }else{
                 h_indices.push_back(-999);
             }
+        }else{
+            std::cout << "calorimeter has not side " << side << "\n";
+            throw "";
         }
     }
     return h_indices;
@@ -1406,6 +1437,7 @@ ROOT::VecOps::RVec<TLorentzVector> RDFUtils::DIGIT::GetNeutronExpectedHit(const 
         double t = (cell.z - vertex.Z()) / neutron_direction.Z();
         TVector3 expected_position = vertex.Vect() + t * neutron_direction;
         double expeced_tof = RDFUtils::GENIE::GetNeutronTOF("mm", "GeV", vtx, vty, vtz, expected_position, neutron_expected_P3);
+        // TLorentzVector expected_X4 = {expected_position, expeced_tof + vertex.T()};
         TLorentzVector expected_X4 = {expected_position, expeced_tof + vertex.T()};
         expected_points.push_back(expected_X4);
     }
@@ -1433,14 +1465,17 @@ ROOT::RDF::RNode RDFUtils::DIGIT::AddColumnsFromDigit(ROOT::RDF::RNode& df){
             .Define("Fired_Cells_x",                "dg_cell.x")
             .Define("Fired_Cells_y",                "dg_cell.y")
             .Define("Fired_Cells_z",                "dg_cell.z")
+            // .Filter("EventId==506")
             .Define("isCellComplete",               RDFUtils::DIGIT::IsCellComplete, {"dg_cell"})
             .Define("Fired_Cells_tdc1",             RDFUtils::DIGIT::FiredECALGetTDC<1>, {"dg_cell"})
             .Define("Fired_Cell_tdc1_hindex",       RDFUtils::DIGIT::GetHindexOfTDC<1>, {"dg_cell"})
+            .Define("Fired_Cell_true_hit1",         RDFUtils::EDEPSIM::GetHitFromIndex, {"Fired_Cell_tdc1_hindex", "Event"})
             .Define("who_produced_tdc1",            RDFUtils::EDEPSIM::GetHitTrajectoryId, {"Fired_Cell_tdc1_hindex", "Event"})
             .Define("Fired_Cells_tdc2",             RDFUtils::DIGIT::FiredECALGetTDC<2>, {"dg_cell"})
             .Define("Fired_Cell_tdc2_hindex",       RDFUtils::DIGIT::GetHindexOfTDC<2>, {"dg_cell"})
+            .Define("Fired_Cell_true_hit2",         RDFUtils::EDEPSIM::GetHitFromIndex, {"Fired_Cell_tdc2_hindex", "Event"})
             .Define("who_produced_tdc2",            RDFUtils::EDEPSIM::GetHitTrajectoryId, {"Fired_Cell_tdc2_hindex", "Event"})
-            .Define("Cell_Reconstructed_hits",      RDFUtils::DIGIT::ReconstructHitFromCell, {"dg_cell"})
+            .Define("Cell_Reconstructed_hit",       RDFUtils::DIGIT::ReconstructHitFromCell, {"dg_cell"})
             .Define("ExpectedNeutronHit",           RDFUtils::DIGIT::GetNeutronExpectedHit, {"Primaries_vtxX",
                                                                                              "Primaries_vtxY",
                                                                                              "Primaries_vtxZ",
@@ -1456,4 +1491,21 @@ ROOT::RDF::RNode RDFUtils::DIGIT::AddColumnsFromDigit(ROOT::RDF::RNode& df){
             //                                                                               "Interaction_vtxT",
             //                                                                               "cluster"})
             ;
+}
+
+// RDFUtils::RECO_______________________________________________________________________________
+
+int RDFUtils::RECO::GetNofFiredWires(const ROOT::VecOps::RVec<dg_wire>& wires){
+    // STA FUNZIONE CRASHAAAA
+    return wires.size();
+}
+
+ROOT::RDF::RNode RDFUtils::RECO::AddColumnsFromDriftReco(ROOT::RDF::RNode& df){
+    return df
+            .Define("NofFiredWires", RDFUtils::RECO::GetNofFiredWires, {"fired_wires"})
+            .Alias("true_helix_dip_", "true_helix.dip_")
+            .Alias("reco_helix_dip_", "reco_helix.dip_")
+            .Define("ptot_true", "sqrt(p_true.X()*p_true.X() + p_true.Y()*p_true.Y() + p_true.Z()*p_true.Z())")
+            .Define("ptot_reco", "sqrt(p_true.X()*p_reco.X() + p_true.Y()*p_reco.Y() + p_true.Z()*p_reco.Z())")
+    ;
 }

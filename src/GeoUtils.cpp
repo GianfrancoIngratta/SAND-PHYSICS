@@ -28,7 +28,7 @@ bool GeoUtils::ECAL::is_ecal_barrel(const TString& volume_name){
 
 
 double GeoUtils::ECAL::TfromTDC(const double tdc1, const double tdc2, const double length){
-    // vlfb [m/ns]
+    // vlfb 5 [ns/m]
     return 0.5 * (tdc1 + tdc2 - GeoUtils::ECAL::vlfb * length / 1e3);
 }
 

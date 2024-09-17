@@ -8,6 +8,25 @@
 
 TGeoManager* geo = nullptr;
 
+struct SIGNAL
+{ // antinumu + H -> n + mu+
+    static const int charge_multuplicity = 1;
+};
+
+
+// FUNCTIONS
+
+ROOT::RDF::RNode Filter_ChargeMultiplicity(ROOT::RDF::RNode& df){
+    /*
+        CUT : Require a number of charget particles
+              associated with the vertex to be 1.
+              This cut is temporary done on MC truth
+    */
+    auto condition_multiplicity = TString::Format("NofFinalStateChargedParticles==%d", SIGNAL::charge_multuplicity);
+    std::cout << "Filtering only events with 1 final state charged particle\n";
+    return df.Filter(condition_multiplicity.Data());
+}
+
 //___________________________________________________________________
 int main(int argc, char* argv[]){
 
@@ -35,7 +54,7 @@ int main(int argc, char* argv[]){
     auto fInput_edep =TString::Format("%sevents-in-SANDtracker.*.edep-sim.root", FOLDER_PRODUCTION);
     auto fInput_digit =TString::Format("%sevents-in-SANDtracker.*.ecal-digit.root", FOLDER_PRODUCTION);
     // auto fInput_ecal_cluster = "events-in-SANDtracker.*.ecal-cluster.root";
-    auto fOutput = TString::Format("%sevents-in-SANDtracker.%d.to.%d.ecal-digit.analysed.root",FOLDER_ANALYSIS, file_start, file_stop);
+    auto fOutput = TString::Format("%sevents-in-SANDtracker.%d.to.%d.event_selection.root",FOLDER_ANALYSIS, file_start, file_stop);
     
     // if you have multiple files enable multiple thread pocessing
     // if(TString::Format("%s",fInput_digit).Contains("*")){
@@ -68,9 +87,11 @@ int main(int argc, char* argv[]){
     auto dfEDEP = RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(dfGENIE);
     
     auto dfDigit = RDFUtils::DIGIT::AddColumnsFromDigit(dfEDEP);
+
+    auto df_cut1 = Filter_ChargeMultiplicity(dfDigit);
     
     LOG("I", "Writing ouput file");
-    dfDigit.Snapshot("digit_extended", fOutput.Data(), {
+    df_cut1.Snapshot("digit_extended", fOutput.Data(), {
                                                 /*
                                                     GENIE INFO
                                                 */
@@ -125,10 +146,8 @@ int main(int argc, char* argv[]){
                                                 "Fired_Cells_tdc2",
                                                 "who_produced_tdc1",
                                                 "who_produced_tdc2",
-                                                "Fired_Cell_true_hit1",
-                                                "Fired_Cell_true_hit2",
                                                 "isCellComplete",
-                                                "Cell_Reconstructed_hit",
+                                                "Cell_Reconstructed_hits",
                                                 "ExpectedNeutronHit",
                                                  /*
                                                     ECAL CLUSTER INFO

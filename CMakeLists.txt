@@ -39,6 +39,9 @@ target_link_libraries(GenieUtils PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::Tre
 add_library(GeoUtils SHARED src/GeoUtils.cpp)
 target_link_libraries(GeoUtils PUBLIC ROOT::RIO ROOT::Net ROOT::ROOTDataFrame EDepSim::edepsim_io)
 
+# add_library(SelectSignalUtils SHARED src/SelectSignal.cpp)
+# target_link_libraries(SelectSignalUtils PUBLIC ROOT::RIO ROOT::Net ROOT::ROOTDataFrame EDepSim::edepsim_io GenieUtils)
+
 # Creates a libUtils shared library
 add_library(RDataFrameUtils SHARED src/RDataFrameUtils.cpp src/GenieUtils.cpp src/GeoUtils.cpp)
 # add_library(RDataFrameUtils SHARED src/RDataFrameUtils.cpp)
@@ -53,8 +56,6 @@ ROOT_GENERATE_DICTIONARY(RDataFrameUtilsDict RDataFrameUtils.h GHEP/GHepParticle
 MODULE RDataFrameUtils LINKDEF include/RDataFrameUtilsLinkDef.h)
 
 add_executable(AnalyseGenie src/AnalyseGenie.cpp)
-# target_link_directories(AnalyseGenie PUBLIC /storage/gpfs_data/neutrino/users/gi/sand-reco/lib/)
-# target_link_libraries(AnalyseGenie PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils)
 target_link_libraries(AnalyseGenie PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics RDataFrameUtils)
 
 add_executable(AnalyseEDepSim src/AnalyseEDepSim.cpp)
@@ -62,6 +63,12 @@ target_link_libraries(AnalyseEDepSim PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT:
 
 add_executable(AnalyseDigit src/AnalyseDigitize.cpp)
 target_link_libraries(AnalyseDigit PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils)
+
+add_executable(AnalyseDriftReco src/AnalyseDriftReco.cpp)
+target_link_libraries(AnalyseDriftReco PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils)
+
+add_executable(SelectSignal src/SelectSignal.cpp)
+target_link_libraries(SelectSignal PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils)
 
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set (CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}" CACHE PATH "default install path" FORCE )
