@@ -78,6 +78,7 @@ int main(int argc, char* argv[]){
                                                 "EventId",
                                                 "EventType",
                                                 "CCQEonHydrogen",
+                                                "NuDirection",
                                                 "NofEvents",
                                                 "Interaction_vtxX",
                                                 "Interaction_vtxY",
@@ -98,8 +99,8 @@ int main(int argc, char* argv[]){
                                                 "PrimariesFirstHitECAL",
                                                 "PrimariesEDepECAL",
                                                 "PrimariesEmissionAngle",
-                                                "PrimaryHasNoECALHit",
-                                                "PrimaryHasChangedDirection",
+                                                "IsECALHitMissing",
+                                                "DeviationAngle",
                                                 /*
                                                     PREDICTIONS FOR CHANNEL antinu on H
                                                 */
@@ -121,6 +122,8 @@ int main(int argc, char* argv[]){
                                                 "Fired_Cells_x",
                                                 "Fired_Cells_y",
                                                 "Fired_Cells_z",
+                                                "Fired_Cells_adc1",
+                                                "Fired_Cells_adc2",
                                                 "Fired_Cells_tdc1",
                                                 "Fired_Cells_tdc2",
                                                 "who_produced_tdc1",

@@ -83,7 +83,7 @@ const double SUPERMOD_Y_HEIGHT[5] = {3755.16996258, // A1, A2
 
 bool IsInFiducialVolume(std::string volName, std::string units, double x, double y, double z);
 
-bool IsInSMODFiducialVol(int smod, double x, double y, double z);
+bool IsInSMODFiducialVol(int smod, double x, double y);
 
 }//DRIFT
 

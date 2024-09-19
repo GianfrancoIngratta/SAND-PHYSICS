@@ -87,7 +87,7 @@ int GeoUtils::ECAL::GetModuleIdFromPoint(std::string units, TVector3 point){
 
 // ECAL functions ____________________
 
-bool GeoUtils::DRIFT::IsInSMODFiducialVol(int smod, double x, double y, double z){
+bool GeoUtils::DRIFT::IsInSMODFiducialVol(int smod, double x, double y){
     // !!! ALL LENGTHS REQUIRED IN MM !!!
     bool pass_x = (fabs(x - GeoUtils::DRIFT::SAND_CENTER_X) <= GeoUtils::DRIFT::SAND_TRACKER_X_LENGTH/2. - GeoUtils::DRIFT::FIDUCIAL_CUT);
     bool pass_zy = (fabs(y - GeoUtils::DRIFT::SAND_CENTER_Y) <= GeoUtils::DRIFT::SUPERMOD_Y_HEIGHT[smod]/2. - GeoUtils::DRIFT::FIDUCIAL_CUT);
@@ -105,15 +105,15 @@ bool GeoUtils::DRIFT::IsInFiducialVolume(std::string volName, std::string units,
     if(volName_.Contains("Frame")){
         return false;
     }else if(volName_.Contains("_A")){ // one of 2 supermod A
-        return GeoUtils::DRIFT::IsInSMODFiducialVol(0, x, y, z);
+        return GeoUtils::DRIFT::IsInSMODFiducialVol(0, x, y);
     }else if(volName_.Contains("_B")){ // one of 2 supermod B
-        return GeoUtils::DRIFT::IsInSMODFiducialVol(1, x, y, z);
+        return GeoUtils::DRIFT::IsInSMODFiducialVol(1, x, y);
     }else if(volName_.Contains("_C")){ // one of 2 supermod C
-        return GeoUtils::DRIFT::IsInSMODFiducialVol(2, x, y, z);
+        return GeoUtils::DRIFT::IsInSMODFiducialVol(2, x, y);
     }else if(volName_.Contains("_X0")){ // dwstream supermod X0
-        return GeoUtils::DRIFT::IsInSMODFiducialVol(3, x, y, z);
+        return GeoUtils::DRIFT::IsInSMODFiducialVol(3, x, y);
     }else if(volName_.Contains("_X1")){ // dwstream supermod X1
-        return GeoUtils::DRIFT::IsInSMODFiducialVol(4, x, y, z);
+        return GeoUtils::DRIFT::IsInSMODFiducialVol(4, x, y);
     }else{
         return false;
     }

@@ -70,6 +70,8 @@ inline void LOG(TString i, const char* out){
 
 namespace RDFUtils{//RDFUtils
 
+const int DEFAULT_NO_DATA = -999;
+
 // ROOT::RDataFrame InitDF(TString production, const char* tree_name, unsigned int file_index_start = 0, unsigned int file_index_stop = 10);
 TChain* InitTChain(TString production,
                             const char* tree_name,
@@ -282,11 +284,11 @@ ROOT::VecOps::RVec<TLorentzVector> GetPrimariesFirstHitECAL(const ROOT::VecOps::
 template<int coordinate>
 ROOT::VecOps::RVec<double> GetECALHitPos(const ROOT::VecOps::RVec<EDepUtils::track_hits>& vector_primary_hits);
 
-ROOT::VecOps::RVec<double> GetDirectionInECAL(const TVector3& nu_direcion,
+ROOT::VecOps::RVec<double> GetDirectionInECAL(const ROOT::VecOps::RVec<TLorentzVector>& P4,
                                               const double vtxX,
                                               const double vtxY,
                                               const double vtxZ,
-                                              const ROOT::VecOps::RVec<TLorentzVector> primaries_first_hit);
+                                              const ROOT::VecOps::RVec<TLorentzVector>& primaries_first_hit);
 
 } // NOSPILL
 
@@ -308,6 +310,9 @@ int Get_TDC_hindex(const dg_ps& photo_sensor);
 
 template<int side>
 ROOT::VecOps::RVec<double> FiredECALGetTDC(const ROOT::VecOps::RVec<dg_cell>& cells);
+
+template<int side>
+ROOT::VecOps::RVec<double> FiredECALGetADC(const ROOT::VecOps::RVec<dg_cell>& cells);
 
 template<int side>
 ROOT::VecOps::RVec<int> GetHindexOfTDC(const ROOT::VecOps::RVec<dg_cell>& cells);

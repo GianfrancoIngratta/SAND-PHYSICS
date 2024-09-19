@@ -17,7 +17,7 @@ int main(int argc, char* argv[]){
     }
 
     index = atoi(argv[1]);
-    unsigned int files_per_jobs = 1000u;
+    unsigned int files_per_jobs = 2u;
     unsigned int file_start = index * files_per_jobs;
     unsigned int file_stop = index * files_per_jobs + files_per_jobs;
 
@@ -51,7 +51,8 @@ int main(int argc, char* argv[]){
     auto df = RDFUtils::InitDF(chain_drift_reco);
 
     auto dfC = RDFUtils::AddConstantsToDF(df); // add some columns with usefull constants
-    auto dfReco = RDFUtils::RECO::AddColumnsFromDriftReco(dfC);
+    auto dfGENIE = RDFUtils::GENIE::AddColumnsFromGENIE(dfC);
+    auto dfReco = RDFUtils::RECO::AddColumnsFromDriftReco(dfGENIE);
     
     // RDFUtils::PrintColumns(df);
     // throw "";
@@ -62,14 +63,18 @@ int main(int argc, char* argv[]){
         "digit_file_input",
         "edep_event_index",
         // "NofFiredWires",
-        "pt_true",
-        "pt_reco",
-        "p_true",
-        "p_reco",
-        "ptot_true",
-        "ptot_reco",
-        "true_helix_dip_",
-        "reco_helix_dip_",
+        "Antimuon_pt_true",
+        "Antimuon_pt_reco",
+        "Antimuon_p_true",
+        "Antimuon_p_reco",
+        "Antimuon_ptot_true",
+        "Antimuon_ptot_reco",
+        "Antimuon_dip_true",
+        "Antimuon_dip_reco",
+        "Neutrino_reconstructed_P4_GeV",
+        "IncomingNeutrinoP4",
+        "PredictedNeutron_P3_GeV",
+        "FinalStateHadronicSystemTotal4Momentum",
         });
 
     return 0;

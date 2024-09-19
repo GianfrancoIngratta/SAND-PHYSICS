@@ -119,14 +119,10 @@ ROOT::VecOps::RVec<int> RDFUtils::IsNULLTLV(const ROOT::VecOps::RVec<TLorentzVec
 
 ROOT::VecOps::RVec<int> RDFUtils::CompareVectors(const ROOT::VecOps::RVec<double>& V1, 
                                                   const ROOT::VecOps::RVec<double>& V2){
-    ROOT::VecOps::RVec<bool> isEqual;
-    for (size_t i = 0; i < V1.size(); i++)
-    {
-        if(V1[i]==V2[i]){
-            isEqual.push_back(1);
-        }else{
-            isEqual.push_back(0);
-        }
+    ROOT::VecOps::RVec<int> isEqual(V1.size());
+    const double tolerance = 1e-6;
+    for (size_t i = 0; i < V1.size(); i++) {
+        isEqual[i] = (fabs(V1[i] - V2[i]) < tolerance) ? 1 : 0;
     }
     return isEqual;
 }
@@ -681,6 +677,7 @@ ROOT::RDF::RNode RDFUtils::AddConstantsToDF(ROOT::RDataFrame& df){
             //
             .Define("PROTON_MASS_GeV",    [](){return GenieUtils::GetMass(2212);})
             .Define("NEUTRON_MASS_GeV",   [](){return GenieUtils::GetMass(2112);})
+            .Define("NEUTRON_MASS_MeV",   [](){return GenieUtils::GetMass(2112)*1e3;})
             .Define("MUON_MASS_GeV",      [](){return GenieUtils::GetMass(13);})
             ;
 }
@@ -965,10 +962,10 @@ ROOT::VecOps::RVec<int> RDFUtils::EDEPSIM::NOSPILL::GetPrimariesPDG(const ROOT::
 }
 
 ROOT::VecOps::RVec<TLorentzVector> RDFUtils::EDEPSIM::NOSPILL::GetPrimariesP4(const ROOT::VecOps::RVec<TG4PrimaryVertex>& v){
-    ROOT::VecOps::RVec<TLorentzVector> P4;
     auto Primaries = v[0].Particles;
-    for(const auto& primary : Primaries){
-        P4.push_back(primary.GetMomentum());
+    ROOT::VecOps::RVec<TLorentzVector> P4(Primaries.size());
+    for(size_t i = 0; i < Primaries.size(); ++i){
+        P4[i] = Primaries[i].GetMomentum();
     }
     return P4;
 }
@@ -994,10 +991,12 @@ TLorentzVector RDFUtils::EDEPSIM::NOSPILL::GetPrimaryLeptonP4(const ROOT::VecOps
 }
 
 ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::NOSPILL::GetEmissionAngle(const TVector3 nuDirection, const ROOT::VecOps::RVec<TLorentzVector>& primariesP4){
-    ROOT::VecOps::RVec<double> angles;
-    for (const auto& primaryP4 : primariesP4)
+    ROOT::VecOps::RVec<double> angles(primariesP4.size());
+    for (size_t i = 0; i < primariesP4.size(); i++)
     {
-        angles.push_back(primaryP4.Vect().Angle(nuDirection));
+        auto initial_momentum =  primariesP4[i].Vect();
+        double argument = initial_momentum.Dot(nuDirection) / ((initial_momentum.Mag())*(nuDirection.Mag()));
+        angles[i] = acos(argument);
     }
     return angles;
 }
@@ -1074,25 +1073,36 @@ ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::NOSPILL::GetPrimariesEDepECAL(cons
     return primaries_edep;
 }
 
-ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::NOSPILL::GetDirectionInECAL(const TVector3& nu_direcion,
+ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::NOSPILL::GetDirectionInECAL(const ROOT::VecOps::RVec<TLorentzVector>& P4,
                                                                            const double vtxX,
                                                                            const double vtxY,
                                                                            const double vtxZ,
-                                                                           const ROOT::VecOps::RVec<TLorentzVector> primaries_first_hit){
-    /*
-        Get direction of primaries in ECAL wrt neutrino direction
-    */      
-    ROOT::VecOps::RVec<double> directions;                                                                      
-    for(const auto first_hit : primaries_first_hit){
-        // if no hit in ECAL defaul is null TLV, return default directopn -999.
-        if(first_hit.Mag() == 0.){
-            directions.push_back(-999.);
+                                                                           const ROOT::VecOps::RVec<TLorentzVector>& primaries_first_hit){
+    /**
+     * @brief Calculates the angle between the direction of emission of the primary particle and
+     * its direction when it is in ECAL.
+     * For each primary particle, if a valid hit in the ECAL exists, the angle is computed and returned.
+     * If no hit is found, a default value of RDFUtils::DEFAULT_NO_DATA is returned.
+     * @param P4  primaries initial momenta (RVec<TLorentzVector>).
+     * @param vtxX, vtxY, vtxZ  Interaction vertex coordinates (in meters).
+     * @param primaries_first_hit  First hit positions of primary particles in ECAL (RVec<TLorentzVector>).
+     * @return RVec<double>  Angles (in radians) or RDFUtils::DEFAULT_NO_DATA if no hit.
+     * @note Ensure all input coordinates are in meters.
+    */
+     
+    ROOT::VecOps::RVec<double> directions(primaries_first_hit.size());
+    TVector3 vtx_mm = {vtxX * 1e3, vtxY * 1e3, vtxZ * 1e3}; // [mm]                                                             
+    for (size_t i = 0; i < primaries_first_hit.size(); i++)
+    {
+        // if no hit in ECAL defaul is null TLV, return default directopn RDFUtils::DEFAULT_NO_DATA
+        if(primaries_first_hit[i].Mag() == 0.){
+            directions[i] = RDFUtils::DEFAULT_NO_DATA;
         }else{
-            TVector3 hit2vtx = {first_hit.Vect().X() - vtxX * 1e3,
-                                first_hit.Vect().Y() - vtxY * 1e3,
-                                first_hit.Vect().Z() - vtxZ * 1e3};
-
-            directions.push_back(hit2vtx.Angle(nu_direcion));
+            TVector3 intial_momentum = P4[i].Vect();
+            TVector3 first_hit_ = primaries_first_hit[i].Vect(); // [mm]
+            TVector3 direction_in_ECAL = first_hit_ - vtx_mm;
+            double argument = direction_in_ECAL.Dot(intial_momentum) / ((direction_in_ECAL.Mag())*(intial_momentum.Mag()));
+            directions[i] = acos(argument);
         }
     }
     return directions;
@@ -1123,7 +1133,7 @@ ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::NOSPILL::GetECALHitPos(const ROOT:
     ROOT::VecOps::RVec<double> vertices;
     for(const auto& primary_hits : vector_primary_hits){ // run over each primary
         if(primary_hits.hit_LorentzVector.size()==0){ // primary has no hits in the ecal
-            vertices.push_back(-999.);
+            vertices.push_back(RDFUtils::DEFAULT_NO_DATA);
         }else{
             vertices.push_back(primary_hits.hit_LorentzVector[0][coordinate]);
         }
@@ -1133,35 +1143,44 @@ ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::NOSPILL::GetECALHitPos(const ROOT:
 
 ROOT::VecOps::RVec<int> RDFUtils::EDEPSIM::GetHitTrajectoryId(const ROOT::VecOps::RVec<int>& pmts_hindex, 
                                                     TG4Event& ev){
-
+    /**
+    * @brief Retrieves the primary trajectory IDs for ECAL PMT hits.
+    * 
+    * Given a vector of PMT hit indices (`pmts_hindex`) and a TG4Event (`ev`), 
+    * this function returns the primary trajectory IDs associated with each hit. 
+    * If the hit index is invalid or there are no TDC data, it returns a default value (`RDFUtils::DEFAULT_NO_DATA`). 
+    * Throws an exception if the hit index exceeds the available ECAL hits or if the vector sizes don't match.
+    * 
+    * @param pmts_hindex Vector of PMT hit indices.
+    * @param ev TG4Event structure with event data.
+    * @return ROOT::VecOps::RVec<int> Vector of primary trajectory IDs.
+    */                                                    
     ROOT::VecOps::RVec<int> track_ids;
-    for(const auto& pmt_hindex : pmts_hindex){ // index is the id of the hit that generated the tdc
-        if(pmt_hindex == -999){ // pmt hasn't any tdc
-            track_ids.push_back(-999);
+    auto n_hits = ev.SegmentDetectors["EMCalSci"].size();  
+
+    for(const auto& pmt_hindex : pmts_hindex){  // index is the id of the hit that generated the tdc
+        if(pmt_hindex == RDFUtils::DEFAULT_NO_DATA){  // pmt hasn't any tdc
+            track_ids.push_back(RDFUtils::DEFAULT_NO_DATA);
         }else{
-            // int j = 0;
-            // // run over all hits in ECAL
-            // for(auto& hit : ev.SegmentDetectors["EMCalSci"]){
-            //     if(pmt_hindex == j){
-            //         track_ids.push_back(hit.GetPrimaryId());
-            //         break;
-            //     }
-            //     j++;
-            // }
-            if(pmt_hindex > ev.SegmentDetectors["EMCalSci"].size()){
-                std::cout << "i have no idea why hit index is not in ECAL hits \n";
-                throw "";
+            // convert pmt_hindex to unsigned for safe comparison
+            if(static_cast<unsigned>(pmt_hindex) >= n_hits){
+                std::cout << "Hit index is out of bounds for ECAL hits.\n";
+                throw std::out_of_range("Hit index exceeds available ECAL hits.");
             }
+
             auto hit_j = ev.SegmentDetectors["EMCalSci"][pmt_hindex];
             track_ids.push_back(hit_j.GetPrimaryId());
         }
     }
-    if(pmts_hindex.size()!=track_ids.size()){
-        std::cout << "not a 1-1 corrispondance pmt tdc h_index vs track id\n";
-        throw "";
+
+    if(pmts_hindex.size() != track_ids.size()){
+        std::cout << "Mismatch between the size of PMT TDC h_index and track IDs.\n";
+        throw std::runtime_error("1-1 correspondence between PMT TDC h_index and track IDs not found.");
     }
+
     return track_ids;
 }
+
 
 ROOT::VecOps::RVec<TLorentzVector> RDFUtils::EDEPSIM::GetHitFromIndex(const ROOT::VecOps::RVec<int>& h_index, TG4Event& ev){
     /*
@@ -1169,7 +1188,7 @@ ROOT::VecOps::RVec<TLorentzVector> RDFUtils::EDEPSIM::GetHitFromIndex(const ROOT
     */
     ROOT::VecOps::RVec<TLorentzVector> hits;
     for(const auto& j : h_index){
-        if(j == -999){ // incomplete cell, no tdc recorded
+        if(j == RDFUtils::DEFAULT_NO_DATA){ // incomplete cell, no tdc recorded
             hits.push_back({0.,0.,0.,0.}); // dummy TLVector
         }else{
             auto hit = ev.SegmentDetectors["EMCalSci"][j];
@@ -1201,14 +1220,13 @@ ROOT::RDF::RNode RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(ROOT::RDF::RN
              // ECAL hits
              .Define("PrimariesEmissionAngle",  RDFUtils::EDEPSIM::NOSPILL::GetEmissionAngle, {"NuDirection", "PrimariesP4"})
              .Define("PrimariesFirstHitECAL",   RDFUtils::EDEPSIM::NOSPILL::GetPrimariesFirstHitECAL, {"PrimariesHitsECAL"})
-             .Define("PrimaryHasNoECALHit",     RDFUtils::IsNULLTLV, {"PrimariesFirstHitECAL"})
+             .Define("IsECALHitMissing",        RDFUtils::IsNULLTLV, {"PrimariesFirstHitECAL"})
              .Define("PrimariesEDepECAL",       RDFUtils::EDEPSIM::NOSPILL::GetPrimariesEDepECAL, {"PrimariesHitsECAL"})
-             .Define("PrimariesDirectionInECAL",RDFUtils::EDEPSIM::NOSPILL::GetDirectionInECAL,  {"NuDirection",
+             .Define("DeviationAngle",RDFUtils::EDEPSIM::NOSPILL::GetDirectionInECAL,  {"PrimariesP4",
                                                                                                   "Interaction_vtxX",
                                                                                                   "Interaction_vtxY",
                                                                                                   "Interaction_vtxZ",
                                                                                                   "PrimariesFirstHitECAL"})
-             .Define("PrimaryHasChangedDirection", RDFUtils::CompareVectors, {"PrimariesEmissionAngle", "PrimariesDirectionInECAL"})                                                                                                  
              ;
 }
 
@@ -1331,23 +1349,44 @@ ROOT::VecOps::RVec<TLorentzVector> RDFUtils::DIGIT::GetClusterX4(const ROOT::Vec
 
 template<int side>
 ROOT::VecOps::RVec<double> RDFUtils::DIGIT::FiredECALGetTDC(const ROOT::VecOps::RVec<dg_cell>& cells){
-    ROOT::VecOps::RVec<double> TDCs;
-    for(const auto& cell : cells){
+    ROOT::VecOps::RVec<double> TDCs(cells.size());
+    for (size_t i = 0; i < cells.size(); i++){
         if(side==1){ // cell side 1
-            if(cell.ps1.size()!=0){
-                TDCs.push_back(cell.ps1[0].tdc);
+            if(cells[i].ps1.size()!=0){
+                TDCs[i] = cells[i].ps1[0].tdc;
             }else{
-                TDCs.push_back(0.);
+                TDCs[i] = 0.;
             }
         }else{ // cell side 2
-            if(cell.ps2.size()!=0){
-                TDCs.push_back(cell.ps2[0].tdc);
+            if(cells[i].ps2.size()!=0){
+                TDCs[i] = cells[i].ps2[0].tdc;
             }else{
-                TDCs.push_back(0.);
+                TDCs[i] = 0.;
             }
         }
     }
     return TDCs;
+}
+
+template<int side>
+ROOT::VecOps::RVec<double> RDFUtils::DIGIT::FiredECALGetADC(const ROOT::VecOps::RVec<dg_cell>& cells){
+    ROOT::VecOps::RVec<double> ADCs(cells.size());
+    for (size_t i = 0; i < cells.size(); i++){
+        if(side==1){ // cell side 1
+            if(cells[i].ps1.size()!=0){
+                ADCs[i] = cells[i].ps1[0].adc;
+            }else{
+                ADCs[i] = 0.;
+            }
+        }else{ // cell side 2
+            if(cells[i].ps2.size()!=0){
+                ADCs[i] = cells[i].ps2[0].adc;
+            }else{
+                ADCs[i] = 0.;
+            }
+        }
+    }
+    return ADCs;
 }
 
 int RDFUtils::DIGIT::Get_TDC_hindex(const dg_ps& photo_sensor){
@@ -1356,7 +1395,7 @@ int RDFUtils::DIGIT::Get_TDC_hindex(const dg_ps& photo_sensor){
             return pe.h_index;
         }
     }
-    return -999;
+    return RDFUtils::DEFAULT_NO_DATA;
 }   
 
 template<int side>
@@ -1370,13 +1409,13 @@ ROOT::VecOps::RVec<int> RDFUtils::DIGIT::GetHindexOfTDC(const ROOT::VecOps::RVec
             if(cell.ps1.size()!=0){
                 h_indices.push_back(RDFUtils::DIGIT::Get_TDC_hindex(cell.ps1[0]));
             }else{// if cell has no TDC, set defaul index
-                h_indices.push_back(-999);
+                h_indices.push_back(RDFUtils::DEFAULT_NO_DATA);
             }
         }else if(side == 2){ // cell side 1
             if(cell.ps2.size()!=0){
                 h_indices.push_back(RDFUtils::DIGIT::Get_TDC_hindex(cell.ps2[0]));
             }else{
-                h_indices.push_back(-999);
+                h_indices.push_back(RDFUtils::DEFAULT_NO_DATA);
             }
         }else{
             std::cout << "calorimeter has not side " << side << "\n";
@@ -1468,10 +1507,12 @@ ROOT::RDF::RNode RDFUtils::DIGIT::AddColumnsFromDigit(ROOT::RDF::RNode& df){
             // .Filter("EventId==506")
             .Define("isCellComplete",               RDFUtils::DIGIT::IsCellComplete, {"dg_cell"})
             .Define("Fired_Cells_tdc1",             RDFUtils::DIGIT::FiredECALGetTDC<1>, {"dg_cell"})
+            .Define("Fired_Cells_adc1",             RDFUtils::DIGIT::FiredECALGetADC<1>, {"dg_cell"})
             .Define("Fired_Cell_tdc1_hindex",       RDFUtils::DIGIT::GetHindexOfTDC<1>, {"dg_cell"})
             .Define("Fired_Cell_true_hit1",         RDFUtils::EDEPSIM::GetHitFromIndex, {"Fired_Cell_tdc1_hindex", "Event"})
             .Define("who_produced_tdc1",            RDFUtils::EDEPSIM::GetHitTrajectoryId, {"Fired_Cell_tdc1_hindex", "Event"})
             .Define("Fired_Cells_tdc2",             RDFUtils::DIGIT::FiredECALGetTDC<2>, {"dg_cell"})
+            .Define("Fired_Cells_adc2",             RDFUtils::DIGIT::FiredECALGetADC<2>, {"dg_cell"})
             .Define("Fired_Cell_tdc2_hindex",       RDFUtils::DIGIT::GetHindexOfTDC<2>, {"dg_cell"})
             .Define("Fired_Cell_true_hit2",         RDFUtils::EDEPSIM::GetHitFromIndex, {"Fired_Cell_tdc2_hindex", "Event"})
             .Define("who_produced_tdc2",            RDFUtils::EDEPSIM::GetHitTrajectoryId, {"Fired_Cell_tdc2_hindex", "Event"})
@@ -1502,10 +1543,28 @@ int RDFUtils::RECO::GetNofFiredWires(const ROOT::VecOps::RVec<dg_wire>& wires){
 
 ROOT::RDF::RNode RDFUtils::RECO::AddColumnsFromDriftReco(ROOT::RDF::RNode& df){
     return df
+            // first filter good events (in FV and with enough digits)
+            .Filter("KeepThisEvent==1")
             .Define("NofFiredWires", RDFUtils::RECO::GetNofFiredWires, {"fired_wires"})
-            .Alias("true_helix_dip_", "true_helix.dip_")
-            .Alias("reco_helix_dip_", "reco_helix.dip_")
-            .Define("ptot_true", "sqrt(p_true.X()*p_true.X() + p_true.Y()*p_true.Y() + p_true.Z()*p_true.Z())")
-            .Define("ptot_reco", "sqrt(p_true.X()*p_reco.X() + p_true.Y()*p_reco.Y() + p_true.Z()*p_reco.Z())")
+            .Alias("Antimuon_dip_true", "true_helix.dip_")
+            .Alias("Antimuon_dip_reco", "reco_helix.dip_")
+            .Alias("Antimuon_pt_true","pt_true")
+            .Alias("Antimuon_pt_reco","pt_reco")
+            .Alias("Antimuon_p_true","p_true")
+            .Alias("Antimuon_p_reco","p_reco")
+            .Define("Antimuon_ptot_true", "sqrt(p_true.X()*p_true.X() + p_true.Y()*p_true.Y() + p_true.Z()*p_true.Z())")
+            .Define("Antimuon_ptot_reco", "sqrt(p_true.X()*p_reco.X() + p_true.Y()*p_reco.Y() + p_true.Z()*p_reco.Z())")
+            .Define("Antimuon_reconstructed_P4", 
+            [](const TVector3& P3, const double m, const double ptot){TLorentzVector v = {P3, sqrt(m*m + ptot*ptot)}; return v;}, 
+            {"Antimuon_p_reco", "NEUTRON_MASS_MeV","Antimuon_ptot_reco"})
+            .Define("Antimuon_reconstructed_P4_GeV",    "Antimuon_reconstructed_P4 * 1e3")
+            // predicted neutron form reconstructed muon
+            .Define("Neutrino_reconstructed_P4_GeV",    RDFUtils::GENIE::GetNup4FromMu, {"PROTON_MASS_GeV",
+                                                                                     "NEUTRON_MASS_GeV",
+                                                                                     "MUON_MASS_GeV",
+                                                                                     "Antimuon_reconstructed_P4_GeV",
+                                                                                     "NuDirection",
+                                                                                    })
+            .Define("PredictedNeutron_P3_GeV",          "Neutrino_reconstructed_P4_GeV.Vect() - Antimuon_reconstructed_P4_GeV.Vect()")
     ;
 }
