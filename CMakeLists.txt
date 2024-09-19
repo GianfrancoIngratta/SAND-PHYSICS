@@ -6,17 +6,20 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_PLATFORM_INDEPENDENT_CODE ON)
 
+# set output directory
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+set(CMAKE_INSTALL_LIBDIR "${CMAKE_INSTALL_PREFIX}/lib")
 
 # find_package(ROOT REQUIRED COMPONENTS RIO Net)
 find_package(ROOT REQUIRED COMPONENTS Geom Physics Matrix MathCore RIO Net Tree)
 find_package(EDepSim)
 
-find_package(SandReco)
+# find_package(SandReco)
 include_directories(${PROJECT_SOURCE_DIR}/include /storage/gpfs_data/neutrino/users/gi/sand-reco/include)
 
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}" "/storage/gpfs_data/neutrino/users/gi/STT-DESIGN-STUDY/FastReco")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # Creates a libGenieUtils shared library
 add_library(GenieUtils SHARED src/GenieUtils.cpp)
@@ -33,39 +36,96 @@ target_link_libraries(GenieUtils PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::Tre
                       log4cpp
                       EDepSim::edepsim_io)
 
-# Creates a libRecoUtils shared library
-add_library(RecoUtils SHARED src/RecoUtils.cpp)
-target_include_directories(RecoUtils PUBLIC /storage/gpfs_data/neutrino/users/gi/sand-reco/include)
-target_link_directories(RecoUtils PUBLIC /storage/gpfs_data/neutrino/users/gi/sand-reco/lib)
-target_link_libraries(RecoUtils PUBLIC ROOT::RIO ROOT::Net ROOT::EG)
-
-# Creates a libFastRecoUtils shared library
-add_library(evtinfo SHARED IMPORTED) # or STATIC instead of SHARED
-set_target_properties(evtinfo PROPERTIES
-  IMPORTED_LOCATION "/storage/gpfs_data/neutrino/users/gi/STT-DESIGN-STUDY/FastReco/build/libevtinfo.so"
-  INTERFACE_INCLUDE_DIRECTORIES "/storage/gpfs_data/neutrino/users/gi/STT-DESIGN-STUDY/FastReco"
-)
-
-# Creates a libUtils shared library
-add_library(RDataFrameUtils SHARED src/RDataFrameUtils.cpp)
-target_link_libraries(RDataFrameUtils PUBLIC ROOT::RIO ROOT::Net ROOT::ROOTDataFrame GenieUtils RecoUtils evtinfo)
-
 add_library(GeoUtils SHARED src/GeoUtils.cpp)
 target_link_libraries(GeoUtils PUBLIC ROOT::RIO ROOT::Net ROOT::ROOTDataFrame EDepSim::edepsim_io)
 
+# add_library(SelectSignalUtils SHARED src/SelectSignal.cpp)
+# target_link_libraries(SelectSignalUtils PUBLIC ROOT::RIO ROOT::Net ROOT::ROOTDataFrame EDepSim::edepsim_io GenieUtils)
+
+# Creates a libUtils shared library
+add_library(RDataFrameUtils SHARED src/RDataFrameUtils.cpp src/GenieUtils.cpp src/GeoUtils.cpp)
+# add_library(RDataFrameUtils SHARED src/RDataFrameUtils.cpp)
+target_include_directories(RDataFrameUtils PUBLIC
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+  "$<INSTALL_INTERFACE:include>"
+  /opt/exp_software/neutrino/GENIEv2/Generator/src
+  /opt/exp_software/neutrino/LHAPDF5/lib)
+target_link_libraries(RDataFrameUtils PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame
+ROOT::Physics ROOT::Geom ROOT::EG ROOT::EGPythia6 GenieUtils GeoUtils)
+ROOT_GENERATE_DICTIONARY(RDataFrameUtilsDict RDataFrameUtils.h GHEP/GHepParticle.h 
+MODULE RDataFrameUtils LINKDEF include/RDataFrameUtilsLinkDef.h)
+
 add_executable(AnalyseGenie src/AnalyseGenie.cpp)
-target_link_libraries(AnalyseGenie PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils)
+target_link_libraries(AnalyseGenie PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics RDataFrameUtils)
 
 add_executable(AnalyseEDepSim src/AnalyseEDepSim.cpp)
 target_link_libraries(AnalyseEDepSim PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils)
 
-add_executable(AnalyseFastReco src/AnalyseFastReco.cpp)
-target_link_libraries(AnalyseFastReco PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics RDataFrameUtils GeoUtils)
+add_executable(AnalyseDigit src/AnalyseDigitize.cpp)
+target_link_libraries(AnalyseDigit PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils)
 
-add_executable(AnalyseSandReco src/AnalyseSandReco.cpp)
-target_link_libraries(AnalyseSandReco PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics 
-GenieUtils RDataFrameUtils GeoUtils RecoUtils)
+add_executable(AnalyseDriftReco src/AnalyseDriftReco.cpp)
+target_link_libraries(AnalyseDriftReco PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils)
 
-install(TARGETS  GenieUtils RDataFrameUtils AnalyseGenie AnalyseFastReco AnalyseSandReco
+add_executable(SelectSignal src/SelectSignal.cpp)
+target_link_libraries(SelectSignal PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils)
+
+if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set (CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}" CACHE PATH "default install path" FORCE )
+endif()
+
+install(TARGETS  GenieUtils RDataFrameUtils GeoUtils AnalyseGenie
+        EXPORT SandPhysicsTargets
         RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin"
-        LIBRARY DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+        LIBRARY DESTINATION "${CMAKE_INSTALL_PREFIX}/lib"
+        ARCHIVE DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+
+install(
+  DIRECTORY "${CMAKE_BINARY_DIR}/."
+  DESTINATION "${CMAKE_INSTALL_PREFIX}/lib"
+  FILES_MATCHING
+  PATTERN "*.pcm"
+  PATTERN "*.rootmap"
+  PATTERN "lib" EXCLUDE
+  PATTERN "bin" EXCLUDE
+  PATTERN "CMakeFiles" EXCLUDE)
+
+install(
+  DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include
+  DESTINATION "${CMAKE_INSTALL_PREFIX}"
+  PATTERN "RDataFrameUtilsLinkDef.h" EXCLUDE)
+
+  # ############################################################
+#
+# Prepare the package so that it can be used with the find_package interface.
+#
+# ############################################################
+
+# Include module with function 'write_basic_package_version_file'
+include(CMakePackageConfigHelpers)
+
+# Build the targets description so that the package can be configured
+# using find_package.
+install(EXPORT SandPhysicsTargets
+  NAMESPACE SandPhysics::
+  DESTINATION lib/cmake/SandPhysics)
+
+# Write the 'SandPhysicsConfigVersion.cmake' file which can be used to
+# check if a version meets the requested properties.
+write_basic_package_version_file(
+  SandPhysicsConfigVersion.cmake
+  COMPATIBILITY SameMajorVersion)
+
+# Write the 'SandPhysicsConfig.cmake' file so that a user package can
+# access this with find_package.
+# configure_package_config_file(
+#   PackageConfig.cmake.in
+#   SandPhysicsConfig.cmake
+#   PATH_VARS CMAKE_INSTALL_PREFIX
+#   INSTALL_DESTINATION lib/cmake/SandPhysics)
+
+# Install the config files.
+install(FILES
+  ${CMAKE_CURRENT_BINARY_DIR}/SandPhysicsConfig.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/SandPhysicsConfigVersion.cmake
+  DESTINATION lib/cmake/SandPhysics)

@@ -1,0 +1,668 @@
+000 (973329.000.000) 2024-09-06 14:35:12 Job submitted from host: <131.154.192.242:9618?addrs=131.154.192.242-9618&alias=sn01-htc.cr.cnaf.infn.it&noUDP&sock=schedd_19741_4332>
+...
+000 (973329.001.000) 2024-09-06 14:35:12 Job submitted from host: <131.154.192.242:9618?addrs=131.154.192.242-9618&alias=sn01-htc.cr.cnaf.infn.it&noUDP&sock=schedd_19741_4332>
+...
+040 (973329.000.000) 2024-09-06 14:35:34 Started transferring input files
+	Transferring to host: <131.154.168.71:9618?addrs=131.154.168.71-9618&alias=cn-leo-069.cr.cnaf.infn.it&noUDP&sock=slot1_17_44714_ced3_168663>
+...
+007 (973329.000.000) 2024-09-06 14:35:34 Shadow exception!
+	Error from slot1_17@cn-leo-069.cr.cnaf.infn.it: SHADOW at 131.154.192.242 failed to send file(s) to <131.154.168.71:38868>: |Error: reading from file /opt/exp_software/neutrino/LHAPDF6/usr/lib64/libLHAPDF-6.2.1.so: (errno 2) No such file or directory; STARTER failed to receive file(s) from <131.154.192.242:9618>
+	0  -  Run Bytes Sent By Job
+	873  -  Run Bytes Received By Job
+...
+040 (973329.001.000) 2024-09-06 14:35:34 Started transferring input files
+	Transferring to host: <131.154.168.62:9618?addrs=131.154.168.62-9618&alias=cn-leo-060.cr.cnaf.infn.it&noUDP&sock=slot1_53_29657_ca0f_50111>
+...
+007 (973329.001.000) 2024-09-06 14:35:34 Shadow exception!
+	Error from slot1_53@cn-leo-060.cr.cnaf.infn.it: SHADOW at 131.154.192.242 failed to send file(s) to <131.154.168.62:46112>: |Error: reading from file /opt/exp_software/neutrino/LHAPDF6/usr/lib64/libLHAPDF-6.2.1.so: (errno 2) No such file or directory; STARTER failed to receive file(s) from <131.154.192.242:9618>
+	0  -  Run Bytes Sent By Job
+	873  -  Run Bytes Received By Job
+...
+012 (973329.000.000) 2024-09-06 14:35:34 Job was held.
+	Transfer input files failure at access point sn01-htc while sending files to execution point slot1_17@cn-leo-069.cr.cnaf.infn.it. Details: reading from file /opt/exp_software/neutrino/LHAPDF6/usr/lib64/libLHAPDF-6.2.1.so: (errno 2) No such file or directory
+	Code 13 Subcode 2
+...
+012 (973329.001.000) 2024-09-06 14:35:34 Job was held.
+	Transfer input files failure at access point sn01-htc while sending files to execution point slot1_53@cn-leo-060.cr.cnaf.infn.it. Details: reading from file /opt/exp_software/neutrino/LHAPDF6/usr/lib64/libLHAPDF-6.2.1.so: (errno 2) No such file or directory
+	Code 13 Subcode 2
+...
+009 (973329.000.000) 2024-09-06 14:39:41 Job was aborted.
+	via condor_rm (by user gianfrancoingratta)
+...
+009 (973329.001.000) 2024-09-06 14:39:41 Job was aborted.
+	via condor_rm (by user gianfrancoingratta)
+...
+000 (973481.000.000) 2024-09-06 17:43:49 Job submitted from host: <131.154.192.242:9618?addrs=131.154.192.242-9618&alias=sn01-htc.cr.cnaf.infn.it&noUDP&sock=schedd_19741_4332>
+...
+000 (973481.001.000) 2024-09-06 17:43:49 Job submitted from host: <131.154.192.242:9618?addrs=131.154.192.242-9618&alias=sn01-htc.cr.cnaf.infn.it&noUDP&sock=schedd_19741_4332>
+...
+009 (973481.000.000) 2024-09-06 17:44:04 Job was aborted.
+	via condor_rm (by user gianfrancoingratta)
+...
+009 (973481.001.000) 2024-09-06 17:44:04 Job was aborted.
+	via condor_rm (by user gianfrancoingratta)
+...
+000 (973482.000.000) 2024-09-06 17:44:36 Job submitted from host: <131.154.192.242:9618?addrs=131.154.192.242-9618&alias=sn01-htc.cr.cnaf.infn.it&noUDP&sock=schedd_19741_4332>
+...
+040 (973482.000.000) 2024-09-06 17:45:10 Started transferring input files
+	Transferring to host: <131.154.168.70:9618?addrs=131.154.168.70-9618&alias=cn-leo-068.cr.cnaf.infn.it&noUDP&sock=slot1_22_45781_9b1f_14960>
+...
+040 (973482.000.000) 2024-09-06 17:45:10 Finished transferring input files
+...
+001 (973482.000.000) 2024-09-06 17:45:11 Job executing on host: <131.154.168.70:9618?addrs=131.154.168.70-9618&alias=cn-leo-068.cr.cnaf.infn.it&noUDP&sock=startd_45774_bc33>
+	SlotName: slot1_22@cn-leo-068.cr.cnaf.infn.it
+	CondorScratchDir = "/home/condor/execute//dir_1453"
+	Cpus = 1
+	Disk = 2929233
+	Memory = 128
+...
+006 (973482.000.000) 2024-09-06 17:45:19 Image size of job updated: 57204
+	56  -  MemoryUsage of job (MB)
+	57204  -  ResidentSetSize of job (KB)
+...
+006 (973482.000.000) 2024-09-06 17:50:19 Image size of job updated: 343152
+	336  -  MemoryUsage of job (MB)
+	343152  -  ResidentSetSize of job (KB)
+...
+006 (973482.000.000) 2024-09-06 17:55:19 Image size of job updated: 344388
+	337  -  MemoryUsage of job (MB)
+	344388  -  ResidentSetSize of job (KB)
+...
+006 (973482.000.000) 2024-09-06 17:55:59 Image size of job updated: 519732
+	508  -  MemoryUsage of job (MB)
+	519424  -  ResidentSetSize of job (KB)
+...
+004 (973482.000.000) 2024-09-06 17:55:59 Job was evicted.
+	(0) CPU times
+		Usr 0 00:00:11, Sys 0 00:00:01  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+	0  -  Run Bytes Sent By Job
+	873  -  Run Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :                 1         1 
+	   Disk (KB)            :       23        1   2929233 
+	   Memory (MB)          :      508        1       128 
+...
+009 (973482.000.000) 2024-09-06 17:55:59 Job was aborted.
+	via condor_rm (by user gianfrancoingratta)
+...
+000 (973488.000.000) 2024-09-06 17:56:15 Job submitted from host: <131.154.192.242:9618?addrs=131.154.192.242-9618&alias=sn01-htc.cr.cnaf.infn.it&noUDP&sock=schedd_19741_4332>
+...
+000 (973488.001.000) 2024-09-06 17:56:15 Job submitted from host: <131.154.192.242:9618?addrs=131.154.192.242-9618&alias=sn01-htc.cr.cnaf.infn.it&noUDP&sock=schedd_19741_4332>
+...
+000 (973488.002.000) 2024-09-06 17:56:15 Job submitted from host: <131.154.192.242:9618?addrs=131.154.192.242-9618&alias=sn01-htc.cr.cnaf.infn.it&noUDP&sock=schedd_19741_4332>
+...
+000 (973488.003.000) 2024-09-06 17:56:15 Job submitted from host: <131.154.192.242:9618?addrs=131.154.192.242-9618&alias=sn01-htc.cr.cnaf.infn.it&noUDP&sock=schedd_19741_4332>
+...
+000 (973488.004.000) 2024-09-06 17:56:15 Job submitted from host: <131.154.192.242:9618?addrs=131.154.192.242-9618&alias=sn01-htc.cr.cnaf.infn.it&noUDP&sock=schedd_19741_4332>
+...
+000 (973488.005.000) 2024-09-06 17:56:15 Job submitted from host: <131.154.192.242:9618?addrs=131.154.192.242-9618&alias=sn01-htc.cr.cnaf.infn.it&noUDP&sock=schedd_19741_4332>
+...
+000 (973488.006.000) 2024-09-06 17:56:15 Job submitted from host: <131.154.192.242:9618?addrs=131.154.192.242-9618&alias=sn01-htc.cr.cnaf.infn.it&noUDP&sock=schedd_19741_4332>
+...
+000 (973488.007.000) 2024-09-06 17:56:15 Job submitted from host: <131.154.192.242:9618?addrs=131.154.192.242-9618&alias=sn01-htc.cr.cnaf.infn.it&noUDP&sock=schedd_19741_4332>
+...
+000 (973488.008.000) 2024-09-06 17:56:15 Job submitted from host: <131.154.192.242:9618?addrs=131.154.192.242-9618&alias=sn01-htc.cr.cnaf.infn.it&noUDP&sock=schedd_19741_4332>
+...
+000 (973488.009.000) 2024-09-06 17:56:15 Job submitted from host: <131.154.192.242:9618?addrs=131.154.192.242-9618&alias=sn01-htc.cr.cnaf.infn.it&noUDP&sock=schedd_19741_4332>
+...
+000 (973488.010.000) 2024-09-06 17:56:15 Job submitted from host: <131.154.192.242:9618?addrs=131.154.192.242-9618&alias=sn01-htc.cr.cnaf.infn.it&noUDP&sock=schedd_19741_4332>
+...
+040 (973488.000.000) 2024-09-06 17:56:44 Started transferring input files
+	Transferring to host: <131.154.168.70:9618?addrs=131.154.168.70-9618&alias=cn-leo-068.cr.cnaf.infn.it&noUDP&sock=slot1_22_45781_9b1f_15001>
+...
+040 (973488.000.000) 2024-09-06 17:56:44 Finished transferring input files
+...
+040 (973488.002.000) 2024-09-06 17:56:44 Started transferring input files
+	Transferring to host: <131.154.168.34:9618?addrs=131.154.168.34-9618&alias=cn-leo-032.cr.cnaf.infn.it&noUDP&sock=slot1_20_30043_c2df_54462>
+...
+040 (973488.003.000) 2024-09-06 17:56:44 Started transferring input files
+	Transferring to host: <131.154.168.39:9618?addrs=131.154.168.39-9618&alias=cn-leo-037.cr.cnaf.infn.it&noUDP&sock=slot1_26_30327_dd6a_49453>
+...
+040 (973488.003.000) 2024-09-06 17:56:44 Finished transferring input files
+...
+040 (973488.002.000) 2024-09-06 17:56:44 Finished transferring input files
+...
+040 (973488.004.000) 2024-09-06 17:56:44 Started transferring input files
+	Transferring to host: <131.154.168.101:9618?addrs=131.154.168.101-9618&alias=cn-leo-099.cr.cnaf.infn.it&noUDP&sock=slot1_12_37089_4e3d_49847>
+...
+040 (973488.001.000) 2024-09-06 17:56:44 Started transferring input files
+	Transferring to host: <131.154.168.28:9618?addrs=131.154.168.28-9618&alias=cn-leo-026.cr.cnaf.infn.it&noUDP&sock=slot1_43_8764_c7dd_49393>
+...
+040 (973488.004.000) 2024-09-06 17:56:44 Finished transferring input files
+...
+040 (973488.001.000) 2024-09-06 17:56:44 Finished transferring input files
+...
+040 (973488.005.000) 2024-09-06 17:56:44 Started transferring input files
+	Transferring to host: <131.154.168.30:9618?addrs=131.154.168.30-9618&alias=cn-leo-028.cr.cnaf.infn.it&noUDP&sock=slot1_28_30290_cb89_77248>
+...
+040 (973488.005.000) 2024-09-06 17:56:44 Finished transferring input files
+...
+040 (973488.006.000) 2024-09-06 17:56:44 Started transferring input files
+	Transferring to host: <131.154.168.87:9618?addrs=131.154.168.87-9618&alias=cn-leo-085.cr.cnaf.infn.it&noUDP&sock=slot1_63_30134_e102_53501>
+...
+040 (973488.006.000) 2024-09-06 17:56:44 Finished transferring input files
+...
+040 (973488.010.000) 2024-09-06 17:56:44 Started transferring input files
+	Transferring to host: <131.154.168.16:9618?addrs=131.154.168.16-9618&alias=cn-leo-014.cr.cnaf.infn.it&noUDP&sock=slot1_6_30092_4941_54220>
+...
+040 (973488.007.000) 2024-09-06 17:56:44 Started transferring input files
+	Transferring to host: <131.154.168.32:9618?addrs=131.154.168.32-9618&alias=cn-leo-030.cr.cnaf.infn.it&noUDP&sock=slot1_30_46130_820d_15828>
+...
+040 (973488.010.000) 2024-09-06 17:56:44 Finished transferring input files
+...
+040 (973488.007.000) 2024-09-06 17:56:44 Finished transferring input files
+...
+040 (973488.008.000) 2024-09-06 17:56:44 Started transferring input files
+	Transferring to host: <131.154.168.32:9618?addrs=131.154.168.32-9618&alias=cn-leo-030.cr.cnaf.infn.it&noUDP&sock=slot1_38_46130_820d_15829>
+...
+040 (973488.008.000) 2024-09-06 17:56:44 Finished transferring input files
+...
+040 (973488.009.000) 2024-09-06 17:56:44 Started transferring input files
+	Transferring to host: <131.154.168.32:9618?addrs=131.154.168.32-9618&alias=cn-leo-030.cr.cnaf.infn.it&noUDP&sock=slot1_42_46130_820d_15830>
+...
+040 (973488.009.000) 2024-09-06 17:56:44 Finished transferring input files
+...
+001 (973488.000.000) 2024-09-06 17:56:45 Job executing on host: <131.154.168.70:9618?addrs=131.154.168.70-9618&alias=cn-leo-068.cr.cnaf.infn.it&noUDP&sock=startd_45774_bc33>
+	SlotName: slot1_22@cn-leo-068.cr.cnaf.infn.it
+	CondorScratchDir = "/home/condor/execute//dir_90011"
+	Cpus = 1
+	Disk = 2929233
+	Memory = 128
+...
+001 (973488.002.000) 2024-09-06 17:56:45 Job executing on host: <131.154.168.34:9618?addrs=131.154.168.34-9618&alias=cn-leo-032.cr.cnaf.infn.it&noUDP&sock=startd_30019_1d98>
+	SlotName: slot1_20@cn-leo-032.cr.cnaf.infn.it
+	CondorScratchDir = "/home/condor/execute//dir_59219"
+	Cpus = 1
+	Disk = 3109601
+	Memory = 128
+...
+001 (973488.003.000) 2024-09-06 17:56:45 Job executing on host: <131.154.168.39:9618?addrs=131.154.168.39-9618&alias=cn-leo-037.cr.cnaf.infn.it&noUDP&sock=startd_30304_9a15>
+	SlotName: slot1_26@cn-leo-037.cr.cnaf.infn.it
+	CondorScratchDir = "/home/condor/execute//dir_49255"
+	Cpus = 1
+	Disk = 3109601
+	Memory = 128
+...
+001 (973488.004.000) 2024-09-06 17:56:45 Job executing on host: <131.154.168.101:9618?addrs=131.154.168.101-9618&alias=cn-leo-099.cr.cnaf.infn.it&noUDP&sock=startd_37083_6e9a>
+	SlotName: slot1_12@cn-leo-099.cr.cnaf.infn.it
+	CondorScratchDir = "/home/condor/execute//dir_81969"
+	Cpus = 1
+	Disk = 3109592
+	Memory = 128
+...
+001 (973488.001.000) 2024-09-06 17:56:45 Job executing on host: <131.154.168.28:9618?addrs=131.154.168.28-9618&alias=cn-leo-026.cr.cnaf.infn.it&noUDP&sock=startd_8758_d688>
+	SlotName: slot1_43@cn-leo-026.cr.cnaf.infn.it
+	CondorScratchDir = "/home/condor/execute//dir_91268"
+	Cpus = 1
+	Disk = 3214384
+	Memory = 128
+...
+001 (973488.005.000) 2024-09-06 17:56:45 Job executing on host: <131.154.168.30:9618?addrs=131.154.168.30-9618&alias=cn-leo-028.cr.cnaf.infn.it&noUDP&sock=startd_30284_e231>
+	SlotName: slot1_28@cn-leo-028.cr.cnaf.infn.it
+	CondorScratchDir = "/home/condor/execute//dir_85499"
+	Cpus = 1
+	Disk = 3109593
+	Memory = 128
+...
+001 (973488.006.000) 2024-09-06 17:56:45 Job executing on host: <131.154.168.87:9618?addrs=131.154.168.87-9618&alias=cn-leo-085.cr.cnaf.infn.it&noUDP&sock=startd_30110_88b6>
+	SlotName: slot1_63@cn-leo-085.cr.cnaf.infn.it
+	CondorScratchDir = "/home/condor/execute//dir_74175"
+	Cpus = 1
+	Disk = 3109601
+	Memory = 128
+...
+001 (973488.010.000) 2024-09-06 17:56:45 Job executing on host: <131.154.168.16:9618?addrs=131.154.168.16-9618&alias=cn-leo-014.cr.cnaf.infn.it&noUDP&sock=startd_30069_6954>
+	SlotName: slot1_6@cn-leo-014.cr.cnaf.infn.it
+	CondorScratchDir = "/home/condor/execute//dir_28701"
+	Cpus = 1
+	Disk = 3109601
+	Memory = 128
+...
+001 (973488.008.000) 2024-09-06 17:56:45 Job executing on host: <131.154.168.32:9618?addrs=131.154.168.32-9618&alias=cn-leo-030.cr.cnaf.infn.it&noUDP&sock=startd_46123_1ec0>
+	SlotName: slot1_38@cn-leo-030.cr.cnaf.infn.it
+	CondorScratchDir = "/home/condor/execute//dir_84867"
+	Cpus = 1
+	Disk = 2929233
+	Memory = 128
+...
+001 (973488.007.000) 2024-09-06 17:56:45 Job executing on host: <131.154.168.32:9618?addrs=131.154.168.32-9618&alias=cn-leo-030.cr.cnaf.infn.it&noUDP&sock=startd_46123_1ec0>
+	SlotName: slot1_30@cn-leo-030.cr.cnaf.infn.it
+	CondorScratchDir = "/home/condor/execute//dir_84865"
+	Cpus = 1
+	Disk = 2929233
+	Memory = 128
+...
+001 (973488.009.000) 2024-09-06 17:56:45 Job executing on host: <131.154.168.32:9618?addrs=131.154.168.32-9618&alias=cn-leo-030.cr.cnaf.infn.it&noUDP&sock=startd_46123_1ec0>
+	SlotName: slot1_42@cn-leo-030.cr.cnaf.infn.it
+	CondorScratchDir = "/home/condor/execute//dir_84873"
+	Cpus = 1
+	Disk = 2929233
+	Memory = 128
+...
+006 (973488.010.000) 2024-09-06 17:56:51 Image size of job updated: 309268
+	233  -  MemoryUsage of job (MB)
+	237980  -  ResidentSetSize of job (KB)
+...
+040 (973488.010.000) 2024-09-06 17:56:51 Started transferring output files
+...
+040 (973488.010.000) 2024-09-06 17:56:51 Finished transferring output files
+...
+005 (973488.010.000) 2024-09-06 17:56:51 Job terminated.
+	(1) Normal termination (return value 134)
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	55818  -  Run Bytes Sent By Job
+	873  -  Run Bytes Received By Job
+	55818  -  Total Bytes Sent By Job
+	873  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :                 1         1 
+	   Disk (KB)            :       69        1   3109601 
+	   Memory (MB)          :      233        1       128 
+
+	Job terminated of its own accord at 2024-09-06T15:56:51Z with exit-code 134.
+...
+006 (973488.000.000) 2024-09-06 17:56:53 Image size of job updated: 74880
+	74  -  MemoryUsage of job (MB)
+	74776  -  ResidentSetSize of job (KB)
+...
+006 (973488.002.000) 2024-09-06 17:56:53 Image size of job updated: 121564
+	119  -  MemoryUsage of job (MB)
+	121564  -  ResidentSetSize of job (KB)
+...
+006 (973488.003.000) 2024-09-06 17:56:53 Image size of job updated: 90916
+	89  -  MemoryUsage of job (MB)
+	90804  -  ResidentSetSize of job (KB)
+...
+006 (973488.004.000) 2024-09-06 17:56:54 Image size of job updated: 344800
+	337  -  MemoryUsage of job (MB)
+	344800  -  ResidentSetSize of job (KB)
+...
+006 (973488.005.000) 2024-09-06 17:56:54 Image size of job updated: 93044
+	91  -  MemoryUsage of job (MB)
+	93044  -  ResidentSetSize of job (KB)
+...
+006 (973488.006.000) 2024-09-06 17:56:54 Image size of job updated: 91096
+	89  -  MemoryUsage of job (MB)
+	91096  -  ResidentSetSize of job (KB)
+...
+006 (973488.001.000) 2024-09-06 17:56:54 Image size of job updated: 119708
+	117  -  MemoryUsage of job (MB)
+	119708  -  ResidentSetSize of job (KB)
+...
+006 (973488.007.000) 2024-09-06 17:56:54 Image size of job updated: 85480
+	84  -  MemoryUsage of job (MB)
+	85480  -  ResidentSetSize of job (KB)
+...
+006 (973488.009.000) 2024-09-06 17:56:54 Image size of job updated: 85772
+	84  -  MemoryUsage of job (MB)
+	85772  -  ResidentSetSize of job (KB)
+...
+006 (973488.008.000) 2024-09-06 17:56:54 Image size of job updated: 86444
+	85  -  MemoryUsage of job (MB)
+	86360  -  ResidentSetSize of job (KB)
+...
+006 (973488.000.000) 2024-09-06 18:01:53 Image size of job updated: 582352
+	549  -  MemoryUsage of job (MB)
+	561556  -  ResidentSetSize of job (KB)
+...
+006 (973488.002.000) 2024-09-06 18:01:53 Image size of job updated: 609372
+	566  -  MemoryUsage of job (MB)
+	579448  -  ResidentSetSize of job (KB)
+...
+006 (973488.003.000) 2024-09-06 18:01:54 Image size of job updated: 525124
+	434  -  MemoryUsage of job (MB)
+	443772  -  ResidentSetSize of job (KB)
+...
+006 (973488.007.000) 2024-09-06 18:01:55 Image size of job updated: 589856
+	497  -  MemoryUsage of job (MB)
+	508016  -  ResidentSetSize of job (KB)
+...
+006 (973488.009.000) 2024-09-06 18:01:55 Image size of job updated: 556684
+	469  -  MemoryUsage of job (MB)
+	479932  -  ResidentSetSize of job (KB)
+...
+006 (973488.008.000) 2024-09-06 18:01:55 Image size of job updated: 543472
+	475  -  MemoryUsage of job (MB)
+	485604  -  ResidentSetSize of job (KB)
+...
+006 (973488.004.000) 2024-09-06 18:01:55 Image size of job updated: 841200
+	799  -  MemoryUsage of job (MB)
+	818040  -  ResidentSetSize of job (KB)
+...
+006 (973488.006.000) 2024-09-06 18:01:55 Image size of job updated: 530056
+	442  -  MemoryUsage of job (MB)
+	452568  -  ResidentSetSize of job (KB)
+...
+006 (973488.001.000) 2024-09-06 18:01:55 Image size of job updated: 572272
+	489  -  MemoryUsage of job (MB)
+	500280  -  ResidentSetSize of job (KB)
+...
+006 (973488.005.000) 2024-09-06 18:01:55 Image size of job updated: 567212
+	498  -  MemoryUsage of job (MB)
+	509784  -  ResidentSetSize of job (KB)
+...
+040 (973488.000.000) 2024-09-06 18:05:12 Started transferring output files
+...
+040 (973488.000.000) 2024-09-06 18:05:12 Finished transferring output files
+...
+005 (973488.000.000) 2024-09-06 18:05:12 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:04:56, Sys 0 00:00:09  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:04:56, Sys 0 00:00:09  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	103959  -  Run Bytes Sent By Job
+	873  -  Run Bytes Received By Job
+	103959  -  Total Bytes Sent By Job
+	873  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :                 1         1 
+	   Disk (KB)            :      116        1   2929233 
+	   Memory (MB)          :      549        1       128 
+
+	Job terminated of its own accord at 2024-09-06T16:05:12Z with exit-code 0.
+...
+006 (973488.007.000) 2024-09-06 18:05:19 Image size of job updated: 598968
+	497  -  MemoryUsage of job (MB)
+	508016  -  ResidentSetSize of job (KB)
+...
+040 (973488.007.000) 2024-09-06 18:05:20 Started transferring output files
+...
+040 (973488.007.000) 2024-09-06 18:05:20 Finished transferring output files
+...
+005 (973488.007.000) 2024-09-06 18:05:20 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:05:08, Sys 0 00:00:09  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:05:08, Sys 0 00:00:09  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	105794  -  Run Bytes Sent By Job
+	873  -  Run Bytes Received By Job
+	105794  -  Total Bytes Sent By Job
+	873  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :     0.51        1         1 
+	   Disk (KB)            :   126           1   2929233 
+	   Memory (MB)          :   497           1       128 
+
+	Job terminated of its own accord at 2024-09-06T16:05:19Z with exit-code 0.
+...
+006 (973488.008.000) 2024-09-06 18:05:21 Image size of job updated: 547932
+	475  -  MemoryUsage of job (MB)
+	485604  -  ResidentSetSize of job (KB)
+...
+040 (973488.008.000) 2024-09-06 18:05:21 Started transferring output files
+...
+040 (973488.008.000) 2024-09-06 18:05:21 Finished transferring output files
+...
+005 (973488.008.000) 2024-09-06 18:05:21 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:05:06, Sys 0 00:00:09  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:05:06, Sys 0 00:00:09  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	105224  -  Run Bytes Sent By Job
+	873  -  Run Bytes Received By Job
+	105224  -  Total Bytes Sent By Job
+	873  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :     0.45        1         1 
+	   Disk (KB)            :   125           1   2929233 
+	   Memory (MB)          :   475           1       128 
+
+	Job terminated of its own accord at 2024-09-06T16:05:21Z with exit-code 0.
+...
+006 (973488.006.000) 2024-09-06 18:05:27 Image size of job updated: 584296
+	442  -  MemoryUsage of job (MB)
+	452568  -  ResidentSetSize of job (KB)
+...
+040 (973488.006.000) 2024-09-06 18:05:27 Started transferring output files
+...
+040 (973488.006.000) 2024-09-06 18:05:27 Finished transferring output files
+...
+005 (973488.006.000) 2024-09-06 18:05:27 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:04:51, Sys 0 00:00:08  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:04:51, Sys 0 00:00:08  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	105794  -  Run Bytes Sent By Job
+	873  -  Run Bytes Received By Job
+	105794  -  Total Bytes Sent By Job
+	873  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :     0.70        1         1 
+	   Disk (KB)            :   126           1   3109601 
+	   Memory (MB)          :   442           1       128 
+
+	Job terminated of its own accord at 2024-09-06T16:05:27Z with exit-code 0.
+...
+006 (973488.002.000) 2024-09-06 18:05:31 Image size of job updated: 645608
+	566  -  MemoryUsage of job (MB)
+	579448  -  ResidentSetSize of job (KB)
+...
+040 (973488.002.000) 2024-09-06 18:05:31 Started transferring output files
+...
+040 (973488.002.000) 2024-09-06 18:05:31 Finished transferring output files
+...
+005 (973488.002.000) 2024-09-06 18:05:32 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:05:00, Sys 0 00:00:07  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:05:00, Sys 0 00:00:07  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	106934  -  Run Bytes Sent By Job
+	873  -  Run Bytes Received By Job
+	106934  -  Total Bytes Sent By Job
+	873  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :                 1         1 
+	   Disk (KB)            :      119        1   3109601 
+	   Memory (MB)          :      566        1       128 
+
+	Job terminated of its own accord at 2024-09-06T16:05:31Z with exit-code 0.
+...
+006 (973488.004.000) 2024-09-06 18:05:33 Image size of job updated: 874556
+	799  -  MemoryUsage of job (MB)
+	818040  -  ResidentSetSize of job (KB)
+...
+040 (973488.004.000) 2024-09-06 18:05:33 Started transferring output files
+...
+040 (973488.004.000) 2024-09-06 18:05:33 Finished transferring output files
+...
+005 (973488.004.000) 2024-09-06 18:05:33 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:05:01, Sys 0 00:00:08  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:05:01, Sys 0 00:00:08  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	106079  -  Run Bytes Sent By Job
+	873  -  Run Bytes Received By Job
+	106079  -  Total Bytes Sent By Job
+	873  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :     0.80        1         1 
+	   Disk (KB)            :   126           1   3109592 
+	   Memory (MB)          :   799           1       128 
+
+	Job terminated of its own accord at 2024-09-06T16:05:33Z with exit-code 0.
+...
+006 (973488.003.000) 2024-09-06 18:05:33 Image size of job updated: 535488
+	434  -  MemoryUsage of job (MB)
+	443772  -  ResidentSetSize of job (KB)
+...
+040 (973488.003.000) 2024-09-06 18:05:33 Started transferring output files
+...
+040 (973488.003.000) 2024-09-06 18:05:33 Finished transferring output files
+...
+005 (973488.003.000) 2024-09-06 18:05:33 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:05:01, Sys 0 00:00:08  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:05:01, Sys 0 00:00:08  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	106649  -  Run Bytes Sent By Job
+	873  -  Run Bytes Received By Job
+	106649  -  Total Bytes Sent By Job
+	873  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :     0.61        1         1 
+	   Disk (KB)            :   127           1   3109601 
+	   Memory (MB)          :   434           1       128 
+
+	Job terminated of its own accord at 2024-09-06T16:05:33Z with exit-code 0.
+...
+006 (973488.009.000) 2024-09-06 18:05:43 Image size of job updated: 578700
+	469  -  MemoryUsage of job (MB)
+	479932  -  ResidentSetSize of job (KB)
+...
+040 (973488.009.000) 2024-09-06 18:05:43 Started transferring output files
+...
+040 (973488.009.000) 2024-09-06 18:05:43 Finished transferring output files
+...
+005 (973488.009.000) 2024-09-06 18:05:43 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:05:08, Sys 0 00:00:16  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:05:08, Sys 0 00:00:16  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	105795  -  Run Bytes Sent By Job
+	873  -  Run Bytes Received By Job
+	105795  -  Total Bytes Sent By Job
+	873  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :     0.55        1         1 
+	   Disk (KB)            :   126           1   2929233 
+	   Memory (MB)          :   469           1       128 
+
+	Job terminated of its own accord at 2024-09-06T16:05:43Z with exit-code 0.
+...
+006 (973488.005.000) 2024-09-06 18:05:52 Image size of job updated: 629452
+	498  -  MemoryUsage of job (MB)
+	509784  -  ResidentSetSize of job (KB)
+...
+040 (973488.005.000) 2024-09-06 18:05:52 Started transferring output files
+...
+040 (973488.005.000) 2024-09-06 18:05:52 Finished transferring output files
+...
+005 (973488.005.000) 2024-09-06 18:05:52 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:05:25, Sys 0 00:00:16  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:05:25, Sys 0 00:00:16  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	104710  -  Run Bytes Sent By Job
+	873  -  Run Bytes Received By Job
+	104710  -  Total Bytes Sent By Job
+	873  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :     0.72        1         1 
+	   Disk (KB)            :   125           1   3109593 
+	   Memory (MB)          :   498           1       128 
+
+	Job terminated of its own accord at 2024-09-06T16:05:52Z with exit-code 0.
+...
+006 (973488.001.000) 2024-09-06 18:06:03 Image size of job updated: 618848
+	489  -  MemoryUsage of job (MB)
+	500280  -  ResidentSetSize of job (KB)
+...
+040 (973488.001.000) 2024-09-06 18:06:04 Started transferring output files
+...
+040 (973488.001.000) 2024-09-06 18:06:04 Finished transferring output files
+...
+005 (973488.001.000) 2024-09-06 18:06:04 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:05:06, Sys 0 00:00:09  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:05:06, Sys 0 00:00:09  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	106364  -  Run Bytes Sent By Job
+	873  -  Run Bytes Received By Job
+	106364  -  Total Bytes Sent By Job
+	873  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :     0.50        1         1 
+	   Disk (KB)            :   126           1   3214384 
+	   Memory (MB)          :   489           1       128 
+
+	Job terminated of its own accord at 2024-09-06T16:06:03Z with exit-code 0.
+...
+000 (1049588.000.000) 2024-09-10 17:37:15 Job submitted from host: <131.154.192.242:9618?addrs=131.154.192.242-9618&alias=sn01-htc.cr.cnaf.infn.it&noUDP&sock=schedd_19741_4332>
+...
+040 (1049588.000.000) 2024-09-10 17:37:39 Started transferring input files
+	Transferring to host: <131.154.168.100:9618?addrs=131.154.168.100-9618&alias=cn-leo-098.cr.cnaf.infn.it&noUDP&sock=slot1_55_48287_4f45_34498>
+...
+040 (1049588.000.000) 2024-09-10 17:37:39 Finished transferring input files
+...
+001 (1049588.000.000) 2024-09-10 17:37:40 Job executing on host: <131.154.168.100:9618?addrs=131.154.168.100-9618&alias=cn-leo-098.cr.cnaf.infn.it&noUDP&sock=startd_48280_a489>
+	SlotName: slot1_55@cn-leo-098.cr.cnaf.infn.it
+	CondorScratchDir = "/home/condor/execute//dir_71341"
+	Cpus = 1
+	Disk = 2929213
+	Memory = 128
+...
+006 (1049588.000.000) 2024-09-10 17:37:41 Image size of job updated: 1
+	0  -  MemoryUsage of job (MB)
+	0  -  ResidentSetSize of job (KB)
+...
+004 (1049588.000.000) 2024-09-10 17:37:41 Job was evicted.
+	(0) CPU times
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+	0  -  Run Bytes Sent By Job
+	873  -  Run Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :                 1         1 
+	   Disk (KB)            :       14        1   2929213 
+	   Memory (MB)          :        0        1       128 
+...
+009 (1049588.000.000) 2024-09-10 17:37:41 Job was aborted.
+	via condor_rm (by user gianfrancoingratta)
+...
+000 (1066388.000.000) 2024-09-12 18:19:45 Job submitted from host: <131.154.192.242:9618?addrs=131.154.192.242-9618&alias=sn01-htc.cr.cnaf.infn.it&noUDP&sock=schedd_19741_4332>
+...
+040 (1066388.000.000) 2024-09-12 18:20:19 Started transferring input files
+	Transferring to host: <131.154.168.45:9618?addrs=131.154.168.45-9618&alias=cn-leo-043.cr.cnaf.infn.it&noUDP&sock=slot1_16_34718_b8bd_23602>
+...
+040 (1066388.000.000) 2024-09-12 18:20:19 Finished transferring input files
+...
+001 (1066388.000.000) 2024-09-12 18:20:20 Job executing on host: <131.154.168.45:9618?addrs=131.154.168.45-9618&alias=cn-leo-043.cr.cnaf.infn.it&noUDP&sock=startd_34712_1f8d>
+	SlotName: slot1_16@cn-leo-043.cr.cnaf.infn.it
+	CondorScratchDir = "/home/condor/execute//dir_107692"
+	Cpus = 1
+	Disk = 2824388
+	Memory = 128
+...
+006 (1066388.000.000) 2024-09-12 18:20:29 Image size of job updated: 107644
+	106  -  MemoryUsage of job (MB)
+	107644  -  ResidentSetSize of job (KB)
+...
+006 (1066388.000.000) 2024-09-12 18:21:05 Image size of job updated: 286552
+	106  -  MemoryUsage of job (MB)
+	107644  -  ResidentSetSize of job (KB)
+...
+040 (1066388.000.000) 2024-09-12 18:21:05 Started transferring output files
+...
+040 (1066388.000.000) 2024-09-12 18:21:05 Finished transferring output files
+...
+005 (1066388.000.000) 2024-09-12 18:21:05 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:00:08, Sys 0 00:00:00  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:00:08, Sys 0 00:00:00  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	85096  -  Run Bytes Sent By Job
+	873  -  Run Bytes Received By Job
+	85096  -  Total Bytes Sent By Job
+	873  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :                 1         1 
+	   Disk (KB)            :       98        1   2824388 
+	   Memory (MB)          :      106        1       128 
+
+	Job terminated of its own accord at 2024-09-12T16:21:05Z with exit-code 0.
+...

@@ -1,4 +1,6 @@
 scratch/*
 build/*
+production_antinumucc/*
 *.root
 *.gdml
+.vscode
