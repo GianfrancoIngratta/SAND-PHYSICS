@@ -96,6 +96,7 @@ int main(int argc, char* argv[]){
                                                 "PrimariesPDG",
                                                 "PrimariesTrackId",
                                                 "PrimariesP4",
+                                                "PrimariesBeta",
                                                 "PrimariesFirstHitECAL",
                                                 "PrimariesEDepECAL",
                                                 "PrimariesEmissionAngle",
@@ -126,19 +127,36 @@ int main(int argc, char* argv[]){
                                                 "Fired_Cells_adc2",
                                                 "Fired_Cells_tdc1",
                                                 "Fired_Cells_tdc2",
-                                                "who_produced_tdc1",
-                                                "who_produced_tdc2",
                                                 "Fired_Cell_true_hit1",
                                                 "Fired_Cell_true_hit2",
+                                                "who_produced_tdc1",
+                                                "who_produced_tdc2",
                                                 "isCellComplete",
-                                                "Cell_Reconstructed_hit",
-                                                "ExpectedNeutronHit",
-                                                 /*
-                                                    ECAL CLUSTER INFO
-                                                 */
-                                                //  "NofEventClusters",
-                                                //  "ClusterX4",
-                                                //  "Cluster2Vertex4Distance",
+                                                /*
+                                                    true
+                                                */
+                                                "Fired_Cell_true_Hit_x",
+                                                "Fired_Cell_true_Hit_y",
+                                                "Fired_Cell_true_Hit_z",
+                                                "Fired_Cell_true_Hit_t",
+                                                "True_FlightLength",
+                                                /*
+                                                    expected
+                                                */
+                                                "ExpectedNeutron_Beta",
+                                                "ExpectedNeutron_HitPosition_x",
+                                                "ExpectedNeutron_HitPosition_y",
+                                                "ExpectedNeutron_HitPosition_z",
+                                                "ExpectedNeutron_TOF",
+                                                "ExpectedNeutron_FlightLength",
+                                                /*
+                                                    reco
+                                                */
+                                                "Reconstructed_HitPosition_x",
+                                                "Reconstructed_HitPosition_y",
+                                                "Reconstructed_HitPosition_z",
+                                                "Reconstructed_HitTime",
+                                                "Reconstructed_FlightLength",
     });                                                    
 
     return 0;

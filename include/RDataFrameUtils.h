@@ -87,6 +87,11 @@ ROOT::RDF::RNode AddConstantsToDF(ROOT::RDataFrame& df);
 template<int coord>
 ROOT::VecOps::RVec<double> GetComponent(const ROOT::VecOps::RVec<TLorentzVector>& vTL);
 
+template<int coord>
+ROOT::VecOps::RVec<double> GetComponent3(const ROOT::VecOps::RVec<TVector3>& vTV);
+
+ROOT::VecOps::RVec<TVector3> GetVect(const ROOT::VecOps::RVec<TLorentzVector>& vTL);
+
 double GetColumnSum(const ROOT::VecOps::RVec<double>& v);
 
 ROOT::VecOps::RVec<double> VectorDifference(const ROOT::VecOps::RVec<double>& v1,
@@ -174,6 +179,8 @@ ROOT::VecOps::RVec<int> GetPDG(const ROOT::VecOps::RVec<genie::GHepParticle>& pa
 ROOT::VecOps::RVec<TLorentzVector> GetMomentum(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
 
 ROOT::VecOps::RVec<double> GetKinE(const ROOT::VecOps::RVec<genie::GHepParticle>& particles);
+
+ROOT::VecOps::RVec<double> GetBeta(const ROOT::VecOps::RVec<TLorentzVector>& P4);
 
 TLorentzVector SumLorentzVectors(const ROOT::VecOps::RVec<TLorentzVector>& VTL);
 
@@ -300,7 +307,14 @@ ROOT::RDF::RNode AddColumnsFromDigit(ROOT::RDF::RNode& df);
 
 int NofFiredECALMods(const ROOT::VecOps::RVec<int>& fired_cells_modules);
 
-ROOT::VecOps::RVec<TLorentzVector> ReconstructHitFromCell(const ROOT::VecOps::RVec<dg_cell>& cells);
+ROOT::VecOps::RVec<TVector3> XfromTDC(const ROOT::VecOps::RVec<dg_cell>& cells);
+
+ROOT::VecOps::RVec<double> TfromTDC(const ROOT::VecOps::RVec<dg_cell>& cells);
+
+ROOT::VecOps::RVec<double> GetFlightLength(const TVector3& vtx, ROOT::VecOps::RVec<TVector3>& hits);
+
+
+ROOT::VecOps::RVec<double> GetTOF(const ROOT::VecOps::RVec<double>& flight_length, const double beta);
 
 ROOT::VecOps::RVec<int> IsCellComplete(const ROOT::VecOps::RVec<dg_cell>& cells);
 
@@ -327,9 +341,9 @@ ROOT::VecOps::RVec<TLorentzVector> Cluster2Vertex4Distance(double x,
                                                            double t,
                                                            const ROOT::VecOps::RVec<cluster>& clusters);
 
-ROOT::VecOps::RVec<TLorentzVector> GetNeutronExpectedHit(const double vtx, const double vty, const double vtz, const double vtt,
-                                                                 const TVector3& neutron_expected_P3,
-                                                                 const ROOT::VecOps::RVec<dg_cell>& cells);
+ROOT::VecOps::RVec<TVector3> GetExpectedHitPosition(TVector3 vertex,
+                                                   const TVector3& momentum_vector,
+                                                   const ROOT::VecOps::RVec<dg_cell>& cells);
 
 }// DIGIT
 

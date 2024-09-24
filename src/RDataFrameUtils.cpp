@@ -60,6 +60,28 @@ ROOT::VecOps::RVec<double> RDFUtils::GetComponent(const ROOT::VecOps::RVec<TLore
     return v;
 }
 
+template<int coord>
+ROOT::VecOps::RVec<double> RDFUtils::GetComponent3(const ROOT::VecOps::RVec<TVector3>& vTV){
+
+    ROOT::VecOps::RVec<double> v(vTV.size());
+
+    for (size_t i = 0; i < vTV.size(); i++)
+    {
+        v[i] = vTV[i][coord];
+    }
+    
+    return v;
+}
+
+ROOT::VecOps::RVec<TVector3> RDFUtils::GetVect(const ROOT::VecOps::RVec<TLorentzVector>& vTL){
+
+    ROOT::VecOps::RVec<TVector3> v(vTL.size());
+    
+    for (size_t i = 0; i < vTL.size(); i++) v[i] = vTL[i].Vect();
+
+    return v;
+}
+
 double RDFUtils::GetColumnSum(const ROOT::VecOps::RVec<double>& v){
     double sum = 0.;
     for(auto& value : v) sum+=value;
@@ -195,6 +217,14 @@ ROOT::VecOps::RVec<double> RDFUtils::GENIE::GetKinE(const ROOT::VecOps::RVec<gen
         KinE.push_back(particle.KinE());
     }
     return KinE;
+}
+
+ROOT::VecOps::RVec<double> RDFUtils::GENIE::GetBeta(const ROOT::VecOps::RVec<TLorentzVector>& P4){
+    ROOT::VecOps::RVec<double> Beta = {};
+    for(const auto& p4 : P4){
+        Beta.push_back(p4.Beta());
+    }
+    return Beta;
 }
 
 TLorentzVector RDFUtils::GENIE::SumLorentzVectors(const ROOT::VecOps::RVec<TLorentzVector>& VTL){
@@ -635,6 +665,10 @@ TVector3 RDFUtils::GENIE::NeutronArrivalPosECAL(std::string units,
     return start_point + t * neutron_direction;
 }
 
+// double RDFUtils::GENIE::GetBeta(double Ptot, double E){
+//     return Ptot / E;
+// }
+
 double RDFUtils::GENIE::GetNeutronTOF(std::string units_l,
                                       std::string units_E,
                                       const double vtx,
@@ -659,9 +693,10 @@ double RDFUtils::GENIE::GetNeutronTOF(std::string units_l,
     double dist = (X3 - vertex).Mag(); // [mm]
     double Ptot = P3.Mag(); // [MeV]
     double neutron_mass = GenieUtils::database->Find(2112)->Mass() * 1e3; // [MeV] 
-    double E = sqrt(Ptot*Ptot + neutron_mass*neutron_mass); // [Mev]
-    double gamma = E / neutron_mass;
-    double beta = sqrt(1 - 1/(gamma*gamma));
+    double E = sqrt(Ptot * Ptot + neutron_mass * neutron_mass); // [Mev]
+    // double gamma = E / neutron_mass;
+    // double beta = sqrt(1 - 1/(gamma*gamma));
+    double beta = Ptot / E;
 
     return dist / (beta * c); // [ns]
 }
@@ -774,6 +809,7 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              .Define("FinalStateHadronicSystemPDG",             RDFUtils::GENIE::GetPDG, {"FinalStateHadronicSystem"})
              .Define("FinalStateHadronicSystemNames",           RDFUtils::GENIE::PDG2Name, {"FinalStateHadronicSystem"})
              .Define("FinalStateHadronicSystemMomenta",         RDFUtils::GENIE::GetMomentum, {"FinalStateHadronicSystem"})
+             .Define("FinalStateHadronicSystemBeta",            RDFUtils::GENIE::GetBeta, {"FinalStateHadronicSystemMomenta"})
              .Define("FinalStateHadronicSystemTotal4Momentum",  RDFUtils::GENIE::SumLorentzVectors, {"FinalStateHadronicSystemMomenta"})
              .Define("FinalStateHadronicSystemEmissionAngle",   [](TVector3 nu, TLorentzVector v){return nu.Angle(v.Vect());},{"NuDirection","FinalStateHadronicSystemTotal4Momentum"})
              .Define("FinalStateHadronicSystemKinE",            RDFUtils::GENIE::GetKinE, {"FinalStateHadronicSystem"})
@@ -810,6 +846,9 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
                                                                                                      })
              .Define("ExpectedHadronSystP3",                        "ExpectedNeutrinoP4FromMuon.Vect() - FinalStateLepton4Momentum.Vect()")
              .Define("ExpectedHadronSystEnergy",                    "ExpectedNeutrinoP4FromMuon.T() + PROTON_MASS_GeV - FinalStateLepton4Momentum.T()")
+            //  .Define("ExpectedHadronSystP4", [](const TVector3 P3, const double E){TLorentzVector v = {P3, E}; return v;}, 
+            //                                                         {"ExpectedHadronSystP3", "ExpectedHadronSystEnergy"})
+             .Define("ExpectedHadronSystBeta",                      "ExpectedHadronSystP3.Mag() / ExpectedHadronSystEnergy")                                                                                                             
              .Define("ExpectedNeutronArrivalPositionECAL",          RDFUtils::GENIE::NeutronArrivalPosECAL, {"GENIE_UNIT_LEGTH",
                                                                                                              "Interaction_vtxX",
                                                                                                              "Interaction_vtxY",
@@ -1208,6 +1247,8 @@ ROOT::RDF::RNode RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(ROOT::RDF::RN
              .Define("PrimariesName",           RDFUtils::EDEPSIM::NOSPILL::PDG2Name, {"PrimariesPDG"})
              .Define("PrimariesTrackId",        RDFUtils::EDEPSIM::NOSPILL::GetPrimariesTrackId, {"Primaries"})
              .Define("PrimariesP4",             RDFUtils::EDEPSIM::NOSPILL::GetPrimariesP4, {"Primaries"})
+             .Define("PrimariesBeta",           RDFUtils::GENIE::GetBeta, {"PrimariesP4"})
+            //  .Define("Primaries_beta",          RDFUtils::GENIE::GetBeta, {"PrimariesP4"})
              .Define("Primaries_vtxX",          [](const ROOT::VecOps::RVec<TLorentzVector>& vertices){return vertices[0].X();},{"Primaries.Position"})
              .Define("Primaries_vtxY",          [](const ROOT::VecOps::RVec<TLorentzVector>& vertices){return vertices[0].Y();},{"Primaries.Position"})
              .Define("Primaries_vtxZ",          [](const ROOT::VecOps::RVec<TLorentzVector>& vertices){return vertices[0].Z();},{"Primaries.Position"})
@@ -1425,13 +1466,31 @@ ROOT::VecOps::RVec<int> RDFUtils::DIGIT::GetHindexOfTDC(const ROOT::VecOps::RVec
     return h_indices;
 }
 
-ROOT::VecOps::RVec<TLorentzVector> RDFUtils::DIGIT::ReconstructHitFromCell(const ROOT::VecOps::RVec<dg_cell>& cells){
-    ROOT::VecOps::RVec<TLorentzVector> reco_hits;
+ROOT::VecOps::RVec<double> RDFUtils::DIGIT::TfromTDC(const ROOT::VecOps::RVec<dg_cell>& cells){
+    ROOT::VecOps::RVec<double> t_hit_reco;
     for (const auto& cell : cells)
     {
         int broken_side = 0;
         double tdc1 = 0., tdc2 = 0.;
-        TLorentzVector hit_reco;
+
+        if(!GeoUtils::ECAL::isCellComplete(cell, broken_side)){ // broken cell
+            // what we do in case of broke cells ?
+        } else{ // complete cell
+            tdc1 = cell.ps1.at(0).tdc;
+            tdc2 = cell.ps2.at(0).tdc;
+        }
+        t_hit_reco.push_back(GeoUtils::ECAL::TfromTDC(tdc1, tdc2, cell.l));
+    }
+    return t_hit_reco;
+}
+
+ROOT::VecOps::RVec<TVector3> RDFUtils::DIGIT::XfromTDC(const ROOT::VecOps::RVec<dg_cell>& cells){
+    ROOT::VecOps::RVec<TVector3> reco_hits;
+    for (const auto& cell : cells)
+    {
+        int broken_side = 0;
+        double tdc1 = 0., tdc2 = 0.;
+        TVector3 hit_reco;
 
         if(!GeoUtils::ECAL::isCellComplete(cell, broken_side)){ // broken cell
             // what we do in case of broke cells ?
@@ -1441,46 +1500,27 @@ ROOT::VecOps::RVec<TLorentzVector> RDFUtils::DIGIT::ReconstructHitFromCell(const
         }
         // if(cell.id < 25000){ // Barrel
         if(cell.mod < 30){ // Barrel
-            hit_reco = {cell.x - GeoUtils::ECAL::XfromTDC(tdc1, tdc2),
-                        cell.y,
-                        cell.z,
-                        GeoUtils::ECAL::TfromTDC(tdc1, tdc2, cell.l)};
+            hit_reco = {cell.x - GeoUtils::ECAL::XfromTDC(tdc1, tdc2), cell.y, cell.z};
         }else{ // Endcap
-            hit_reco = {cell.x,
-                        cell.y - GeoUtils::ECAL::XfromTDC(tdc1, tdc2),
-                        cell.z,
-                        GeoUtils::ECAL::TfromTDC(tdc1, tdc2, cell.l)};
+            hit_reco = {cell.x, cell.y - GeoUtils::ECAL::XfromTDC(tdc1, tdc2), cell.z};
         }
         reco_hits.push_back(hit_reco);
     }
     return reco_hits;
 }
 
-// double RDFUtils::GENIE::GetNeutronTOF(std::string units_l,
-//                                       std::string units_E,
-//                                       const double vtx,
-//                                       const double vty,
-//                                       const double vtz,
-//                                       TVector3 X3,
-//                                       TVector3 P3
-//                                       ){
-
-ROOT::VecOps::RVec<TLorentzVector> RDFUtils::DIGIT::GetNeutronExpectedHit(const double vtx, const double vty, const double vtz, const double vtt,
-                                                                 const TVector3& neutron_expected_P3,
-                                                                 const ROOT::VecOps::RVec<dg_cell>& cells){
-    TLorentzVector vertex = {vtx, vty, vtz, vtt};
-    TVector3 neutron_direction = neutron_expected_P3.Unit();
-    ROOT::VecOps::RVec<TLorentzVector> expected_points;
-    for (const auto& cell : cells)
+ROOT::VecOps::RVec<TVector3> RDFUtils::DIGIT::GetExpectedHitPosition(TVector3 vertex,
+                                                                    const TVector3& momentum_vector,
+                                                                    const ROOT::VecOps::RVec<dg_cell>& cells){
+    TVector3 neutron_direction = momentum_vector.Unit();
+    ROOT::VecOps::RVec<TVector3> Expected_hit_postion(cells.size());
+    for (size_t i = 0; i < cells.size(); i++)
     {
-        double t = (cell.z - vertex.Z()) / neutron_direction.Z();
-        TVector3 expected_position = vertex.Vect() + t * neutron_direction;
-        double expeced_tof = RDFUtils::GENIE::GetNeutronTOF("mm", "GeV", vtx, vty, vtz, expected_position, neutron_expected_P3);
-        // TLorentzVector expected_X4 = {expected_position, expeced_tof + vertex.T()};
-        TLorentzVector expected_X4 = {expected_position, expeced_tof + vertex.T()};
-        expected_points.push_back(expected_X4);
+        double t = (cells[i].z - vertex.Z()) / neutron_direction.Z();
+        TVector3 expected_position = vertex + t * neutron_direction;
+        Expected_hit_postion[i] = expected_position;
     }
-    return expected_points;                                                                       
+    return Expected_hit_postion;                                                                       
 }
 
 ROOT::VecOps::RVec<int> RDFUtils::DIGIT::IsCellComplete(const ROOT::VecOps::RVec<dg_cell>& cells){
@@ -1495,6 +1535,30 @@ ROOT::VecOps::RVec<int> RDFUtils::DIGIT::IsCellComplete(const ROOT::VecOps::RVec
     return isComplete;
 }
 
+ROOT::VecOps::RVec<double> RDFUtils::DIGIT::GetFlightLength(const TVector3& vtx, 
+                                                            ROOT::VecOps::RVec<TVector3>& hits){
+    ROOT::VecOps::RVec<double> Flight_lenghts(hits.size());
+    for (size_t i = 0; i < hits.size(); i++)
+    {
+        Flight_lenghts[i] = (hits[i] - vtx).Mag();
+    }
+    return Flight_lenghts;
+}
+
+ROOT::VecOps::RVec<double> RDFUtils::DIGIT::GetTOF(const ROOT::VecOps::RVec<double>& flight_length, 
+                                                   const double beta){
+    /*
+        calculate time of flight of particle with beta and a given flight_length
+    */
+    double c = 299.792; // [mm/ns]
+    ROOT::VecOps::RVec<double> TOF(flight_length.size());
+    for (size_t i = 0; i < flight_length.size(); i++)
+    {
+        TOF[i] = flight_length[i] / (c * beta);
+    }
+    return TOF;
+}
+
 ROOT::RDF::RNode RDFUtils::DIGIT::AddColumnsFromDigit(ROOT::RDF::RNode& df){
     return df
             .Define("NofEventFiredModules",         RDFUtils::DIGIT::NofFiredECALMods , {"dg_cell.mod"})
@@ -1504,35 +1568,57 @@ ROOT::RDF::RNode RDFUtils::DIGIT::AddColumnsFromDigit(ROOT::RDF::RNode& df){
             .Define("Fired_Cells_x",                "dg_cell.x")
             .Define("Fired_Cells_y",                "dg_cell.y")
             .Define("Fired_Cells_z",                "dg_cell.z")
-            // .Filter("EventId==506")
             .Define("isCellComplete",               RDFUtils::DIGIT::IsCellComplete, {"dg_cell"})
             .Define("Fired_Cells_tdc1",             RDFUtils::DIGIT::FiredECALGetTDC<1>, {"dg_cell"})
             .Define("Fired_Cells_adc1",             RDFUtils::DIGIT::FiredECALGetADC<1>, {"dg_cell"})
             .Define("Fired_Cell_tdc1_hindex",       RDFUtils::DIGIT::GetHindexOfTDC<1>, {"dg_cell"})
-            .Define("Fired_Cell_true_hit1",         RDFUtils::EDEPSIM::GetHitFromIndex, {"Fired_Cell_tdc1_hindex", "Event"})
             .Define("who_produced_tdc1",            RDFUtils::EDEPSIM::GetHitTrajectoryId, {"Fired_Cell_tdc1_hindex", "Event"})
             .Define("Fired_Cells_tdc2",             RDFUtils::DIGIT::FiredECALGetTDC<2>, {"dg_cell"})
             .Define("Fired_Cells_adc2",             RDFUtils::DIGIT::FiredECALGetADC<2>, {"dg_cell"})
             .Define("Fired_Cell_tdc2_hindex",       RDFUtils::DIGIT::GetHindexOfTDC<2>, {"dg_cell"})
             .Define("Fired_Cell_true_hit2",         RDFUtils::EDEPSIM::GetHitFromIndex, {"Fired_Cell_tdc2_hindex", "Event"})
             .Define("who_produced_tdc2",            RDFUtils::EDEPSIM::GetHitTrajectoryId, {"Fired_Cell_tdc2_hindex", "Event"})
-            .Define("Cell_Reconstructed_hit",       RDFUtils::DIGIT::ReconstructHitFromCell, {"dg_cell"})
-            .Define("ExpectedNeutronHit",           RDFUtils::DIGIT::GetNeutronExpectedHit, {"Primaries_vtxX",
-                                                                                             "Primaries_vtxY",
-                                                                                             "Primaries_vtxZ",
-                                                                                             "Primaries_vtxT",
-                                                                                             "ExpectedHadronSystP3",
-                                                                                             "dg_cell"})
-            // ECAL CLUSTER INFO
-            // .Define("NofEventClusters",             RDFUtils::DIGIT::NofClusters, {"cluster"})
-            // .Define("ClusterX4",                    RDFUtils::DIGIT::GetClusterX4, {"cluster"})
-            // .Define("Cluster2Vertex4Distance",      RDFUtils::DIGIT::Cluster2Vertex4Distance, {"Interaction_vtxX",
-            //                                                                               "Interaction_vtxY",
-            //                                                                               "Interaction_vtxZ",
-            //                                                                               "Interaction_vtxT",
-            //                                                                               "cluster"})
+            /*
+                True
+            */
+            .Define("Primaries_vtx", [](const double vtx, const double vty, const double vtz){
+                TVector3 v = {vtx, vty, vtz}; return v;}, {"Primaries_vtxX","Primaries_vtxY","Primaries_vtxZ"})
+            .Define("Fired_Cell_true_hit1",         RDFUtils::EDEPSIM::GetHitFromIndex, {"Fired_Cell_tdc1_hindex", "Event"})
+            .Define("Fired_Cell_true_Hit_x",        RDFUtils::GetComponent<0>, {"Fired_Cell_true_hit1"})
+            .Define("Fired_Cell_true_Hit_y",        RDFUtils::GetComponent<1>, {"Fired_Cell_true_hit1"})
+            .Define("Fired_Cell_true_Hit_z",        RDFUtils::GetComponent<2>, {"Fired_Cell_true_hit1"})
+            .Define("Fired_Cell_true_Hit_t",        RDFUtils::GetComponent<3>, {"Fired_Cell_true_hit1"})
+            .Define("Fired_Cell_true_HitPos",       RDFUtils::GetVect, {"Fired_Cell_true_hit1"})
+            .Define("True_FlightLength",            RDFUtils::DIGIT::GetFlightLength, {"Primaries_vtx", "Fired_Cell_true_HitPos"})
+            /*
+                Expected neutron hit in cells
+            */
+            .Alias("ExpectedNeutron_Beta",          "ExpectedHadronSystBeta")
+            .Define("ExpectedNeutron_HitPosition",  RDFUtils::DIGIT::GetExpectedHitPosition, {"Primaries_vtx", "ExpectedHadronSystP3", "dg_cell"})
+            .Define("ExpectedNeutron_HitPosition_x",RDFUtils::GetComponent3<0>, {"ExpectedNeutron_HitPosition"})
+            .Define("ExpectedNeutron_HitPosition_y",RDFUtils::GetComponent3<1>, {"ExpectedNeutron_HitPosition"})
+            .Define("ExpectedNeutron_HitPosition_z",RDFUtils::GetComponent3<2>, {"ExpectedNeutron_HitPosition"})
+            .Define("ExpectedNeutron_FlightLength", RDFUtils::DIGIT::GetFlightLength, {"Primaries_vtx", "ExpectedNeutron_HitPosition"})
+            .Define("ExpectedNeutron_TOF",          RDFUtils::DIGIT::GetTOF, {"ExpectedNeutron_FlightLength", "ExpectedNeutron_Beta"})
+            /*
+                Recontructed hit with cells
+            */
+            .Define("Reconstructed_HitPosition",    RDFUtils::DIGIT::XfromTDC, {"dg_cell"})
+            .Define("Reconstructed_HitPosition_x",RDFUtils::GetComponent3<0>, {"Reconstructed_HitPosition"})
+            .Define("Reconstructed_HitPosition_y",RDFUtils::GetComponent3<1>, {"Reconstructed_HitPosition"})
+            .Define("Reconstructed_HitPosition_z",RDFUtils::GetComponent3<2>, {"Reconstructed_HitPosition"})
+            .Define("Reconstructed_HitTime",        RDFUtils::DIGIT::TfromTDC, {"dg_cell"})
+            .Define("Reconstructed_FlightLength",   RDFUtils::DIGIT::GetFlightLength, {"Primaries_vtx", "Reconstructed_HitPosition"})
             ;
 }
+// ECAL CLUSTER INFO
+// .Define("NofEventClusters",             RDFUtils::DIGIT::NofClusters, {"cluster"})
+// .Define("ClusterX4",                    RDFUtils::DIGIT::GetClusterX4, {"cluster"})
+// .Define("Cluster2Vertex4Distance",      RDFUtils::DIGIT::Cluster2Vertex4Distance, {"Interaction_vtxX",
+//                                                                               "Interaction_vtxY",
+//                                                                               "Interaction_vtxZ",
+//                                                                               "Interaction_vtxT",
+//                                                                               "cluster"})
 
 // RDFUtils::RECO_______________________________________________________________________________
 
@@ -1546,8 +1632,18 @@ ROOT::RDF::RNode RDFUtils::RECO::AddColumnsFromDriftReco(ROOT::RDF::RNode& df){
             // first filter good events (in FV and with enough digits)
             .Filter("KeepThisEvent==1")
             .Define("NofFiredWires", RDFUtils::RECO::GetNofFiredWires, {"fired_wires"})
+            // .Alias("fitted_paramters_xz_names", "fit_infos_xz.fitted_parameters.name")
+            // .Alias("fitted_paramters_zy_names", "fit_infos_zy.fitted_parameters.name")
+            // .Alias("fitted_paramters_xz_values", "fit_infos_xz.fitted_parameters.value")
+            // .Alias("fitted_paramters_zy_values", "fit_infos_zy.fitted_parameters.value")
             .Alias("Antimuon_dip_true", "true_helix.dip_")
             .Alias("Antimuon_dip_reco", "reco_helix.dip_")
+            .Alias("Antimuon_curvature_radius_true", "true_helix.R_")
+            .Alias("Antimuon_curvature_radius_reco", "reco_helix.R_")
+            .Alias("Antimuon_Phi0_true", "reco_helix.Phi0_")
+            .Alias("Antimuon_Phi0_reco", "reco_helix.Phi0_")
+            .Alias("Antimuon_x0_true", "true_helix.x0_")
+            .Alias("Antimuon_x0_reco", "reco_helix.x0_")
             .Alias("Antimuon_pt_true","pt_true")
             .Alias("Antimuon_pt_reco","pt_reco")
             .Alias("Antimuon_p_true","p_true")
@@ -1557,14 +1653,14 @@ ROOT::RDF::RNode RDFUtils::RECO::AddColumnsFromDriftReco(ROOT::RDF::RNode& df){
             .Define("Antimuon_reconstructed_P4", 
             [](const TVector3& P3, const double m, const double ptot){TLorentzVector v = {P3, sqrt(m*m + ptot*ptot)}; return v;}, 
             {"Antimuon_p_reco", "NEUTRON_MASS_MeV","Antimuon_ptot_reco"})
-            .Define("Antimuon_reconstructed_P4_GeV",    "Antimuon_reconstructed_P4 * 1e3")
+            .Define("Antimuon_reconstructed_P4_GeV",    "Antimuon_reconstructed_P4 * 1e-3")
             // predicted neutron form reconstructed muon
             .Define("Neutrino_reconstructed_P4_GeV",    RDFUtils::GENIE::GetNup4FromMu, {"PROTON_MASS_GeV",
-                                                                                     "NEUTRON_MASS_GeV",
-                                                                                     "MUON_MASS_GeV",
-                                                                                     "Antimuon_reconstructed_P4_GeV",
-                                                                                     "NuDirection",
-                                                                                    })
+                                                                                         "NEUTRON_MASS_GeV",
+                                                                                         "MUON_MASS_GeV",
+                                                                                         "Antimuon_reconstructed_P4_GeV",
+                                                                                         "NuDirection",
+                                                                                        })
             .Define("PredictedNeutron_P3_GeV",          "Neutrino_reconstructed_P4_GeV.Vect() - Antimuon_reconstructed_P4_GeV.Vect()")
     ;
 }
