@@ -9,7 +9,7 @@
 #include "GeoUtils.h"
 #include "EDepSimUtils.h"
 #include "struct.h"
-// #include "SANDRecoUtils.h" // helix fitting
+#include "SANDRecoUtils.h" // helix fitting
 
 #include "ROOT/RDF/RInterface.hxx"
 #include "ROOT/RDataFrame.hxx"
@@ -79,6 +79,8 @@ TChain* InitTChain(TString production,
                             unsigned int file_index_stop);
 
 ROOT::RDataFrame InitDF(TChain* input_chain);
+
+ROOT::RDF::RNode Filter(ROOT::RDF::RNode& df, const char* condition);
 
 void PrintColumns(ROOT::RDataFrame& df);
 
@@ -237,6 +239,25 @@ double NeutrinoEnergyFromCCQEonH(const TLorentzVector& muon, double muon_angle);
 ROOT::VecOps::RVec<int> GetHitTrajectoryId(const ROOT::VecOps::RVec<int>& pmts_hindex, 
                                  TG4Event& ev);
 
+template<int PDG>
+ROOT::VecOps::RVec<int> CheckTrajId(const ROOT::VecOps::RVec<int>& track_ids, TG4Event& ev);
+
+ROOT::VecOps::RVec<TG4Trajectory> GetTrajectories(const ROOT::VecOps::RVec<int>& track_ids, TG4Event& ev);
+
+ROOT::VecOps::RVec<int> ExpandIndex(const ROOT::VecOps::RVec<TG4Trajectory>& trajectories);
+
+ROOT::VecOps::RVec<int> ExpandPDG(const ROOT::VecOps::RVec<TG4Trajectory>& trajectories);
+
+ROOT::VecOps::RVec<TG4TrajectoryPoint> GetTrjPointsAll(const ROOT::VecOps::RVec<TG4Trajectory>& trajectories);
+
+template<int PDG>
+ROOT::VecOps::RVec<double> GetPointComponent(const ROOT::VecOps::RVec<TG4TrajectoryPoint>& points);
+
+template<int PDG>
+ROOT::VecOps::RVec<double> GetPointMomentum(const ROOT::VecOps::RVec<TG4TrajectoryPoint>& points);
+
+ROOT::VecOps::RVec<double> GetPointProcess(const ROOT::VecOps::RVec<TG4TrajectoryPoint>& points);
+
 ROOT::VecOps::RVec<TLorentzVector> GetHitFromIndex(const ROOT::VecOps::RVec<int>& h_index, TG4Event& ev);                                 
 
 namespace SPILL{// EDEPSIM::SPILL
@@ -305,6 +326,8 @@ namespace DIGIT{// DIGIT
 
 ROOT::RDF::RNode AddColumnsFromDigit(ROOT::RDF::RNode& df);
 
+ROOT::RDF::RNode GetFilteredTrajectories(ROOT::RDF::RNode& df);
+
 int NofFiredECALMods(const ROOT::VecOps::RVec<int>& fired_cells_modules);
 
 ROOT::VecOps::RVec<TVector3> XfromTDC(const ROOT::VecOps::RVec<dg_cell>& cells);
@@ -349,7 +372,9 @@ ROOT::VecOps::RVec<TVector3> GetExpectedHitPosition(TVector3 vertex,
 
 namespace RECO{// DRIFT RECO
 
-int GetNofFiredWires(const ROOT::VecOps::RVec<dg_wire>& wires);
+int GetNofFiredWires(const ROOT::VecOps::RVec<int>& wires_id);
+
+int Test(bool b, const MinuitFitInfos& i);
 
 ROOT::RDF::RNode AddColumnsFromDriftReco(ROOT::RDF::RNode& df);
 

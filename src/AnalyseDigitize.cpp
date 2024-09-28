@@ -36,6 +36,7 @@ int main(int argc, char* argv[]){
     auto fInput_digit =TString::Format("%sevents-in-SANDtracker.*.ecal-digit.root", FOLDER_PRODUCTION);
     // auto fInput_ecal_cluster = "events-in-SANDtracker.*.ecal-cluster.root";
     auto fOutput = TString::Format("%sevents-in-SANDtracker.%d.to.%d.ecal-digit.analysed.root",FOLDER_ANALYSIS, file_start, file_stop);
+
     
     // if you have multiple files enable multiple thread pocessing
     // if(TString::Format("%s",fInput_digit).Contains("*")){
@@ -68,9 +69,28 @@ int main(int argc, char* argv[]){
     auto dfEDEP = RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(dfGENIE);
     
     auto dfDigit = RDFUtils::DIGIT::AddColumnsFromDigit(dfEDEP);
+
+    /*
+        Filter
+        - Fiducial Volume
+        - Signal events (MC truth)
+        - Complete Cells (reco)
+    */
+
+    LOG("I", "Filter events in fiducial volume (MC truth)");
+    dfDigit = dfDigit.Filter("isInFiducialVolume"); // genie
+
+    // LOG("I", "Filter signal events (MC truth)");
+    // dfDigit = dfDigit.Filter("CCQEonHydrogen==1"); // genie
+
+    // auto filter_description = "FV_Signal";
+    auto filter_description = "FV";
+
+    auto fOutput_filtered = TString::Format("%sevents-in-SANDtracker.%d.to.%d.ecal-digit.analysed.%s.root",FOLDER_ANALYSIS, file_start, file_stop, filter_description);
+    auto fOutput_filtered_trj = TString::Format("%sevents-in-SANDtracker.%d.to.%d.ecal-digit.analysed.%s_trj.root",FOLDER_ANALYSIS, file_start, file_stop, filter_description);
     
     LOG("I", "Writing ouput file");
-    dfDigit.Snapshot("digit_extended", fOutput.Data(), {
+    dfDigit.Snapshot("digit_extended", fOutput_filtered.Data(), {
                                                 /*
                                                     GENIE INFO
                                                 */
@@ -108,11 +128,7 @@ int main(int argc, char* argv[]){
                                                 "ExpectedNeutrinoP4FromMuon",
                                                 "ExpectedHadronSystP3",
                                                 "ExpectedHadronSystEnergy",
-                                                "ExpectedNeutronArrivalPositionECAL",
-                                                "ExpectedNeutronTOF",
-                                                "ExpectedFiredModuleByNeutron",
                                                 "MissingTransverseMomentum",
-    //                                             "DoubleTransverseMomentumImbalance",
                                                  /*
                                                       DIGIT INFO
                                                  */
@@ -129,8 +145,9 @@ int main(int argc, char* argv[]){
                                                 "Fired_Cells_tdc2",
                                                 "Fired_Cell_true_hit1",
                                                 "Fired_Cell_true_hit2",
-                                                "who_produced_tdc1",
-                                                "who_produced_tdc2",
+                                                "Fired_by_primary_neutron",
+                                                "Fired_by_primary_antimu",
+                                                // "who_produced_tdc2",
                                                 "isCellComplete",
                                                 /*
                                                     true
@@ -159,5 +176,22 @@ int main(int argc, char* argv[]){
                                                 "Reconstructed_FlightLength",
     });                                                    
 
+    LOG("I", "Writing trajectory file");
+    auto dfTraj = RDFUtils::DIGIT::GetFilteredTrajectories(dfDigit);
+    
+    dfTraj.Snapshot("trj_extended", fOutput_filtered_trj.Data(), {
+                                                 "FileName",
+                                                 "trackid",
+                                                 "pdg",
+                                                 "point_x",
+                                                 "point_y",
+                                                 "point_z",
+                                                 "point_px",
+                                                 "point_py",
+                                                 "point_pz",
+                                                 "process",
+
+    });
+    
     return 0;
 }

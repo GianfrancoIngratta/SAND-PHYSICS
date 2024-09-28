@@ -8,6 +8,7 @@ TGeoManager* geo = nullptr;
 
 //___________________________________________________________________
 int main(int argc, char* argv[]){
+
     // Analyze output of genie production
 
     // if(argc<4)

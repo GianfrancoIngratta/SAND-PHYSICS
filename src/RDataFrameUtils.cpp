@@ -4,6 +4,7 @@
 #include "TMath.h"
 
 TGeoManager* geo = nullptr;
+std::vector<dg_wire>* RecoUtils::event_digits = nullptr;
 
 //RDFUtils______________________________________________________________________
 
@@ -36,6 +37,11 @@ ROOT::RDataFrame RDFUtils::InitDF(TChain* input_chain){
         throw "";
     }
     return *df;
+}
+
+
+ROOT::RDF::RNode RDFUtils::Filter(ROOT::RDF::RNode& df, const char* condition){
+    return df.Filter(condition);
 }
 
 void RDFUtils::PrintColumns(ROOT::RDataFrame& df){
@@ -714,6 +720,7 @@ ROOT::RDF::RNode RDFUtils::AddConstantsToDF(ROOT::RDataFrame& df){
             .Define("NEUTRON_MASS_GeV",   [](){return GenieUtils::GetMass(2112);})
             .Define("NEUTRON_MASS_MeV",   [](){return GenieUtils::GetMass(2112)*1e3;})
             .Define("MUON_MASS_GeV",      [](){return GenieUtils::GetMass(13);})
+            .Define("MUON_MASS_MeV",      [](){return GenieUtils::GetMass(13)*1e3;})
             ;
 }
 
@@ -741,7 +748,7 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
                                                                                           "Interaction_vtxX",
                                                                                           "Interaction_vtxY",
                                                                                           "Interaction_vtxZ"})
-             .Filter("isInFiducialVolume")
+            //  .Filter("isInFiducialVolume")
              // !!!
              .Define("InteractionTarget",           RDFUtils::GENIE::InteractionTarget, {"StdHepPdg"})
              // there is some problem with this -> TGeoMananger doesn't localize proprly the volume if file is .gdml and not .root
@@ -849,20 +856,20 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
             //  .Define("ExpectedHadronSystP4", [](const TVector3 P3, const double E){TLorentzVector v = {P3, E}; return v;}, 
             //                                                         {"ExpectedHadronSystP3", "ExpectedHadronSystEnergy"})
              .Define("ExpectedHadronSystBeta",                      "ExpectedHadronSystP3.Mag() / ExpectedHadronSystEnergy")                                                                                                             
-             .Define("ExpectedNeutronArrivalPositionECAL",          RDFUtils::GENIE::NeutronArrivalPosECAL, {"GENIE_UNIT_LEGTH",
-                                                                                                             "Interaction_vtxX",
-                                                                                                             "Interaction_vtxY",
-                                                                                                             "Interaction_vtxZ",
-                                                                                                             "ExpectedHadronSystP3"})
-             .Define("ExpectedNeutronTOF",                          RDFUtils::GENIE::GetNeutronTOF, {"GENIE_UNIT_LEGTH",
-                                                                                                     "GENIE_UNIT_ENERGY",
-                                                                                                     "Interaction_vtxX",
-                                                                                                     "Interaction_vtxY",
-                                                                                                     "Interaction_vtxZ",
-                                                                                                     "ExpectedNeutronArrivalPositionECAL",
-                                                                                                     "ExpectedHadronSystP3"})                                                                                                             
-             .Define("ExpectedFiredModuleByNeutron",                GeoUtils::ECAL::GetModuleIdFromPoint, {"EDEP_UNIT_LEGTH",
-                                                                                                           "ExpectedNeutronArrivalPositionECAL"})                                                                                                                                                                                                
+            //  .Define("ExpectedNeutronArrivalPositionECAL",          RDFUtils::GENIE::NeutronArrivalPosECAL, {"GENIE_UNIT_LEGTH",
+            //                                                                                                  "Interaction_vtxX",
+            //                                                                                                  "Interaction_vtxY",
+            //                                                                                                  "Interaction_vtxZ",
+            //                                                                                                  "ExpectedHadronSystP3"})
+            //  .Define("ExpectedNeutronTOF",                          RDFUtils::GENIE::GetNeutronTOF, {"GENIE_UNIT_LEGTH",
+            //                                                                                          "GENIE_UNIT_ENERGY",
+            //                                                                                          "Interaction_vtxX",
+            //                                                                                          "Interaction_vtxY",
+            //                                                                                          "Interaction_vtxZ",
+            //                                                                                          "ExpectedNeutronArrivalPositionECAL",
+            //                                                                                          "ExpectedHadronSystP3"})                                                                                                             
+            //  .Define("ExpectedFiredModuleByNeutron",                GeoUtils::ECAL::GetModuleIdFromPoint, {"EDEP_UNIT_LEGTH",
+            //                                                                                                "ExpectedNeutronArrivalPositionECAL"})                                                                                                                                                                                                
              // A Novel Approach to Neutrino-Hydrogen Measurements
              .Define("FinalStateLeptonTransverseP",                 "FinalStateLepton4Momentum.Vect() - FinalStateLepton4Momentum.Vect().Dot(NuDirection) * NuDirection")
              .Define("FinalStateHadronicSystemTransverseP",         "FinalStateHadronicSystemTotal4Momentum.Vect() - FinalStateHadronicSystemTotal4Momentum.Vect().Dot(NuDirection) * NuDirection")
@@ -1058,7 +1065,6 @@ ROOT::VecOps::RVec<int> RDFUtils::EDEPSIM::NOSPILL::GetPrimariesTrackId(const RO
     return ids;
 }
 
-
 ROOT::VecOps::RVec<EDepUtils::track_hits> RDFUtils::EDEPSIM::NOSPILL::GetPrimariesHits(TG4Event& ev, 
                                                                                        const ROOT::VecOps::RVec<int>& ids,
                                                                                        const ROOT::VecOps::RVec<int>& pdgs){
@@ -1181,7 +1187,7 @@ ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::NOSPILL::GetECALHitPos(const ROOT:
 }
 
 ROOT::VecOps::RVec<int> RDFUtils::EDEPSIM::GetHitTrajectoryId(const ROOT::VecOps::RVec<int>& pmts_hindex, 
-                                                    TG4Event& ev){
+                                                              TG4Event& ev){
     /**
     * @brief Retrieves the primary trajectory IDs for ECAL PMT hits.
     * 
@@ -1219,6 +1225,183 @@ ROOT::VecOps::RVec<int> RDFUtils::EDEPSIM::GetHitTrajectoryId(const ROOT::VecOps
 
     return track_ids;
 }
+
+template<int PDG>
+ROOT::VecOps::RVec<int> RDFUtils::EDEPSIM::CheckTrajId(const ROOT::VecOps::RVec<int>& track_ids,
+                                                       TG4Event& ev){
+    /**
+    * @brief Retrieves 1, 0 if the track id belongs to a primary particle.
+    * 
+    * Given a vector of PMT track indices and a TG4Event (`ev`), 
+    * this function check if the id is the one of the primary particle
+    * 
+    * @param track_ids Vector of track ids.
+    * @param ev TG4Event structure with event data.
+    * @return ROOT::VecOps::RVec<int> Vector of 1 or 0 (yes/no).
+    */
+   ROOT::VecOps::RVec<int> IsPrimaryTraj(track_ids.size());
+   auto Trajectories = ev.Trajectories;
+   for (size_t i = 0; i < track_ids.size(); i++)
+   {
+        if(track_ids[i] == RDFUtils::DEFAULT_NO_DATA){
+            IsPrimaryTraj[i] = 0;
+        }else{
+            auto this_trj = Trajectories[track_ids[i]];
+            if( (this_trj.GetParentId() == -1) & (this_trj.GetPDGCode() == PDG)){
+                IsPrimaryTraj[i] = 1;
+            }else{
+                IsPrimaryTraj[i] = 0;
+            }
+        }
+   }
+   return IsPrimaryTraj;
+}
+
+ROOT::VecOps::RVec<TG4Trajectory> RDFUtils::EDEPSIM::GetTrajectories(const ROOT::VecOps::RVec<int>& track_ids,
+                                                                  TG4Event& ev){
+    /**
+    * @brief Retrieves all the TG4Trajectory that have fired the cells
+    *        of the event.
+    * 
+    * Given a vector of track indices and a TG4Event (`ev`), 
+    * this function returns the unique trajectories associated
+    * with the ids.
+    * 
+    * @param track_ids Vector of track ids.
+    * @param ev TG4Event structure with event data.
+    * @return ROOT::VecOps::RVec<TG4Trajectory> Vector of TG4Trajectory.
+    */
+    // Remove duplicate track ids
+    std::set<int> unique_values(track_ids.begin(), track_ids.end());
+    ROOT::VecOps::RVec<int> track_ids_unique(unique_values.begin(), unique_values.end());
+    
+    // Create a default trajectory for cases where no valid track is found
+    TG4Trajectory Dummy;
+    ROOT::VecOps::RVec<TG4Trajectory> trajectories;
+
+    for (const auto& track_id : track_ids_unique) {
+        if (track_id == RDFUtils::DEFAULT_NO_DATA || track_id < 0) {
+            // Add the dummy trajectory for invalid track ids (-999 or negative)
+            trajectories.push_back(Dummy);
+        } else if (track_id < static_cast<int>(ev.Trajectories.size())) {
+            // Add valid trajectories based on track_id
+            trajectories.push_back(ev.Trajectories[track_id]);
+        }
+    }
+
+    return trajectories;
+}
+
+ROOT::VecOps::RVec<int> RDFUtils::EDEPSIM::ExpandPDG(const ROOT::VecOps::RVec<TG4Trajectory>& trajectories){
+    /**
+     * @brief For each TG4Trajectory point append its pdg to the output vector
+     * Useful later to be analyzed with Pandas DF
+    */
+   ROOT::VecOps::RVec<int> expanded_id;
+   for (const auto& trajectory : trajectories)
+   {
+        if(trajectory.GetTrackId() == -1){ // is dummy trj
+            expanded_id.push_back(RDFUtils::DEFAULT_NO_DATA);
+        }else{
+            for (size_t i = 0; i < trajectory.Points.size(); i++)
+            {
+                expanded_id.push_back(trajectory.GetPDGCode());
+            }
+        }
+   }
+   return expanded_id;
+}
+
+ROOT::VecOps::RVec<int> RDFUtils::EDEPSIM::ExpandIndex(const ROOT::VecOps::RVec<TG4Trajectory>& trajectories){
+    /**
+     * @brief For each TG4Trajectory point append its id to the output vector
+     * Useful later to be analyzed with Pandas DF
+    */
+   ROOT::VecOps::RVec<int> expanded_id;
+   for (const auto& trajectory : trajectories)
+   {
+        if(trajectory.GetTrackId() == -1){ // is dummy trj
+            expanded_id.push_back(RDFUtils::DEFAULT_NO_DATA);
+        }else{
+            for (size_t i = 0; i < trajectory.Points.size(); i++)
+            {
+                expanded_id.push_back(trajectory.GetTrackId());
+            }
+        }
+   }
+   return expanded_id;
+}
+
+ROOT::VecOps::RVec<TG4TrajectoryPoint> RDFUtils::EDEPSIM::GetTrjPointsAll(const ROOT::VecOps::RVec<TG4Trajectory>& trajectories) {
+    /**
+    * @brief Collects trajectory points from a vector of TG4Trajectory objects.
+    *
+    * Iterates through each trajectory, adding a dummy point if the TrackId is -1,
+    * or appending all valid points to the output vector.
+    *
+    * @param trajectories A vector of TG4Trajectory objects.
+    * @return A vector of TG4TrajectoryPoint objects.
+    */
+    ROOT::VecOps::RVec<TG4TrajectoryPoint> points;
+    TG4TrajectoryPoint dummy;
+
+    for (const auto& trajectory : trajectories) {
+        if (trajectory.GetTrackId() == -1) { // Dummy trajectory check
+            points.push_back(dummy); // Add dummy point
+        } else {
+            for (const auto& point : trajectory.Points) {
+                points.push_back(point); // Append valid points
+            }
+        }
+    }
+    return points;
+}
+
+template<int component>
+ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::GetPointComponent(const ROOT::VecOps::RVec<TG4TrajectoryPoint>& points){
+    
+    ROOT::VecOps::RVec<double> v(points.size());
+    for (size_t i = 0; i < points.size(); i++)
+    {
+        v[i] = points[i].GetPosition()[component];
+    }
+    return v;
+}
+
+template<int component>
+ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::GetPointMomentum(const ROOT::VecOps::RVec<TG4TrajectoryPoint>& points){
+    
+    ROOT::VecOps::RVec<double> v(points.size());
+    for (size_t i = 0; i < points.size(); i++)
+    {
+        v[i] = points[i].GetMomentum()[component];
+    }
+    return v;
+}
+
+ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::GetPointProcess(const ROOT::VecOps::RVec<TG4TrajectoryPoint>& points){
+    
+    ROOT::VecOps::RVec<double> v(points.size());
+    for (size_t i = 0; i < points.size(); i++)
+    {
+        v[i] = points[i].GetProcess();
+    }
+    return v;
+}
+
+// ROOT::VecOps::RVec<TLorentzVector> RDFUtils::EDEPSIM::ExpectedNeutronTjr(TVector3 vertex, 
+//                                                                          const TVector3& momentum_vector, 
+//                                                                          const ROOT::VecOps::RVec<double>& v){
+//     // !! vertex [mm] e momentum_vector [MeV], length of v gives nof of points!!
+//     ROOT::VecOps::RVec<TG4TrajectoryPoint> points(v.size());
+//     auto direction = momentum_vector.Unit();
+//     for (size_t i = 0; i < v.size(); i++)
+//     {
+//         x = vertex.X() +  ;
+//     }
+    
+    
+// }
 
 
 ROOT::VecOps::RVec<TLorentzVector> RDFUtils::EDEPSIM::GetHitFromIndex(const ROOT::VecOps::RVec<int>& h_index, TG4Event& ev){
@@ -1572,12 +1755,16 @@ ROOT::RDF::RNode RDFUtils::DIGIT::AddColumnsFromDigit(ROOT::RDF::RNode& df){
             .Define("Fired_Cells_tdc1",             RDFUtils::DIGIT::FiredECALGetTDC<1>, {"dg_cell"})
             .Define("Fired_Cells_adc1",             RDFUtils::DIGIT::FiredECALGetADC<1>, {"dg_cell"})
             .Define("Fired_Cell_tdc1_hindex",       RDFUtils::DIGIT::GetHindexOfTDC<1>, {"dg_cell"})
-            .Define("who_produced_tdc1",            RDFUtils::EDEPSIM::GetHitTrajectoryId, {"Fired_Cell_tdc1_hindex", "Event"})
+            .Define("trackid_producing_tdc1",       RDFUtils::EDEPSIM::GetHitTrajectoryId, {"Fired_Cell_tdc1_hindex", "Event"})
+            .Define("Fired_by_primary_neutron",     RDFUtils::EDEPSIM::CheckTrajId<2112>, {"trackid_producing_tdc1", "Event"})
+            .Define("Fired_by_primary_antimu",      RDFUtils::EDEPSIM::CheckTrajId<-13>, {"trackid_producing_tdc1", "Event"})
+            //
+            .Define("ECALactive_trajectories",      RDFUtils::EDEPSIM::GetTrajectories, {"trackid_producing_tdc1", "Event"})
             .Define("Fired_Cells_tdc2",             RDFUtils::DIGIT::FiredECALGetTDC<2>, {"dg_cell"})
             .Define("Fired_Cells_adc2",             RDFUtils::DIGIT::FiredECALGetADC<2>, {"dg_cell"})
             .Define("Fired_Cell_tdc2_hindex",       RDFUtils::DIGIT::GetHindexOfTDC<2>, {"dg_cell"})
             .Define("Fired_Cell_true_hit2",         RDFUtils::EDEPSIM::GetHitFromIndex, {"Fired_Cell_tdc2_hindex", "Event"})
-            .Define("who_produced_tdc2",            RDFUtils::EDEPSIM::GetHitTrajectoryId, {"Fired_Cell_tdc2_hindex", "Event"})
+            .Define("trackid_producing_tdc2",       RDFUtils::EDEPSIM::GetHitTrajectoryId, {"Fired_Cell_tdc2_hindex", "Event"})
             /*
                 True
             */
@@ -1604,57 +1791,91 @@ ROOT::RDF::RNode RDFUtils::DIGIT::AddColumnsFromDigit(ROOT::RDF::RNode& df){
                 Recontructed hit with cells
             */
             .Define("Reconstructed_HitPosition",    RDFUtils::DIGIT::XfromTDC, {"dg_cell"})
-            .Define("Reconstructed_HitPosition_x",RDFUtils::GetComponent3<0>, {"Reconstructed_HitPosition"})
-            .Define("Reconstructed_HitPosition_y",RDFUtils::GetComponent3<1>, {"Reconstructed_HitPosition"})
-            .Define("Reconstructed_HitPosition_z",RDFUtils::GetComponent3<2>, {"Reconstructed_HitPosition"})
+            .Define("Reconstructed_HitPosition_x",  RDFUtils::GetComponent3<0>, {"Reconstructed_HitPosition"})
+            .Define("Reconstructed_HitPosition_y",  RDFUtils::GetComponent3<1>, {"Reconstructed_HitPosition"})
+            .Define("Reconstructed_HitPosition_z",  RDFUtils::GetComponent3<2>, {"Reconstructed_HitPosition"})
             .Define("Reconstructed_HitTime",        RDFUtils::DIGIT::TfromTDC, {"dg_cell"})
             .Define("Reconstructed_FlightLength",   RDFUtils::DIGIT::GetFlightLength, {"Primaries_vtx", "Reconstructed_HitPosition"})
             ;
 }
-// ECAL CLUSTER INFO
-// .Define("NofEventClusters",             RDFUtils::DIGIT::NofClusters, {"cluster"})
-// .Define("ClusterX4",                    RDFUtils::DIGIT::GetClusterX4, {"cluster"})
-// .Define("Cluster2Vertex4Distance",      RDFUtils::DIGIT::Cluster2Vertex4Distance, {"Interaction_vtxX",
-//                                                                               "Interaction_vtxY",
-//                                                                               "Interaction_vtxZ",
-//                                                                               "Interaction_vtxT",
-//                                                                               "cluster"})
+
+ROOT::RDF::RNode RDFUtils::DIGIT::GetFilteredTrajectories(ROOT::RDF::RNode& df){
+    /**
+     * @brief Take as input columns of AddColumnsFromDigit and retreive info
+     * about trajecotries that have fired ECAL cells
+     */
+    return df
+          .Define("trackid",                      RDFUtils::EDEPSIM::ExpandIndex,     {"ECALactive_trajectories"})
+          .Define("pdg",                          RDFUtils::EDEPSIM::ExpandPDG,       {"ECALactive_trajectories"})
+          .Define("Points_all_trajectories",      RDFUtils::EDEPSIM::GetTrjPointsAll, {"ECALactive_trajectories"})
+          .Define("point_x",                      RDFUtils::EDEPSIM::GetPointComponent<0>, {"Points_all_trajectories"})
+          .Define("point_y",                      RDFUtils::EDEPSIM::GetPointComponent<1>, {"Points_all_trajectories"})
+          .Define("point_z",                      RDFUtils::EDEPSIM::GetPointComponent<2>, {"Points_all_trajectories"})
+          .Define("point_t",                      RDFUtils::EDEPSIM::GetPointComponent<3>, {"Points_all_trajectories"})
+          .Define("point_px",                     RDFUtils::EDEPSIM::GetPointMomentum<0>, {"Points_all_trajectories"})
+          .Define("point_py",                     RDFUtils::EDEPSIM::GetPointMomentum<1>, {"Points_all_trajectories"})
+          .Define("point_pz",                     RDFUtils::EDEPSIM::GetPointMomentum<2>, {"Points_all_trajectories"})
+          .Define("point_E",                      RDFUtils::EDEPSIM::GetPointMomentum<3>, {"Points_all_trajectories"})
+          .Define("process",                      RDFUtils::EDEPSIM::GetPointProcess, {"Points_all_trajectories"})
+        //   .Define("neutron_expected_trj",         RDFUtils::EDEPSIM::ExpectedNeutronTjr, {"Primaries_vtx", "ExpectedHadronSystP3", "point_x"})
+        ;
+}
 
 // RDFUtils::RECO_______________________________________________________________________________
 
-int RDFUtils::RECO::GetNofFiredWires(const ROOT::VecOps::RVec<dg_wire>& wires){
-    // STA FUNZIONE CRASHAAAA
-    return wires.size();
+// int RDFUtils::RECO::GetNofFiredWires(const ROOT::VecOps::RVec<dg_wire>& wires){
+//     // STA FUNZIONE CRASHAAAA
+//     return wires.size();
+// }
+int RDFUtils::RECO::GetNofFiredWires(const ROOT::VecOps::RVec<int>& wires_id){
+    int nof_wires = static_cast<int>(wires_id.size());
+    return nof_wires;
+}
+
+int RDFUtils::RECO::Test(bool b, const MinuitFitInfos& i){
+    std::cout << "is good event : " << b << "\n";
+    if(b){
+        std::cout << "MinValue : " << i.MinValue << "\n";
+        return 1;
+    }else{
+        return 0;
+    }
 }
 
 ROOT::RDF::RNode RDFUtils::RECO::AddColumnsFromDriftReco(ROOT::RDF::RNode& df){
     return df
-            // first filter good events (in FV and with enough digits)
-            .Filter("KeepThisEvent==1")
-            .Define("NofFiredWires", RDFUtils::RECO::GetNofFiredWires, {"fired_wires"})
-            // .Alias("fitted_paramters_xz_names", "fit_infos_xz.fitted_parameters.name")
-            // .Alias("fitted_paramters_zy_names", "fit_infos_zy.fitted_parameters.name")
-            // .Alias("fitted_paramters_xz_values", "fit_infos_xz.fitted_parameters.value")
-            // .Alias("fitted_paramters_zy_values", "fit_infos_zy.fitted_parameters.value")
+            // .Filter("KeepThisEvent==1")
+            .Define("nof_fired_wires", RDFUtils::RECO::GetNofFiredWires, {"fired_wires.did"})
+            /*
+                true values
+            */
             .Alias("Antimuon_dip_true", "true_helix.dip_")
-            .Alias("Antimuon_dip_reco", "reco_helix.dip_")
             .Alias("Antimuon_curvature_radius_true", "true_helix.R_")
-            .Alias("Antimuon_curvature_radius_reco", "reco_helix.R_")
             .Alias("Antimuon_Phi0_true", "reco_helix.Phi0_")
-            .Alias("Antimuon_Phi0_reco", "reco_helix.Phi0_")
             .Alias("Antimuon_x0_true", "true_helix.x0_")
-            .Alias("Antimuon_x0_reco", "reco_helix.x0_")
             .Alias("Antimuon_pt_true","pt_true")
-            .Alias("Antimuon_pt_reco","pt_reco")
             .Alias("Antimuon_p_true","p_true")
-            .Alias("Antimuon_p_reco","p_reco")
             .Define("Antimuon_ptot_true", "sqrt(p_true.X()*p_true.X() + p_true.Y()*p_true.Y() + p_true.Z()*p_true.Z())")
-            .Define("Antimuon_ptot_reco", "sqrt(p_true.X()*p_reco.X() + p_true.Y()*p_reco.Y() + p_true.Z()*p_reco.Z())")
-            .Define("Antimuon_reconstructed_P4", 
+            /*
+                reco values - muon
+            */
+            // .Define("chi2_fit_zy", RDFUtils::RECO::Test , {"KeepThisEvent", "fit_infos_zy"}) !!! CRASH   
+            .Alias("chi2_fit_zy", "fit_infos_zy.MinValue")
+            .Alias("chi2_fit_xz", "fit_infos_xz.MinValue")
+            .Alias("Antimuon_curvature_radius_reco", "reco_helix.R_")
+            .Alias("Antimuon_dip_reco", "reco_helix.dip_")
+            .Alias("Antimuon_Phi0_reco", "reco_helix.Phi0_")
+            .Alias("Antimuon_x0_reco", "reco_helix.x0_")
+            .Alias("Antimuon_pt_reco","pt_reco")
+            .Alias("Antimuon_p_reco","p_reco")
+            .Define("Antimuon_ptot_reco", "sqrt(p_reco.X()*p_reco.X() + p_reco.Y()*p_reco.Y() + p_reco.Z()*p_reco.Z())")
+            .Define("Antimuon_reconstructed_P4",
             [](const TVector3& P3, const double m, const double ptot){TLorentzVector v = {P3, sqrt(m*m + ptot*ptot)}; return v;}, 
-            {"Antimuon_p_reco", "NEUTRON_MASS_MeV","Antimuon_ptot_reco"})
+            {"Antimuon_p_reco", "MUON_MASS_MeV","Antimuon_ptot_reco"})
+            /*
+                prediction on neutron
+            */
             .Define("Antimuon_reconstructed_P4_GeV",    "Antimuon_reconstructed_P4 * 1e-3")
-            // predicted neutron form reconstructed muon
             .Define("Neutrino_reconstructed_P4_GeV",    RDFUtils::GENIE::GetNup4FromMu, {"PROTON_MASS_GeV",
                                                                                          "NEUTRON_MASS_GeV",
                                                                                          "MUON_MASS_GeV",

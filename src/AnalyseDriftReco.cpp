@@ -17,7 +17,7 @@ int main(int argc, char* argv[]){
     }
 
     index = atoi(argv[1]);
-    unsigned int files_per_jobs = 10u;
+    unsigned int files_per_jobs = 1000u;
     unsigned int file_start = index * files_per_jobs;
     unsigned int file_stop = index * files_per_jobs + files_per_jobs;
 
@@ -54,13 +54,18 @@ int main(int argc, char* argv[]){
     chain_drift_reco->AddFriend(chain_digit, "ecal-digit");
     
     auto df = RDFUtils::InitDF(chain_drift_reco);
-
     auto dfC = RDFUtils::AddConstantsToDF(df); // add some columns with usefull constants
-    auto dfGENIE = RDFUtils::GENIE::AddColumnsFromGENIE(dfC);
+    /*
+        APPLY FILTERS:
+           - KeepThisEvent==1 : vertex is in FV and muon track has enough hits to be reconstructed
+    */
+    auto df_filtered = RDFUtils::Filter(dfC, "KeepThisEvent==1");
+
+    auto dfGENIE = RDFUtils::GENIE::AddColumnsFromGENIE(df_filtered);
     auto dfEDEP = RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(dfGENIE);
     auto dfDigit = RDFUtils::DIGIT::AddColumnsFromDigit(dfEDEP);
     auto dfReco = RDFUtils::RECO::AddColumnsFromDriftReco(dfDigit);
-    
+
     // RDFUtils::PrintColumns(df);
     // throw "";
 
@@ -93,25 +98,26 @@ int main(int argc, char* argv[]){
         // "isCellComplete",
         // "Cell_Reconstructed_hit",
         // "ExpectedNeutronHit",
+        "nof_fired_wires",
         /*
             DRIFT RECO
         */
-        // "fitted_paramters_xz_names",
-        // "fitted_paramters_zy_names",
-        // "fitted_paramters_xz_values",
-        // "fitted_paramters_zy_values",
         "Antimuon_Phi0_true",
-        "Antimuon_Phi0_reco",
         "Antimuon_x0_true",
-        "Antimuon_x0_reco",
         "Antimuon_pt_true",
-        "Antimuon_pt_reco",
         "Antimuon_p_true",
-        "Antimuon_p_reco",
         "Antimuon_ptot_true",
-        "Antimuon_ptot_reco",
         "Antimuon_dip_true",
+        //
+        "Antimuon_Phi0_reco",
+        "Antimuon_x0_reco",
+        "Antimuon_pt_reco",
+        "Antimuon_p_reco",
+        "Antimuon_ptot_reco",
         "Antimuon_dip_reco",
+        "chi2_fit_zy",
+        "chi2_fit_xz",
+        //
         "Neutrino_reconstructed_P4_GeV",
         "IncomingNeutrinoP4",
         "PredictedNeutron_P3_GeV",
