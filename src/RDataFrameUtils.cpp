@@ -79,6 +79,26 @@ ROOT::VecOps::RVec<double> RDFUtils::GetComponent3(const ROOT::VecOps::RVec<TVec
     return v;
 }
 
+ROOT::VecOps::RVec<int> RDFUtils::FindMinimum(const ROOT::VecOps::RVec<double> v){
+    /**
+     * @brief Return a vector of 0s and 1s, where 1 indicates the minimum value in the input vector.
+     */
+    ROOT::VecOps::RVec<int> isMinimum(v.size(), 0);
+
+    ROOT::VecOps::RVec<double> valid_values = v[v != RDFUtils::DEFAULT_NO_DATA];
+
+    if (!valid_values.empty()) {
+        double min_v = ROOT::VecOps::Min(valid_values);
+
+        for (size_t i = 0; i < v.size(); ++i) {
+            if (v[i] == min_v && v[i] != RDFUtils::DEFAULT_NO_DATA){ // redundant check
+                isMinimum[i] = 1;
+            }
+        }
+    }
+    return isMinimum;
+}
+
 ROOT::VecOps::RVec<TVector3> RDFUtils::GetVect(const ROOT::VecOps::RVec<TLorentzVector>& vTL){
 
     ROOT::VecOps::RVec<TVector3> v(vTL.size());
@@ -153,6 +173,21 @@ ROOT::VecOps::RVec<int> RDFUtils::CompareVectors(const ROOT::VecOps::RVec<double
         isEqual[i] = (fabs(V1[i] - V2[i]) < tolerance) ? 1 : 0;
     }
     return isEqual;
+}
+
+ROOT::VecOps::RVec<int> RDFUtils::IsValidVector(const ROOT::VecOps::RVec<double>& v){
+    ROOT::VecOps::RVec<int> isValid(v.size());
+    for (size_t i = 0; i < v.size(); i++)
+    {
+        if (v[i] == RDFUtils::DEFAULT_NO_DATA)
+        {
+            isValid[i] = 0;
+        }else{
+            isValid[i] = 1;
+        }
+        
+    }
+    return isValid;
 }
 
 //RDFUtils::GENIE_________________________________________________________________
@@ -588,19 +623,19 @@ TLorentzVector RDFUtils::GENIE::GetNup4FromMu(double proton_mass, double neutron
     return nu_P4;
 }
 
-double IntersectWithInfCylinder(const TVector3& vtx, const TVector3& neutron_direction) {
+double GeoUtils::IntersectWithInfCylinder(const TVector3& vtx, const TVector3& direction, double diameter) {
     /*
-        Calculate the intersection btw the neutron that starts from vtx and travels
-        in the direction neutron_direction (versor) and SAND.
+        Calculate the intersection btw a line that starts from vtx and travels
+        in the direction neutron_direction (versor) and an infinite cylinder.
         Take the intersection along the direction of travel, discard the other one.
     */
     TVector3 start_point(vtx.X() - GeoUtils::DRIFT::SAND_CENTER_X, 
                          vtx.Y() - GeoUtils::DRIFT::SAND_CENTER_Y, 
                          vtx.Z() - GeoUtils::DRIFT::SAND_CENTER_Z);
-    double A = neutron_direction.Z() * neutron_direction.Z() + neutron_direction.Y() * neutron_direction.Y();
-    double B = 2 * (start_point.Z() * neutron_direction.Z() + start_point.Y() * neutron_direction.Y());
-    double C = start_point.Z() * start_point.Z() + start_point.Y() * start_point.Y() - 
-               (GeoUtils::SAND_INNER_VOL_DIAMETER / 2.0) * (GeoUtils::SAND_INNER_VOL_DIAMETER / 2.0);
+    
+    double A = direction.Z() * direction.Z() + direction.Y() * direction.Y();
+    double B = 2 * (start_point.Z() * direction.Z() + start_point.Y() * direction.Y());
+    double C = start_point.Z() * start_point.Z() + start_point.Y() * start_point.Y() - (diameter / 2.0) * (diameter / 2.0);
     double discriminant = B * B - 4 * A * C;
 
     if (discriminant < 0) {
@@ -621,54 +656,46 @@ double IntersectWithInfCylinder(const TVector3& vtx, const TVector3& neutron_dir
         std::cerr << "Both intersections are negative, no valid intersection.\n";
         return std::numeric_limits<double>::infinity();
     }
-
 }
 
-TVector3 RDFUtils::GENIE::NeutronArrivalPosECAL(std::string units, 
-                                                double vtx_x, 
-                                                double vtx_y, 
-                                                double vtx_z, 
-                                                const TVector3& neutron_momentum) {
+double GeoUtils::IntersectWithTube(std::string units, 
+                         const TVector3& vertex, 
+                         const TVector3& direction,
+                         double tube_diameter,
+                         double tube_length) {
     /*
         Given the neutrino vertex position and the neutron momentum
         predict where neutron is expected to release energy.
         !!! THE RETURNED POINT'S UNITS IS mm 
     */
-    TVector3 start_point(vtx_x, vtx_y, vtx_z);
     // convert to mm
+    auto vertex_ = vertex;
     if (units == "m") {
-        start_point *= 1e3;
+        vertex_ = vertex * 1e3;
     } else if (units == "cm") {
-        start_point *= 10.;
+        vertex_ = vertex * 10.;
     } else if (units == "mm") {
-        start_point *= 1.;
+        vertex_ = vertex;
     } else {
         std::cerr << "Error: Unsupported unit \"" << units << "\". Supported units are m, cm, mm.\n";
         throw std::invalid_argument("Unsupported unit");
     }
+    TVector3 direction_versor = direction.Unit();
+    double t = GeoUtils::IntersectWithInfCylinder(vertex_, direction_versor, tube_diameter);
 
-    TVector3 neutron_direction = neutron_momentum.Unit();
-    double t = IntersectWithInfCylinder(start_point, neutron_direction);
-
-    if (fabs(start_point.X() + t * neutron_direction.X() - GeoUtils::DRIFT::SAND_CENTER_X) 
-            >= GeoUtils::SAND_INNER_VOL_X_LENGTH / 2.0) {// neutron intersect ECAL in one of the 2 endcaps
+    if (fabs(vertex_.X() + t * direction_versor.X() - GeoUtils::DRIFT::SAND_CENTER_X) >= tube_length / 2.0) {
         
-        double t1 = (GeoUtils::SAND_CENTER_X - start_point.X()
-                   + GeoUtils::SAND_INNER_VOL_X_LENGTH / 2.0) / neutron_direction.X();
-        
-        double t2 = (GeoUtils::SAND_CENTER_X - start_point.X()
-                   - GeoUtils::SAND_INNER_VOL_X_LENGTH / 2.0 ) / neutron_direction.X();
+        double t1 = (GeoUtils::SAND_CENTER_X + tube_length / 2.0 - vertex_.X()) / direction_versor.X();
+        double t2 = (GeoUtils::SAND_CENTER_X - tube_length / 2.0 - vertex_.X()) / direction_versor.X();
+      
         if(t1<0){
             t = t2;
         }else{
             t = t1;
         }
     }
-    /*
-        assume neutron release energy somewhere around half thickness ECAL module
-    */
-    t += GeoUtils::ECAL::ECAL_thickness/2.;
-    return start_point + t * neutron_direction;
+
+    return t;
 }
 
 // double RDFUtils::GENIE::GetBeta(double Ptot, double E){
@@ -856,20 +883,6 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
             //  .Define("ExpectedHadronSystP4", [](const TVector3 P3, const double E){TLorentzVector v = {P3, E}; return v;}, 
             //                                                         {"ExpectedHadronSystP3", "ExpectedHadronSystEnergy"})
              .Define("ExpectedHadronSystBeta",                      "ExpectedHadronSystP3.Mag() / ExpectedHadronSystEnergy")                                                                                                             
-            //  .Define("ExpectedNeutronArrivalPositionECAL",          RDFUtils::GENIE::NeutronArrivalPosECAL, {"GENIE_UNIT_LEGTH",
-            //                                                                                                  "Interaction_vtxX",
-            //                                                                                                  "Interaction_vtxY",
-            //                                                                                                  "Interaction_vtxZ",
-            //                                                                                                  "ExpectedHadronSystP3"})
-            //  .Define("ExpectedNeutronTOF",                          RDFUtils::GENIE::GetNeutronTOF, {"GENIE_UNIT_LEGTH",
-            //                                                                                          "GENIE_UNIT_ENERGY",
-            //                                                                                          "Interaction_vtxX",
-            //                                                                                          "Interaction_vtxY",
-            //                                                                                          "Interaction_vtxZ",
-            //                                                                                          "ExpectedNeutronArrivalPositionECAL",
-            //                                                                                          "ExpectedHadronSystP3"})                                                                                                             
-            //  .Define("ExpectedFiredModuleByNeutron",                GeoUtils::ECAL::GetModuleIdFromPoint, {"EDEP_UNIT_LEGTH",
-            //                                                                                                "ExpectedNeutronArrivalPositionECAL"})                                                                                                                                                                                                
              // A Novel Approach to Neutrino-Hydrogen Measurements
              .Define("FinalStateLeptonTransverseP",                 "FinalStateLepton4Momentum.Vect() - FinalStateLepton4Momentum.Vect().Dot(NuDirection) * NuDirection")
              .Define("FinalStateHadronicSystemTransverseP",         "FinalStateHadronicSystemTotal4Momentum.Vect() - FinalStateHadronicSystemTotal4Momentum.Vect().Dot(NuDirection) * NuDirection")
@@ -1694,17 +1707,54 @@ ROOT::VecOps::RVec<TVector3> RDFUtils::DIGIT::XfromTDC(const ROOT::VecOps::RVec<
 
 ROOT::VecOps::RVec<TVector3> RDFUtils::DIGIT::GetExpectedHitPosition(TVector3 vertex,
                                                                     const TVector3& momentum_vector,
-                                                                    const ROOT::VecOps::RVec<dg_cell>& cells){
+                                                                    const ROOT::VecOps::RVec<dg_cell>& cells) {
+    
+    /**
+     * @brief Computes expected hit positions in calorimeter cells.
+     *
+     * Given the particle's vertex and momentum, calculates expected hit positions in each calorimeter cell.
+     * Chack that the intersection happpen inside the ECAL
+     *
+     * @param vertex The origin point of the particle (TVector3).
+     * @param momentum_vector The momentum direction of the particle (TVector3).
+     * @param cells A vector of calorimeter cells, each with center coordinates.
+     * 
+     * @return A vector of expected hit positions, or {-999, -999, -999} for cells where the hit is not valid.
+     */                                                                        
+    ROOT::VecOps::RVec<TVector3> Expected_hit_position(cells.size());
+
+    // Calculate the minimum t required to intersect the calorimeter (ECAL)
     TVector3 neutron_direction = momentum_vector.Unit();
-    ROOT::VecOps::RVec<TVector3> Expected_hit_postion(cells.size());
-    for (size_t i = 0; i < cells.size(); i++)
-    {
+    
+    double min_t = GeoUtils::IntersectWithTube("mm",
+                                     vertex, 
+                                     neutron_direction, 
+                                     GeoUtils::SAND_INNER_VOL_DIAMETER, 
+                                     GeoUtils::SAND_INNER_VOL_X_LENGTH
+                                     ); // ecal entry point
+    
+    double max_t = GeoUtils::IntersectWithTube("mm",
+                                     vertex, 
+                                     neutron_direction, 
+                                     GeoUtils::SAND_INNER_VOL_DIAMETER + 2 * GeoUtils::ECAL::thickness, 
+                                     GeoUtils::SAND_INNER_VOL_X_LENGTH + 2 * GeoUtils::ECAL::thickness
+                                     ); // ecal exit point
+
+    for (size_t i = 0; i < cells.size(); i++) {
+        // Calculate t for each cell based on the z-coordinate
         double t = (cells[i].z - vertex.Z()) / neutron_direction.Z();
-        TVector3 expected_position = vertex + t * neutron_direction;
-        Expected_hit_postion[i] = expected_position;
+        
+        if ( t > min_t && t < max_t) { // point is in ECAL range
+            Expected_hit_position[i] = vertex + t * neutron_direction;
+        } else {
+            // If t is too small, return a placeholder invalid position
+            Expected_hit_position[i] = TVector3(RDFUtils::DEFAULT_NO_DATA, RDFUtils::DEFAULT_NO_DATA, RDFUtils::DEFAULT_NO_DATA);
+        }
     }
-    return Expected_hit_postion;                                                                       
+    
+    return Expected_hit_position;
 }
+
 
 ROOT::VecOps::RVec<int> RDFUtils::DIGIT::IsCellComplete(const ROOT::VecOps::RVec<dg_cell>& cells){
     ROOT::VecOps::RVec<int> isComplete;
@@ -1740,6 +1790,151 @@ ROOT::VecOps::RVec<double> RDFUtils::DIGIT::GetTOF(const ROOT::VecOps::RVec<doub
         TOF[i] = flight_length[i] / (c * beta);
     }
     return TOF;
+}
+
+ROOT::VecOps::RVec<double> RDFUtils::DIGIT::TimeResiduals(const ROOT::VecOps::RVec<double>& expected_t_hit,
+                                                          const ROOT::VecOps::RVec<double>& reconstruced_t_hit,
+                                                          const ROOT::VecOps::RVec<int>& isCellComplete){
+    /**
+     * @brief Get time residuals between expected time and reconstructed time.
+     * if cell is broken, return default data
+     *  */
+    if(expected_t_hit.size() != reconstruced_t_hit.size()){
+        throw std::runtime_error("expected_t_hit and reconstruced_t_hit must have the same length");
+    }
+    
+    ROOT::VecOps::RVec<double> time_residuals(expected_t_hit.size());
+    
+    for (size_t i = 0; i < expected_t_hit.size(); i++)
+    {
+        if (isCellComplete[i] == 0)
+        {
+            time_residuals[i] = RDFUtils::DEFAULT_NO_DATA;
+        }else{
+            time_residuals[i] = fabs(expected_t_hit[i] - reconstruced_t_hit[i]);
+        }
+        
+    }
+    return time_residuals;
+}
+
+ROOT::VecOps::RVec<double> RDFUtils::DIGIT::SpaceResiduals(const ROOT::VecOps::RVec<TVector3>& expected_x_hit,
+                                                           const ROOT::VecOps::RVec<TVector3>& reconstructed_x_hit,
+                                                           const ROOT::VecOps::RVec<int>& isCellComplete){
+    /**
+     * @brief Get space residuals between expected and reconstructed hit position.
+     * if cell is broken, return default data
+     *  */
+    if(expected_x_hit.size() != reconstructed_x_hit.size()){
+        throw std::runtime_error("expected_x_hit and reconstruced_t_hit must have the same length");
+    }
+    
+    ROOT::VecOps::RVec<double> space_residuals(expected_x_hit.size());
+    
+    for (size_t i = 0; i < expected_x_hit.size(); i++)
+    {
+        if (isCellComplete[i] == 0)
+        {
+            space_residuals[i] = RDFUtils::DEFAULT_NO_DATA;
+        }else{
+            if(expected_x_hit[i].Z() == RDFUtils::DEFAULT_NO_DATA){
+                space_residuals[i] = RDFUtils::DEFAULT_NO_DATA;
+            }else{
+                space_residuals[i] = (expected_x_hit[i] - reconstructed_x_hit[i]).Mag();
+            }
+        }
+        
+    }
+    return space_residuals;
+}
+
+ROOT::VecOps::RVec<double> RDFUtils::DIGIT::IsSpaceCompatible(const ROOT::VecOps::RVec<double>& space_residuals){
+    
+    ROOT::VecOps::RVec<double> isCompatible(space_residuals.size());
+    
+    for (size_t i = 0; i < space_residuals.size(); i++){
+        if(space_residuals[i] == RDFUtils::DEFAULT_NO_DATA){
+            isCompatible[i] = 0;
+        }else{
+            if(space_residuals[i] > GeoUtils::ECAL::thickness){
+                isCompatible[i] = 0;
+            }else{
+                isCompatible[i] = 1;
+            }
+        }
+    }
+    return isCompatible;
+}
+
+ROOT::VecOps::RVec<int> RDFUtils::DIGIT::IsCandidateCell(const ROOT::VecOps::RVec<int>& isSpaceCompatible,
+                                                         const ROOT::VecOps::RVec<double>& t_hit_residuals) {
+    /**
+    * @brief Identifies candidate cells based on spatial compatibility and hit times.
+    * 
+    * I define as candidate cell, the one spatially compatible with neutron trajectory and with 
+    * the smallest reconstructed hit time.
+    * 
+    * @param isSpaceCompatible ROOT::VecOps::RVec<int> - whether each cell is space-compatible (1 or 0).
+    * @param t_hit_residuals ROOT::VecOps::RVec<double> - t_hit_predicted - t_hit_measured
+    * 
+    * @return ROOT::VecOps::RVec<int> - A vector where each element is 1 if the corresponding cell is a candidate, or 0 otherwise.
+    */
+    
+    // Initialize the output vector with zeros
+    ROOT::VecOps::RVec<int> IsCandidate(t_hit_residuals.size(), 0);
+
+    // Filter out invalid values (i.e., DEFAULT_NO_DATA) from the input vector
+    ROOT::VecOps::RVec<double> t_hit_residuals_valid = t_hit_residuals[t_hit_residuals != RDFUtils::DEFAULT_NO_DATA];
+
+    // Check if there are any valid data points; if not, return the zero-initialized output
+    if (t_hit_residuals_valid.empty()) {
+        return IsCandidate;
+    }
+
+    // Find the minimum value among the valid hits
+    double min_t_hit_reco = ROOT::VecOps::Min(t_hit_residuals_valid);
+
+    // Loop through each element to determine if it's a candidate
+    for (size_t i = 0; i < t_hit_residuals.size(); i++) {
+        // Check if the cell is space-compatible and has a valid hit time
+        if (isSpaceCompatible[i] == 1 && t_hit_residuals[i] != RDFUtils::DEFAULT_NO_DATA) {
+            // Mark as candidate if the hit time matches the minimum valid hit time
+            if (t_hit_residuals[i] == min_t_hit_reco) {
+                IsCandidate[i] = 1;
+            }
+        }
+    }
+
+    // Return the final candidate vector
+    return IsCandidate;
+}
+
+ROOT::VecOps::RVec<double> RDFUtils::DIGIT::SpaceTimeResiduals(const ROOT::VecOps::RVec<double>& time_residuals,
+                                                               const ROOT::VecOps::RVec<double>& space_residuals,
+                                                               const ROOT::VecOps::RVec<int>& isCellComplete){
+    /**
+     * @brief Given the time and space residuals between two expected and recostructed hit,
+     * return the space-time difference ds2 = (c* redidual_t)**2 + (residual_x)**2 
+    *  */
+    if(time_residuals.size() != space_residuals.size()){
+        throw std::runtime_error("time_residuals and space_residuals must have the same length");
+    }
+   
+   ROOT::VecOps::RVec<double> spacetime_residuals(space_residuals.size());
+   double c = 300; // mm / ns
+   
+   for (size_t i = 0; i < space_residuals.size(); i++)
+   {
+        if (isCellComplete[i] != 1)
+        {
+            spacetime_residuals[i] = RDFUtils::DEFAULT_NO_DATA;
+        }else{
+
+            double ds2 = fabs((time_residuals[i]*c)*(time_residuals[i]*c) - (space_residuals[i]*space_residuals[i]));
+            spacetime_residuals[i] = sqrt(ds2); 
+        }
+   }
+    return spacetime_residuals;
 }
 
 ROOT::RDF::RNode RDFUtils::DIGIT::AddColumnsFromDigit(ROOT::RDF::RNode& df){
@@ -1787,8 +1982,9 @@ ROOT::RDF::RNode RDFUtils::DIGIT::AddColumnsFromDigit(ROOT::RDF::RNode& df){
             .Define("ExpectedNeutron_HitPosition_z",RDFUtils::GetComponent3<2>, {"ExpectedNeutron_HitPosition"})
             .Define("ExpectedNeutron_FlightLength", RDFUtils::DIGIT::GetFlightLength, {"Primaries_vtx", "ExpectedNeutron_HitPosition"})
             .Define("ExpectedNeutron_TOF",          RDFUtils::DIGIT::GetTOF, {"ExpectedNeutron_FlightLength", "ExpectedNeutron_Beta"})
+            .Define("Expected_HitTime",             "ExpectedNeutron_TOF + Primaries_vtxT")
             /*
-                Recontructed hit with cells
+                Recontructed hit from cells TDC
             */
             .Define("Reconstructed_HitPosition",    RDFUtils::DIGIT::XfromTDC, {"dg_cell"})
             .Define("Reconstructed_HitPosition_x",  RDFUtils::GetComponent3<0>, {"Reconstructed_HitPosition"})
@@ -1796,6 +1992,13 @@ ROOT::RDF::RNode RDFUtils::DIGIT::AddColumnsFromDigit(ROOT::RDF::RNode& df){
             .Define("Reconstructed_HitPosition_z",  RDFUtils::GetComponent3<2>, {"Reconstructed_HitPosition"})
             .Define("Reconstructed_HitTime",        RDFUtils::DIGIT::TfromTDC, {"dg_cell"})
             .Define("Reconstructed_FlightLength",   RDFUtils::DIGIT::GetFlightLength, {"Primaries_vtx", "Reconstructed_HitPosition"})
+            /*
+                Residuals
+            */
+            .Define("Residuals_HitTime",            RDFUtils::DIGIT::TimeResiduals, {"Expected_HitTime", "Reconstructed_HitTime", "isCellComplete"})
+            .Define("Residuals_HitSpace",           RDFUtils::DIGIT::SpaceResiduals, {"ExpectedNeutron_HitPosition", "Reconstructed_HitPosition", "isCellComplete"})
+            .Define("IsSpaceCompatible",            RDFUtils::DIGIT::IsSpaceCompatible, {"Residuals_HitSpace"})
+            .Define("isCandidate",                  RDFUtils::DIGIT::IsCandidateCell, {"IsSpaceCompatible", "Residuals_HitTime"})
             ;
 }
 

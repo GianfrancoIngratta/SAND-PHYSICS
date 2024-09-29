@@ -94,6 +94,8 @@ ROOT::VecOps::RVec<double> GetComponent3(const ROOT::VecOps::RVec<TVector3>& vTV
 
 ROOT::VecOps::RVec<TVector3> GetVect(const ROOT::VecOps::RVec<TLorentzVector>& vTL);
 
+ROOT::VecOps::RVec<int> FindMinimum(const ROOT::VecOps::RVec<double> v);
+
 double GetColumnSum(const ROOT::VecOps::RVec<double>& v);
 
 ROOT::VecOps::RVec<double> VectorDifference(const ROOT::VecOps::RVec<double>& v1,
@@ -113,6 +115,8 @@ ROOT::VecOps::RVec<int> CompareVectors(const ROOT::VecOps::RVec<double>& V1,
                                         const ROOT::VecOps::RVec<double>& V2);
 
 ROOT::VecOps::RVec<int> IsNULLTLV(const ROOT::VecOps::RVec<TLorentzVector>& V);
+
+ROOT::VecOps::RVec<int> IsValidVector(const ROOT::VecOps::RVec<double>& v);
 
 namespace GENIE{//GENIE
 
@@ -367,6 +371,23 @@ ROOT::VecOps::RVec<TLorentzVector> Cluster2Vertex4Distance(double x,
 ROOT::VecOps::RVec<TVector3> GetExpectedHitPosition(TVector3 vertex,
                                                    const TVector3& momentum_vector,
                                                    const ROOT::VecOps::RVec<dg_cell>& cells);
+
+ROOT::VecOps::RVec<double> TimeResiduals(const ROOT::VecOps::RVec<double>& expected_t_hit,
+                                                          const ROOT::VecOps::RVec<double>& reconstruced_t_hit,
+                                                          const ROOT::VecOps::RVec<int>& isCellComplete);
+
+ROOT::VecOps::RVec<double> SpaceResiduals(const ROOT::VecOps::RVec<TVector3>& expected_x_hit,
+                                                           const ROOT::VecOps::RVec<TVector3>& reconstruced_x_hit,
+                                                           const ROOT::VecOps::RVec<int>& isCellComplete);
+
+ROOT::VecOps::RVec<double> SpaceTimeResiduals(const ROOT::VecOps::RVec<double>& time_residuals,
+                                                               const ROOT::VecOps::RVec<double>& space_residuals,
+                                                               const ROOT::VecOps::RVec<int>& isCellComplete);
+
+ROOT::VecOps::RVec<double> IsSpaceCompatible(const ROOT::VecOps::RVec<double>& space_residuals);
+
+ROOT::VecOps::RVec<int> IsCandidateCell(const ROOT::VecOps::RVec<int>& isSpaceCompatible,
+                                        const ROOT::VecOps::RVec<double>& t_hit_reco);
 
 }// DIGIT
 

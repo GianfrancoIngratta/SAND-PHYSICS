@@ -26,6 +26,16 @@ bool IsInSANDInnerVol(std::string units, double x, double y, double z);
 
 TVector3 MasterToSAND(const TVector3& point);
 
+double IntersectWithInfCylinder(const TVector3& vtx, 
+                                          const TVector3& direction, 
+                                          double diameter);
+
+double IntersectWithTube(std::string units, 
+                         const TVector3& vertex, 
+                         const TVector3& direction,
+                         double tube_diameter,
+                         double tube_length);
+
 namespace ECAL{ // ECAL
 
 const double Module_angle = TMath::Pi() / 12.;
@@ -34,7 +44,7 @@ const double Module_0_starting_angle = (TMath::Pi() - GeoUtils::ECAL::Module_ang
 
 const double vlfb = 5.85; // ns/m velocity signal in fiber
 
-const double ECAL_thickness = 230; // mm
+const double thickness = 230; // mm
 
 double XfromTDC(const double tdc1, const double tdc2);
 
@@ -45,6 +55,7 @@ int GetModuleIdFromPoint(std::string units, TVector3 point);
 bool isCellComplete(const dg_cell& cell, int& side);
 
 bool is_ecal_barrel(const TString& volume_name);
+
 } // ECAL
 
 namespace STT{//STT
