@@ -1848,9 +1848,9 @@ ROOT::VecOps::RVec<double> RDFUtils::DIGIT::SpaceResiduals(const ROOT::VecOps::R
     return space_residuals;
 }
 
-ROOT::VecOps::RVec<double> RDFUtils::DIGIT::IsSpaceCompatible(const ROOT::VecOps::RVec<double>& space_residuals){
+ROOT::VecOps::RVec<int> RDFUtils::DIGIT::IsSpaceCompatible(const ROOT::VecOps::RVec<double>& space_residuals){
     
-    ROOT::VecOps::RVec<double> isCompatible(space_residuals.size());
+    ROOT::VecOps::RVec<int> isCompatible(space_residuals.size());
     
     for (size_t i = 0; i < space_residuals.size(); i++){
         if(space_residuals[i] == RDFUtils::DEFAULT_NO_DATA){

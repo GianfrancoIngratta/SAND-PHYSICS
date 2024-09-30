@@ -81,10 +81,10 @@ int main(int argc, char* argv[]){
     dfDigit = dfDigit.Filter("isInFiducialVolume"); // genie
 
     LOG("I", "Filter signal events (MC truth)");
-    dfDigit = dfDigit.Filter("CCQEonHydrogen==1"); // genie
+    // dfDigit = dfDigit.Filter("CCQEonHydrogen==1"); // genie
 
-    auto filter_description = "FV_Signal";
-    // auto filter_description = "FV";
+    // auto filter_description = "FV_Signal";
+    auto filter_description = "FV";
 
     auto fOutput_filtered = TString::Format("%sevents-in-SANDtracker.%d.to.%d.ecal-digit.analysed.%s.root",FOLDER_ANALYSIS, file_start, file_stop, filter_description);
     auto fOutput_filtered_trj = TString::Format("%sevents-in-SANDtracker.%d.to.%d.ecal-digit.analysed.%s_trj.root",FOLDER_ANALYSIS, file_start, file_stop, filter_description);
@@ -178,7 +178,7 @@ int main(int argc, char* argv[]){
                                                 "Residuals_HitTime",
                                                 "Residuals_HitSpace",
                                                 "IsSpaceCompatible",
-                                                // "isCandidate",
+                                                "isCandidate",
     });                                                    
 
     LOG("I", "Writing trajectory file");

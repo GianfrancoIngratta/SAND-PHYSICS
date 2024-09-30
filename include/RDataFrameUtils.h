@@ -384,7 +384,7 @@ ROOT::VecOps::RVec<double> SpaceTimeResiduals(const ROOT::VecOps::RVec<double>& 
                                                                const ROOT::VecOps::RVec<double>& space_residuals,
                                                                const ROOT::VecOps::RVec<int>& isCellComplete);
 
-ROOT::VecOps::RVec<double> IsSpaceCompatible(const ROOT::VecOps::RVec<double>& space_residuals);
+ROOT::VecOps::RVec<int> IsSpaceCompatible(const ROOT::VecOps::RVec<double>& space_residuals);
 
 ROOT::VecOps::RVec<int> IsCandidateCell(const ROOT::VecOps::RVec<int>& isSpaceCompatible,
                                         const ROOT::VecOps::RVec<double>& t_hit_reco);
