@@ -72,6 +72,7 @@ int main(int argc, char* argv[]){
     LOG("I", "Writing ouput file");
     dfReco.Snapshot("tReco_extended", fOutput.Data(), {
         "FileName",
+        "CCQEonHydrogen",
         "edep_file_input",
         "digit_file_input",
         "edep_event_index",

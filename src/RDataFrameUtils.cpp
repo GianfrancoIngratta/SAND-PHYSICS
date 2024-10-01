@@ -769,6 +769,7 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
                                                                                               "Interaction_vtxX",
                                                                                               "Interaction_vtxY",
                                                                                               "Interaction_vtxZ"})
+             .Define("InteractionVolume_short",     GeoUtils::InteractionVolume_short, {"InteractionVolume"})                                                                                              
              // !!! FIDUCIAL VOLUME CUT !!!
              .Define("isInFiducialVolume",          GeoUtils::DRIFT::IsInFiducialVolume, {"InteractionVolume",
                                                                                           "GENIE_UNIT_LEGTH",
@@ -1856,7 +1857,7 @@ ROOT::VecOps::RVec<int> RDFUtils::DIGIT::IsSpaceCompatible(const ROOT::VecOps::R
         if(space_residuals[i] == RDFUtils::DEFAULT_NO_DATA){
             isCompatible[i] = 0;
         }else{
-            if(space_residuals[i] > GeoUtils::ECAL::thickness){
+            if(space_residuals[i] > 120){ // 12 cm precision in the determination of neutron true hit
                 isCompatible[i] = 0;
             }else{
                 isCompatible[i] = 1;
@@ -1907,6 +1908,19 @@ ROOT::VecOps::RVec<int> RDFUtils::DIGIT::IsCandidateCell(const ROOT::VecOps::RVe
 
     // Return the final candidate vector
     return IsCandidate;
+}
+
+int RDFUtils::DIGIT::isCandidateSignal(ROOT::VecOps::RVec<int>& cell_has_coincidence){
+    /*
+        if event has candidate cell (a cell with a coincidence) is candidate signal 
+    */
+    for (size_t i = 0; i < cell_has_coincidence.size(); i++)
+    {
+        if(cell_has_coincidence[i] == 1){
+            return 1;
+        }
+    }
+    return 0;
 }
 
 ROOT::VecOps::RVec<double> RDFUtils::DIGIT::SpaceTimeResiduals(const ROOT::VecOps::RVec<double>& time_residuals,
@@ -1999,6 +2013,11 @@ ROOT::RDF::RNode RDFUtils::DIGIT::AddColumnsFromDigit(ROOT::RDF::RNode& df){
             .Define("Residuals_HitSpace",           RDFUtils::DIGIT::SpaceResiduals, {"ExpectedNeutron_HitPosition", "Reconstructed_HitPosition", "isCellComplete"})
             .Define("IsSpaceCompatible",            RDFUtils::DIGIT::IsSpaceCompatible, {"Residuals_HitSpace"})
             .Define("isCandidate",                  RDFUtils::DIGIT::IsCandidateCell, {"IsSpaceCompatible", "Residuals_HitTime"})
+            .Define("event_has_candidate",          RDFUtils::DIGIT::isCandidateSignal, {"isCandidate"})
+            /*
+                Reconstruct neutron
+            */
+            // .Define("")
             ;
 }
 

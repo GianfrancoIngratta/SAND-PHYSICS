@@ -389,6 +389,8 @@ ROOT::VecOps::RVec<int> IsSpaceCompatible(const ROOT::VecOps::RVec<double>& spac
 ROOT::VecOps::RVec<int> IsCandidateCell(const ROOT::VecOps::RVec<int>& isSpaceCompatible,
                                         const ROOT::VecOps::RVec<double>& t_hit_reco);
 
+int isCandidateSignal(ROOT::VecOps::RVec<int>& cell_has_coincidence);
+
 }// DIGIT
 
 namespace RECO{// DRIFT RECO

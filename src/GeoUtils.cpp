@@ -17,6 +17,37 @@ bool GeoUtils::IsInSANDInnerVol(std::string units, double x, double y, double z)
                     (GeoUtils::SAND_INNER_VOL_DIAMETER/2.)*(GeoUtils::SAND_INNER_VOL_DIAMETER/2.));
     return pass_x * pass_zy;
 }
+
+std::string GeoUtils::InteractionVolume_short(const std::string& detailed_name) {
+    if (detailed_name.find("C3H6Target") != std::string::npos) {
+        return "C3H6_Target";
+    } else if (detailed_name.find("CTarget") != std::string::npos) {
+        return "C_Target";
+    } else if (detailed_name.find("Mylar") != std::string::npos) {
+        return "Mylar";
+    } else if (detailed_name.find("Yoke") != std::string::npos) {
+        return "Yoke";
+    } else if (detailed_name.find("Solenoid") != std::string::npos) {
+        return "Yoke";
+    } else if (detailed_name.find("ECAL") != std::string::npos) {
+        return "ECAL";
+    } else if (detailed_name.find("GRAIN") != std::string::npos) {
+        if (detailed_name.find("LAr") != std::string::npos) {
+            return "GRAIN_LAr";
+        } else {
+            return "GRAIN vessels";
+        }
+    } else if (detailed_name.find("Frame") != std::string::npos) {
+        return "Supermodules_Frames";
+    } else if (detailed_name.find("Drift") != std::string::npos) {
+        return "Drift_gas";
+    } else if (detailed_name.find("volSAND") != std::string::npos) {
+        return "Supermodules_Frames";
+    } else {
+        return "Other";
+    }
+}
+
 // ECAL functions ____________________
 
 bool GeoUtils::ECAL::is_ecal_barrel(const TString& volume_name){

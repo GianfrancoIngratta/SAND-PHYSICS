@@ -36,6 +36,8 @@ double IntersectWithTube(std::string units,
                          double tube_diameter,
                          double tube_length);
 
+std::string InteractionVolume_short(const std::string& detailed_name);
+
 namespace ECAL{ // ECAL
 
 const double Module_angle = TMath::Pi() / 12.;
