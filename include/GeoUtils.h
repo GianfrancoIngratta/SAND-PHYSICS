@@ -44,13 +44,38 @@ const double Module_angle = TMath::Pi() / 12.;
 
 const double Module_0_starting_angle = (TMath::Pi() - GeoUtils::ECAL::Module_angle) * 0.5;
 
-const double vlfb = 5.85; // ns/m velocity signal in fiber
+const double vlfb = 5.85 * 1e-3; // ns/mm velocity signal in fiber, 5.85 ns/m
+
+double const attpassratio = 0.187;
+
+// photoelectron/counts = 0.25
+const double pe2ADC = 1/.25;
+
+// Average number of photoelectrons = 25*Ea(MeV)
+// corrected to 18.5 to have mean number of pe of 40
+// for mip crossing in the middle of barrel module
+const double e2pe = 18.5;
 
 const double thickness = 230; // mm
 
+// get fiber attenuation factor.
+// It depends on distance from pmt (d)
+// and planeID (planes have different fibers)
+double AttenuationFactor(double d, int planeID);
+const double p1 = 0.35;
+const double atl1 = 500.;
+const double atl2_01 = 4300.0;
+const double atl2_2 = 3800.0;
+const double atl2_34 = 3300.0;
+
 double XfromTDC(const double tdc1, const double tdc2);
 
-double TfromTDC(const double tdc1, const double tdc2, const double length); 
+double TfromTDC(const double tdc1, const double tdc2, const double length);
+
+double EfromADC(double adc1, double adc2, double d1,
+                                       double d2, int planeID);
+
+double EfromADCsingle(double adc, double f);
 
 int GetModuleIdFromPoint(std::string units, TVector3 point);
 

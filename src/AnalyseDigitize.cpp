@@ -77,33 +77,55 @@ int main(int argc, char* argv[]){
         - Complete Cells (reco)
     */
 
-    LOG("I", "Filter events in fiducial volume (MC truth)");
+    LOG("I", "Filter events in fiducial volume (MC truth) ____________________________________________");
     dfDigit = dfDigit.Filter("isInFiducialVolume"); // genie
+    auto nof_events_in_FV = static_cast<double>(dfDigit.Count().GetValue());
+    auto nof_signal_events = static_cast<double>(dfDigit.Filter("CCQEonHydrogen==1").Count().GetValue());
+    auto nof_bkg_events = static_cast<double>(dfDigit.Filter("CCQEonHydrogen==0").Count().GetValue());
+    LOG("ii", TString::Format("Events in FV %.2f, signal %.2f %%, bkg %.2f %%", 
+                          nof_events_in_FV, 
+                          nof_signal_events/nof_events_in_FV,
+                          nof_bkg_events/nof_events_in_FV).Data());
 
-    // LOG("I", "Filter signal events (MC truth)");
-    // dfDigit = dfDigit.Filter("CCQEonHydrogen==1"); // genie
+    LOG("I", "Filter signal events (MC truth)");
+    dfDigit = dfDigit.Filter("CCQEonHydrogen==1"); // genie
 
-    LOG("I", "Filter candidates");
-    dfDigit = dfDigit.Filter("event_has_candidate");
+    // LOG("I", "Filter multiplicity _____________________________________________________________________");
+    // dfDigit = dfDigit.Filter("NofFinalStateChargedParticles==1");
 
-    LOG("I", "Filter events in C3H6 target");
-    dfDigit = dfDigit.Filter("InteractionVolume_short == \"C3H6_Target\"");
+    // LOG("I", "Filter events in C3H6 target ____________________________________________________________");
+    // dfDigit = dfDigit.Filter("InteractionVolume_short == \"C3H6_Target\"");
+
+    // LOG("I", "Filter candidates ________________________________________________________________________");
+    // auto nof_true_positve = static_cast<double>(dfDigit.Filter("event_has_candidate==1").Filter("CCQEonHydrogen==1").Count().GetValue());
+    // auto nof_false_positive = static_cast<double>(dfDigit.Filter("event_has_candidate==1").Filter("CCQEonHydrogen==0").Count().GetValue());
+    // auto nof_true_negative = static_cast<double>(dfDigit.Filter("event_has_candidate==0").Filter("CCQEonHydrogen==0").Count().GetValue());
+    // auto nof_false_negative = static_cast<double>(dfDigit.Filter("event_has_candidate==0").Filter("CCQEonHydrogen==1").Count().GetValue());
+    // LOG("i", TString::Format("nof_true_positve: %.2f, nof_false_positive: %.2f, nof_true_negative: %.2f, nof_false_negative: %.2f", 
+    //                      nof_true_positve, nof_false_positive, nof_true_negative, nof_false_negative).Data());
+    // dfDigit = dfDigit.Filter("event_has_candidate");
     
     // auto filter_description = "FV";
-    // auto filter_description = "FV_Signal";
+    auto filter_description = "FV_Signal";
     // auto filter_description = "FV_candidate";
-    auto filter_description = "FV_C3H6_candidate";
-
-    auto fOutput_filtered = TString::Format("%sevents-in-SANDtracker.%d.to.%d.ecal-digit.analysed.%s.root",FOLDER_ANALYSIS, file_start, file_stop, filter_description);
-    auto fOutput_filtered_trj = TString::Format("%sevents-in-SANDtracker.%d.to.%d.ecal-digit.analysed.%s_trj.root",FOLDER_ANALYSIS, file_start, file_stop, filter_description);
+    // auto filter_description = "FV_multi1_C3H6_candidate";
     
+    auto fOutput_filtered = TString::Format("%s%s/events-in-SANDtracker.%d.to.%d.ecal-digit.analysed.root",
+                                        FOLDER_ANALYSIS, filter_description, file_start, file_stop);
+
+    auto fOutput_filtered_trj = TString::Format("%s%s/events-in-SANDtracker.%d.to.%d.ecal-digit.analysed.trj.root",
+                                            FOLDER_ANALYSIS, filter_description, file_start, file_stop);
+
+    // study cell fired by neutron
+    
+
     LOG("I", "Writing ouput file");
     dfDigit.Snapshot("digit_extended", fOutput_filtered.Data(), {
                                                 /*
                                                     GENIE INFO
                                                 */
                                                 "FileName",
-                                                "EventId",
+                                                // "EventId",
                                                 "EventType",
                                                 "CCQEonHydrogen",
                                                 "NuDirection",
@@ -112,27 +134,26 @@ int main(int argc, char* argv[]){
                                                 "Interaction_vtxY",
                                                 "Interaction_vtxZ",
                                                 "Interaction_vtxT",
-                                                "InteractionVolume",
+                                                "InteractionVolume_short",
                                                 "NofFinalStateChargedParticles",
                                                 "FinalStateLeptonEmissionAngle",
-                                                "PrimaryStateHadronicSystemTotalKinE",
+                                                // "PrimaryStateHadronicSystemTotalKinE",
                                                 "PrimaryStateHadronicSystemTopology_name",
                                                 "InteractionTarget",
-                                                /*
-                                                    EDEP INFO
-                                                */
+                                                // /*
+                                                //     EDEP INFO
+                                                // */
                                                 "PrimariesPDG",
                                                 "PrimariesTrackId",
                                                 "PrimariesP4",
                                                 "PrimariesBeta",
-                                                "PrimariesFirstHitECAL",
                                                 "PrimariesEDepECAL",
                                                 "PrimariesEmissionAngle",
-                                                "IsECALHitMissing",
+                                                // "IsECALHitMissing",
                                                 "DeviationAngle",
-                                                /*
-                                                    PREDICTIONS FOR CHANNEL antinu on H
-                                                */
+                                                // /*
+                                                //     PREDICTIONS FOR CHANNEL antinu on H
+                                                // */
                                                 "ExpectedNeutrinoP4FromMuon",
                                                 "ExpectedHadronSystP3",
                                                 "ExpectedHadronSystEnergy",
@@ -164,15 +185,17 @@ int main(int argc, char* argv[]){
                                                 "Fired_Cell_true_Hit_y",
                                                 "Fired_Cell_true_Hit_z",
                                                 "Fired_Cell_true_Hit_t",
+                                                "Fired_Cell_true_Hit_e",
+                                                // "CrossingNeutron_KinE_true",
                                                 "True_FlightLength",
                                                 /*
                                                     expected
                                                 */
-                                                "ExpectedNeutron_Beta",
+                                                // "ExpectedNeutron_Beta",
                                                 "ExpectedNeutron_HitPosition_x",
                                                 "ExpectedNeutron_HitPosition_y",
                                                 "ExpectedNeutron_HitPosition_z",
-                                                "ExpectedNeutron_TOF",
+                                                // "ExpectedNeutron_TOF",
                                                 "ExpectedNeutron_FlightLength",
                                                 /*
                                                     reco
@@ -181,13 +204,16 @@ int main(int argc, char* argv[]){
                                                 "Reconstructed_HitPosition_y",
                                                 "Reconstructed_HitPosition_z",
                                                 "Reconstructed_HitTime",
+                                                "Reconstructed_Energy",
+                                                "compatible_cell_weighted",
                                                 "Reconstructed_FlightLength",
+                                                "Reconstructed_FlightLength_weighted",
                                                 //
-                                                "Residuals_HitTime",
-                                                "Residuals_HitSpace",
-                                                "IsSpaceCompatible",
-                                                "isCandidate",
-                                                "event_has_candidate",
+                                                "IsCompatible",
+                                                "compatible_cell_weighted",
+                                                // "isCandidate",
+                                                // "event_has_candidate",
+                                                // "Reconstructed_MissingPT",
     });                                                    
 
     LOG("I", "Writing trajectory file");

@@ -96,6 +96,9 @@ ROOT::VecOps::RVec<TVector3> GetVect(const ROOT::VecOps::RVec<TLorentzVector>& v
 
 ROOT::VecOps::RVec<int> FindMinimum(const ROOT::VecOps::RVec<double> v);
 
+ROOT::VecOps::RVec<int> FindMinimum2(const ROOT::VecOps::RVec<double> vector,
+                                               const ROOT::VecOps::RVec<int> condition);
+
 double GetColumnSum(const ROOT::VecOps::RVec<double>& v);
 
 ROOT::VecOps::RVec<double> VectorDifference(const ROOT::VecOps::RVec<double>& v1,
@@ -246,6 +249,12 @@ ROOT::VecOps::RVec<int> GetHitTrajectoryId(const ROOT::VecOps::RVec<int>& pmts_h
 template<int PDG>
 ROOT::VecOps::RVec<int> CheckTrajId(const ROOT::VecOps::RVec<int>& track_ids, TG4Event& ev);
 
+
+ROOT::VecOps::RVec<double> GetNeutronEKin(const ROOT::VecOps::RVec<int>& track_ids,
+                                         const ROOT::VecOps::RVec<int>& is_primary_neutron, 
+                                         TG4Event& ev,
+                                         const double neutron_mass);
+
 ROOT::VecOps::RVec<TG4Trajectory> GetTrajectories(const ROOT::VecOps::RVec<int>& track_ids, TG4Event& ev);
 
 ROOT::VecOps::RVec<int> ExpandIndex(const ROOT::VecOps::RVec<TG4Trajectory>& trajectories);
@@ -262,7 +271,9 @@ ROOT::VecOps::RVec<double> GetPointMomentum(const ROOT::VecOps::RVec<TG4Trajecto
 
 ROOT::VecOps::RVec<double> GetPointProcess(const ROOT::VecOps::RVec<TG4TrajectoryPoint>& points);
 
-ROOT::VecOps::RVec<TLorentzVector> GetHitFromIndex(const ROOT::VecOps::RVec<int>& h_index, TG4Event& ev);                                 
+ROOT::VecOps::RVec<TLorentzVector> GetHitFromIndex(const ROOT::VecOps::RVec<int>& h_index, TG4Event& ev);
+
+ROOT::VecOps::RVec<double> GetHitEdepFromIndex(const ROOT::VecOps::RVec<int>& h_index, TG4Event& ev);
 
 namespace SPILL{// EDEPSIM::SPILL
 ROOT::RDF::RNode AddColumnsFromEDEPSIM(ROOT::RDF::RNode& df);
@@ -330,13 +341,30 @@ namespace DIGIT{// DIGIT
 
 ROOT::RDF::RNode AddColumnsFromDigit(ROOT::RDF::RNode& df);
 
+ROOT::RDF::RNode GetInfoCellsFromSignal(ROOT::RDF::RNode& df);
+
 ROOT::RDF::RNode GetFilteredTrajectories(ROOT::RDF::RNode& df);
 
 int NofFiredECALMods(const ROOT::VecOps::RVec<int>& fired_cells_modules);
 
-ROOT::VecOps::RVec<TVector3> XfromTDC(const ROOT::VecOps::RVec<dg_cell>& cells);
+ROOT::VecOps::RVec<TVector3> XfromTDC(const ROOT::VecOps::RVec<dg_cell>& cells,
+                                      const double calibration_x,
+                                      const double calibration_y);
 
-ROOT::VecOps::RVec<double> TfromTDC(const ROOT::VecOps::RVec<dg_cell>& cells);
+ROOT::VecOps::RVec<double> TfromTDC(const ROOT::VecOps::RVec<dg_cell>& cells, 
+                                    const double calibration_const);
+
+ROOT::VecOps::RVec<double> EfromTDC(const ROOT::VecOps::RVec<dg_cell>& cells,
+                                                     const double calibration_const,
+                                                     const ROOT::VecOps::RVec<double>& e_true);
+
+TVector3 WeightedCell(const ROOT::VecOps::RVec<TVector3> x_reco,
+                                             const ROOT::VecOps::RVec<double> e_reco,
+                                             const ROOT::VecOps::RVec<int> fired_by_primary);
+
+double WeightedCellTime(const ROOT::VecOps::RVec<double>& t_hit_reco,
+                        const ROOT::VecOps::RVec<double>& e_reco,
+                        const ROOT::VecOps::RVec<int>& isCompatible);
 
 ROOT::VecOps::RVec<double> GetFlightLength(const TVector3& vtx, ROOT::VecOps::RVec<TVector3>& hits);
 
@@ -384,12 +412,45 @@ ROOT::VecOps::RVec<double> SpaceTimeResiduals(const ROOT::VecOps::RVec<double>& 
                                                                const ROOT::VecOps::RVec<double>& space_residuals,
                                                                const ROOT::VecOps::RVec<int>& isCellComplete);
 
-ROOT::VecOps::RVec<int> IsSpaceCompatible(const ROOT::VecOps::RVec<double>& space_residuals);
+ROOT::VecOps::RVec<int> IsCompatible(const ROOT::VecOps::RVec<double>& space_residuals);
 
 ROOT::VecOps::RVec<int> IsCandidateCell(const ROOT::VecOps::RVec<int>& isSpaceCompatible,
                                         const ROOT::VecOps::RVec<double>& t_hit_reco);
 
 int isCandidateSignal(ROOT::VecOps::RVec<int>& cell_has_coincidence);
+
+
+ROOT::VecOps::RVec<double> GetBeta(const ROOT::VecOps::RVec<double>& flight_length,
+                                    const ROOT::VecOps::RVec<double>& t_hit_reco,
+                                    double vertex_time);
+
+ROOT::VecOps::RVec<double> GetPFromBeta(const ROOT::VecOps::RVec<double>& beta,
+                                                         const double neutron_mass);
+
+ROOT::VecOps::RVec<double> GetKinEFromBeta(const ROOT::VecOps::RVec<double>& beta,
+                                                         const double neutron_mass);
+
+ROOT::VecOps::RVec<TVector3> GetRecoP3(const ROOT::VecOps::RVec<double>& ptot_reco,
+                                       const TVector3& expected_direction);
+
+                                       
+ROOT::VecOps::RVec<double> GetMissingPT(const TLorentzVector& lepton_P4,
+                                        const ROOT::VecOps::RVec<TVector3>& neutron_reco_p3);
+
+
+ROOT::VecOps::RVec<dg_cell> FitlerCells(const ROOT::VecOps::RVec<dg_cell>& cells,
+                                        const ROOT::VecOps::RVec<int>& is_complete,
+                                        const ROOT::VecOps::RVec<int>& is_fired_by_neutron);
+
+ROOT::VecOps::RVec<int>  GetCellMod(const ROOT::VecOps::RVec<dg_cell>& cells);                                        
+
+ROOT::VecOps::RVec<int>  GetCellId(const ROOT::VecOps::RVec<dg_cell>& cells);
+
+ROOT::VecOps::RVec<double>  GetCellX(const ROOT::VecOps::RVec<dg_cell>& cells);
+
+ROOT::VecOps::RVec<double>  GetCellY(const ROOT::VecOps::RVec<dg_cell>& cells);
+
+ROOT::VecOps::RVec<double>  GetCellZ(const ROOT::VecOps::RVec<dg_cell>& cells);
 
 }// DIGIT
 

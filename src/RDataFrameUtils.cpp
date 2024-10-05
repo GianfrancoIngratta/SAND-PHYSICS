@@ -99,6 +99,31 @@ ROOT::VecOps::RVec<int> RDFUtils::FindMinimum(const ROOT::VecOps::RVec<double> v
     return isMinimum;
 }
 
+ROOT::VecOps::RVec<int> RDFUtils::FindMinimum2(const ROOT::VecOps::RVec<double> v,
+                                               const ROOT::VecOps::RVec<int> condition){
+    /**
+     * @brief same as RDFUtils::FindMinimum but with additional condition
+     */
+    ROOT::VecOps::RVec<int> isMinimum(v.size(), 0);
+
+    if(v.size() != condition.size()){
+        throw std::runtime_error("v and condition must have the same length");
+    }
+
+    ROOT::VecOps::RVec<double> valid_values = v[v != RDFUtils::DEFAULT_NO_DATA];
+
+    if (!valid_values.empty()) {
+        double min_v = ROOT::VecOps::Min(valid_values);
+
+        for (size_t i = 0; i < v.size(); ++i) {
+            if (v[i] == min_v && condition[i] == 1){ // redoundant check
+                isMinimum[i] = 1;
+            }
+        }
+    }
+    return isMinimum;
+}
+
 ROOT::VecOps::RVec<TVector3> RDFUtils::GetVect(const ROOT::VecOps::RVec<TLorentzVector>& vTL){
 
     ROOT::VecOps::RVec<TVector3> v(vTL.size());
@@ -748,6 +773,10 @@ ROOT::RDF::RNode RDFUtils::AddConstantsToDF(ROOT::RDataFrame& df){
             .Define("NEUTRON_MASS_MeV",   [](){return GenieUtils::GetMass(2112)*1e3;})
             .Define("MUON_MASS_GeV",      [](){return GenieUtils::GetMass(13);})
             .Define("MUON_MASS_MeV",      [](){return GenieUtils::GetMass(13)*1e3;})
+            // offset
+            .Define("TIME_CALIBRATION_OFFSET", [](){return -0.90;}) // ns calubrated on earlist cells 
+            .Define("X_CALIBRATION_OFFSET",    [](){return +0.64;}) // mm
+            .Define("Y_CALIBRATION_OFFSET",    [](){return +0.41;}) // mm
             ;
 }
 
@@ -770,7 +799,6 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
                                                                                               "Interaction_vtxY",
                                                                                               "Interaction_vtxZ"})
              .Define("InteractionVolume_short",     GeoUtils::InteractionVolume_short, {"InteractionVolume"})                                                                                              
-             // !!! FIDUCIAL VOLUME CUT !!!
              .Define("isInFiducialVolume",          GeoUtils::DRIFT::IsInFiducialVolume, {"InteractionVolume",
                                                                                           "GENIE_UNIT_LEGTH",
                                                                                           "Interaction_vtxX",
@@ -1271,6 +1299,26 @@ ROOT::VecOps::RVec<int> RDFUtils::EDEPSIM::CheckTrajId(const ROOT::VecOps::RVec<
    return IsPrimaryTraj;
 }
 
+// ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::GetNeutronEKin(const ROOT::VecOps::RVec<int>& track_ids,
+//                                                            const ROOT::VecOps::RVec<int>& is_primary_neutron, 
+//                                                            TG4Event& ev,
+//                                                            const double neutron_mass){
+//     auto Trajectories = ev.Trajectories;
+//     ROOT::VecOps::RVec<double> E_kin(track_ids.size());
+//     for (size_t i = 0; i < track_ids.size(); i++)
+//     {
+//         if(is_primary_neutron[i]==1){
+//             auto this_trj = Trajectories[track_ids[i]];
+//             auto this_trj_p = this_trj.GetInitialMomentum();
+//             auto this_trj_K = sqrt(this_trj_p * this_trj_p - neutron_mass * neutron_mass) - neutron_mass;
+//             E_kin[i] = this_trj_K;
+//         }else{
+//             E_kin[i] == RDFUtils::DEFAULT_NO_DATA;
+//         }
+//     }
+//     return E_kin;                                                        
+// }
+
 ROOT::VecOps::RVec<TG4Trajectory> RDFUtils::EDEPSIM::GetTrajectories(const ROOT::VecOps::RVec<int>& track_ids,
                                                                   TG4Event& ev){
     /**
@@ -1435,6 +1483,22 @@ ROOT::VecOps::RVec<TLorentzVector> RDFUtils::EDEPSIM::GetHitFromIndex(const ROOT
     return hits;
 }
 
+ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::GetHitEdepFromIndex(const ROOT::VecOps::RVec<int>& h_index, TG4Event& ev){
+    /*
+        Retreive the hit in ECAL cooresponding to index j
+    */
+    ROOT::VecOps::RVec<double> hit_e;
+    for(const auto& j : h_index){
+        if(j == RDFUtils::DEFAULT_NO_DATA){ // incomplete cell, no tdc recorded
+            hit_e.push_back(RDFUtils::DEFAULT_NO_DATA); // dummy TLVector
+        }else{
+            auto hit = ev.SegmentDetectors["EMCalSci"][j];
+            hit_e.push_back(hit.GetEnergyDeposit());
+        }
+    }
+    return hit_e;
+}
+
 ROOT::RDF::RNode RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(ROOT::RDF::RNode& df){
     return df
              .Define("FileName",                RDFUtils::EDEPSIM::NOSPILL::FileName, {"Primaries"})
@@ -1458,7 +1522,7 @@ ROOT::RDF::RNode RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(ROOT::RDF::RN
              // ECAL hits
              .Define("PrimariesEmissionAngle",  RDFUtils::EDEPSIM::NOSPILL::GetEmissionAngle, {"NuDirection", "PrimariesP4"})
              .Define("PrimariesFirstHitECAL",   RDFUtils::EDEPSIM::NOSPILL::GetPrimariesFirstHitECAL, {"PrimariesHitsECAL"})
-             .Define("IsECALHitMissing",        RDFUtils::IsNULLTLV, {"PrimariesFirstHitECAL"})
+            //  .Define("IsECALHitMissing",        RDFUtils::IsNULLTLV, {"PrimariesFirstHitECAL"})
              .Define("PrimariesEDepECAL",       RDFUtils::EDEPSIM::NOSPILL::GetPrimariesEDepECAL, {"PrimariesHitsECAL"})
              .Define("DeviationAngle",RDFUtils::EDEPSIM::NOSPILL::GetDirectionInECAL,  {"PrimariesP4",
                                                                                                   "Interaction_vtxX",
@@ -1663,31 +1727,86 @@ ROOT::VecOps::RVec<int> RDFUtils::DIGIT::GetHindexOfTDC(const ROOT::VecOps::RVec
     return h_indices;
 }
 
-ROOT::VecOps::RVec<double> RDFUtils::DIGIT::TfromTDC(const ROOT::VecOps::RVec<dg_cell>& cells){
+ROOT::VecOps::RVec<double> RDFUtils::DIGIT::TfromTDC(const ROOT::VecOps::RVec<dg_cell>& cells,
+                                                     const double calibration_const){
     ROOT::VecOps::RVec<double> t_hit_reco;
     for (const auto& cell : cells)
     {
         int broken_side = 0;
         double tdc1 = 0., tdc2 = 0.;
+        double t_reco = RDFUtils::DEFAULT_NO_DATA;
 
         if(!GeoUtils::ECAL::isCellComplete(cell, broken_side)){ // broken cell
-            // what we do in case of broke cells ?
+            // t_reco = RDFUtils::DEFAULT_NO_DATA;
         } else{ // complete cell
             tdc1 = cell.ps1.at(0).tdc;
             tdc2 = cell.ps2.at(0).tdc;
+            t_reco = GeoUtils::ECAL::TfromTDC(tdc1, tdc2, cell.l) + calibration_const;
         }
-        t_hit_reco.push_back(GeoUtils::ECAL::TfromTDC(tdc1, tdc2, cell.l));
+        t_hit_reco.push_back(t_reco);
     }
     return t_hit_reco;
 }
 
-ROOT::VecOps::RVec<TVector3> RDFUtils::DIGIT::XfromTDC(const ROOT::VecOps::RVec<dg_cell>& cells){
+ROOT::VecOps::RVec<double> RDFUtils::DIGIT::EfromTDC(const ROOT::VecOps::RVec<dg_cell>& cells,
+                                                     const double calibration_const,
+                                                     const ROOT::VecOps::RVec<double>& e_true){
+    ROOT::VecOps::RVec<double> e_reco;
+    int i=0;
+    for (const auto& cell : cells)
+    {
+        int broken_side = 0;
+        double e = RDFUtils::DEFAULT_NO_DATA;
+
+        if(!GeoUtils::ECAL::isCellComplete(cell, broken_side)){ // broken cell
+            // t_reco = RDFUtils::DEFAULT_NO_DATA;
+        } else{ // complete cell
+            double d1 = 0.5 * cell.l + (GeoUtils::ECAL::XfromTDC(cell.ps1.at(0).tdc, cell.ps2.at(0).tdc) + calibration_const);
+            double d2 = 0.5 * cell.l - (GeoUtils::ECAL::XfromTDC(cell.ps1.at(0).tdc, cell.ps2.at(0).tdc) + calibration_const);
+            e = GeoUtils::ECAL::EfromADC(cell.ps1.at(0).adc, cell.ps2.at(0).adc, d1, d2, cell.lay);
+            // std::cout << "e_reco :" << e << ", e_true :" << e_true[i] << "\n";
+        }
+        e_reco.push_back(e);
+        i++;
+    }
+    return e_reco;
+}
+
+TVector3 RDFUtils::DIGIT::WeightedCell(const ROOT::VecOps::RVec<TVector3> x_reco,
+                                             const ROOT::VecOps::RVec<double> e_reco,
+                                             const ROOT::VecOps::RVec<int> fired_by_primary){
+    double x_w = 0.;                                        
+    double y_w = 0.;                                        
+    double z_w = 0.;                                        
+    double etot = 0.;
+
+    for (size_t i = 0; i < fired_by_primary.size(); i++)
+    {
+        if(fired_by_primary[i] == 1){
+            if((x_reco[i].Z() != RDFUtils::DEFAULT_NO_DATA) && 
+               (e_reco[i] != RDFUtils::DEFAULT_NO_DATA) // redoudant but safe
+               ){
+                x_w += x_reco[i].X() * e_reco[i];
+                y_w += x_reco[i].Y() * e_reco[i];
+                z_w += x_reco[i].Z() * e_reco[i];
+                etot += e_reco[i];
+            }
+        }
+    }
+    return {x_w/etot, y_w/etot, z_w/etot};                                        
+}
+
+ROOT::VecOps::RVec<TVector3> RDFUtils::DIGIT::XfromTDC(const ROOT::VecOps::RVec<dg_cell>& cells,
+                                                       const double calibration_x,
+                                                       const double calibration_y){
     ROOT::VecOps::RVec<TVector3> reco_hits;
     for (const auto& cell : cells)
     {
         int broken_side = 0;
         double tdc1 = 0., tdc2 = 0.;
-        TVector3 hit_reco;
+        TVector3 hit_reco = {RDFUtils::DEFAULT_NO_DATA,
+                             RDFUtils::DEFAULT_NO_DATA,
+                             RDFUtils::DEFAULT_NO_DATA};
 
         if(!GeoUtils::ECAL::isCellComplete(cell, broken_side)){ // broken cell
             // what we do in case of broke cells ?
@@ -1697,13 +1816,28 @@ ROOT::VecOps::RVec<TVector3> RDFUtils::DIGIT::XfromTDC(const ROOT::VecOps::RVec<
         }
         // if(cell.id < 25000){ // Barrel
         if(cell.mod < 30){ // Barrel
-            hit_reco = {cell.x - GeoUtils::ECAL::XfromTDC(tdc1, tdc2), cell.y, cell.z};
+            hit_reco = {cell.x - GeoUtils::ECAL::XfromTDC(tdc1, tdc2) + calibration_x, cell.y, cell.z};
         }else{ // Endcap
-            hit_reco = {cell.x, cell.y - GeoUtils::ECAL::XfromTDC(tdc1, tdc2), cell.z};
+            hit_reco = {cell.x, cell.y - GeoUtils::ECAL::XfromTDC(tdc1, tdc2) + calibration_y, cell.z};
         }
         reco_hits.push_back(hit_reco);
     }
     return reco_hits;
+}
+
+double RDFUtils::DIGIT::WeightedCellTime(const ROOT::VecOps::RVec<double>& t_hit_reco,
+                                         const ROOT::VecOps::RVec<double>& e_reco,
+                                         const ROOT::VecOps::RVec<int>& isCompatible){
+    double t_w = 0.;
+    double e_tot = 0.;
+    for (size_t i = 0; i < t_hit_reco.size(); i++)
+    {
+        if((t_hit_reco[i] != RDFUtils::DEFAULT_NO_DATA) | (isCompatible[i] == 1)){ // skip broken cells
+            t_w += t_hit_reco[i] * e_reco[i];
+            e_tot += e_reco[i];
+        }
+    }
+    return t_w / e_tot;                                                
 }
 
 ROOT::VecOps::RVec<TVector3> RDFUtils::DIGIT::GetExpectedHitPosition(TVector3 vertex,
@@ -1779,6 +1913,93 @@ ROOT::VecOps::RVec<double> RDFUtils::DIGIT::GetFlightLength(const TVector3& vtx,
     return Flight_lenghts;
 }
 
+ROOT::VecOps::RVec<double> RDFUtils::DIGIT::GetBeta(const ROOT::VecOps::RVec<double>& flight_length,
+                                                   const ROOT::VecOps::RVec<double>& t_hit_reco,
+                                                   double vertex_time){
+    
+    ROOT::VecOps::RVec<double> beta_reco(t_hit_reco.size());
+    double c = 299.792; // mm / ns
+    for (size_t i = 0; i < t_hit_reco.size(); i++)
+    {
+        if (t_hit_reco[i] == RDFUtils::DEFAULT_NO_DATA)
+        {
+            beta_reco[i] = RDFUtils::DEFAULT_NO_DATA;
+        }else{
+            beta_reco[i] = (flight_length[i]) / ((t_hit_reco[i] - vertex_time) * c);
+        }
+    }
+    return beta_reco;                                                   
+}
+
+ROOT::VecOps::RVec<double> RDFUtils::DIGIT::GetPFromBeta(const ROOT::VecOps::RVec<double>& beta,
+                                                         const double neutron_mass){
+    ROOT::VecOps::RVec<double> ptot_reco(beta.size());
+    for (size_t i = 0; i < beta.size(); i++)
+    {
+        if (beta[i] == RDFUtils::DEFAULT_NO_DATA)
+        {
+            ptot_reco[i] = RDFUtils::DEFAULT_NO_DATA;
+        }else{
+            ptot_reco[i] = neutron_mass * beta[i] / sqrt(1 - beta[i]*beta[i]);
+        }
+    }
+    return ptot_reco;
+}
+
+ROOT::VecOps::RVec<double> RDFUtils::DIGIT::GetKinEFromBeta(const ROOT::VecOps::RVec<double>& beta,
+                                                         const double neutron_mass){
+    ROOT::VecOps::RVec<double> K(beta.size());
+    for (size_t i = 0; i < beta.size(); i++)
+    {
+        if (beta[i] == RDFUtils::DEFAULT_NO_DATA)
+        {
+            K[i] = RDFUtils::DEFAULT_NO_DATA;
+        }else{
+            K[i] = neutron_mass * ( 1 / sqrt(1 - beta[i]*beta[i]) - 1);
+        }
+    }
+    return K;
+}
+
+ROOT::VecOps::RVec<TVector3> RDFUtils::DIGIT::GetRecoP3(const ROOT::VecOps::RVec<double>& ptot_reco,
+                                                        const TVector3& expected_direction){
+    ROOT::VecOps::RVec<TVector3> p_reco(ptot_reco.size());
+    
+    TVector3 dummy = {RDFUtils::DEFAULT_NO_DATA, 
+                      RDFUtils::DEFAULT_NO_DATA, 
+                      RDFUtils::DEFAULT_NO_DATA};
+    
+    for (size_t i = 0; i < ptot_reco.size(); i++)
+    {
+        if (ptot_reco[i] == RDFUtils::DEFAULT_NO_DATA)
+        {
+            p_reco[i] = dummy;
+        }else{
+            p_reco[i] = ptot_reco[i] * expected_direction;
+        }
+    }
+    return p_reco;                                     
+}
+
+ROOT::VecOps::RVec<double> RDFUtils::DIGIT::GetMissingPT(const TLorentzVector& lepton_P4,
+                                                         const ROOT::VecOps::RVec<TVector3>& neutron_reco_p3){
+    
+    ROOT::VecOps::RVec<double> missing_pt(neutron_reco_p3.size());
+
+    TVector3 lepton_p3 = lepton_P4.Vect();
+
+    for (size_t i = 0; i < neutron_reco_p3.size(); i++)
+    {
+        if (neutron_reco_p3[i].Z() == RDFUtils::DEFAULT_NO_DATA)
+        {
+            missing_pt[i] = RDFUtils::DEFAULT_NO_DATA;
+        }else{
+            missing_pt[i] = (lepton_p3 - neutron_reco_p3[i]).Mag(); 
+        }
+    }
+    return missing_pt;                                                
+}
+
 ROOT::VecOps::RVec<double> RDFUtils::DIGIT::GetTOF(const ROOT::VecOps::RVec<double>& flight_length, 
                                                    const double beta){
     /*
@@ -1799,6 +2020,7 @@ ROOT::VecOps::RVec<double> RDFUtils::DIGIT::TimeResiduals(const ROOT::VecOps::RV
     /**
      * @brief Get time residuals between expected time and reconstructed time.
      * if cell is broken, return default data
+     * @note !!!! FOR SOME REASON THERE IS A BIAS IN THE RECONSTRUCTED HIT OF 1 ns
      *  */
     if(expected_t_hit.size() != reconstruced_t_hit.size()){
         throw std::runtime_error("expected_t_hit and reconstruced_t_hit must have the same length");
@@ -1812,7 +2034,7 @@ ROOT::VecOps::RVec<double> RDFUtils::DIGIT::TimeResiduals(const ROOT::VecOps::RV
         {
             time_residuals[i] = RDFUtils::DEFAULT_NO_DATA;
         }else{
-            time_residuals[i] = fabs(expected_t_hit[i] - reconstruced_t_hit[i]);
+            time_residuals[i] = expected_t_hit[i] - (reconstruced_t_hit[i]-1);
         }
         
     }
@@ -1849,63 +2071,63 @@ ROOT::VecOps::RVec<double> RDFUtils::DIGIT::SpaceResiduals(const ROOT::VecOps::R
     return space_residuals;
 }
 
-ROOT::VecOps::RVec<int> RDFUtils::DIGIT::IsSpaceCompatible(const ROOT::VecOps::RVec<double>& space_residuals){
-    
+ROOT::VecOps::RVec<int> RDFUtils::DIGIT::IsCompatible(const ROOT::VecOps::RVec<double>& space_residuals){
+    /*
+      Input: time/space residuals between the expected and the reconstructed hit in the cell
+      and look for those cell compatible in the space and in the time
+    */
     ROOT::VecOps::RVec<int> isCompatible(space_residuals.size());
     
     for (size_t i = 0; i < space_residuals.size(); i++){
-        if(space_residuals[i] == RDFUtils::DEFAULT_NO_DATA){
+        if((space_residuals[i] == RDFUtils::DEFAULT_NO_DATA)){
             isCompatible[i] = 0;
         }else{
-            if(space_residuals[i] > 120){ // 12 cm precision in the determination of neutron true hit
-                isCompatible[i] = 0;
-            }else{
+            // 10 cm precision in the determination of neutron
+            if((fabs(space_residuals[i]) <= 100)){
                 isCompatible[i] = 1;
+            }else{
+                isCompatible[i] = 0;
             }
         }
     }
     return isCompatible;
 }
 
-ROOT::VecOps::RVec<int> RDFUtils::DIGIT::IsCandidateCell(const ROOT::VecOps::RVec<int>& isSpaceCompatible,
-                                                         const ROOT::VecOps::RVec<double>& t_hit_residuals) {
+ROOT::VecOps::RVec<int> RDFUtils::DIGIT::IsCandidateCell(const ROOT::VecOps::RVec<int>& isCompatible,
+                                                         const ROOT::VecOps::RVec<double>& variable) {
     /**
-    * @brief Identifies candidate cells based on spatial compatibility and hit times.
+    * @brief .
     * 
-    * I define as candidate cell, the one spatially compatible with neutron trajectory and with 
-    * the smallest reconstructed hit time.
-    * 
-    * @param isSpaceCompatible ROOT::VecOps::RVec<int> - whether each cell is space-compatible (1 or 0).
-    * @param t_hit_residuals ROOT::VecOps::RVec<double> - t_hit_predicted - t_hit_measured
+    * @param isCompatible ROOT::VecOps::RVec<int> - whether each cell is spacetime-compatible (1 or 0).
+    * @param variable ROOT::VecOps::RVec<double>
     * 
     * @return ROOT::VecOps::RVec<int> - A vector where each element is 1 if the corresponding cell is a candidate, or 0 otherwise.
     */
     
     // Initialize the output vector with zeros
-    ROOT::VecOps::RVec<int> IsCandidate(t_hit_residuals.size(), 0);
+    ROOT::VecOps::RVec<int> IsCandidate(variable.size(), 0);
 
     // Filter out invalid values (i.e., DEFAULT_NO_DATA) from the input vector
-    ROOT::VecOps::RVec<double> t_hit_residuals_valid = t_hit_residuals[t_hit_residuals != RDFUtils::DEFAULT_NO_DATA];
+    ROOT::VecOps::RVec<double> variable_valid = variable[variable != RDFUtils::DEFAULT_NO_DATA];
 
     // Check if there are any valid data points; if not, return the zero-initialized output
-    if (t_hit_residuals_valid.empty()) {
+    if (variable_valid.empty()) {
         return IsCandidate;
     }
 
     // Find the minimum value among the valid hits
-    double min_t_hit_reco = ROOT::VecOps::Min(t_hit_residuals_valid);
+    double min_variable_valid = ROOT::VecOps::Min(variable_valid);
 
     // Loop through each element to determine if it's a candidate
-    for (size_t i = 0; i < t_hit_residuals.size(); i++) {
+    for (size_t i = 0; i < variable.size(); i++) {
         // Check if the cell is space-compatible and has a valid hit time
-        if (isSpaceCompatible[i] == 1 && t_hit_residuals[i] != RDFUtils::DEFAULT_NO_DATA) {
+        if (isCompatible[i] == 1 && variable[i] != RDFUtils::DEFAULT_NO_DATA) {
             // Mark as candidate if the hit time matches the minimum valid hit time
-            if (t_hit_residuals[i] == min_t_hit_reco) {
+            if (variable[i] == min_variable_valid) {
                 IsCandidate[i] = 1;
             }
         }
     }
-
     // Return the final candidate vector
     return IsCandidate;
 }
@@ -1967,7 +2189,6 @@ ROOT::RDF::RNode RDFUtils::DIGIT::AddColumnsFromDigit(ROOT::RDF::RNode& df){
             .Define("trackid_producing_tdc1",       RDFUtils::EDEPSIM::GetHitTrajectoryId, {"Fired_Cell_tdc1_hindex", "Event"})
             .Define("Fired_by_primary_neutron",     RDFUtils::EDEPSIM::CheckTrajId<2112>, {"trackid_producing_tdc1", "Event"})
             .Define("Fired_by_primary_antimu",      RDFUtils::EDEPSIM::CheckTrajId<-13>, {"trackid_producing_tdc1", "Event"})
-            //
             .Define("ECALactive_trajectories",      RDFUtils::EDEPSIM::GetTrajectories, {"trackid_producing_tdc1", "Event"})
             .Define("Fired_Cells_tdc2",             RDFUtils::DIGIT::FiredECALGetTDC<2>, {"dg_cell"})
             .Define("Fired_Cells_adc2",             RDFUtils::DIGIT::FiredECALGetADC<2>, {"dg_cell"})
@@ -1980,6 +2201,7 @@ ROOT::RDF::RNode RDFUtils::DIGIT::AddColumnsFromDigit(ROOT::RDF::RNode& df){
             .Define("Primaries_vtx", [](const double vtx, const double vty, const double vtz){
                 TVector3 v = {vtx, vty, vtz}; return v;}, {"Primaries_vtxX","Primaries_vtxY","Primaries_vtxZ"})
             .Define("Fired_Cell_true_hit1",         RDFUtils::EDEPSIM::GetHitFromIndex, {"Fired_Cell_tdc1_hindex", "Event"})
+            .Define("Fired_Cell_true_Hit_e",        RDFUtils::EDEPSIM::GetHitEdepFromIndex, {"Fired_Cell_tdc1_hindex","Event"})
             .Define("Fired_Cell_true_Hit_x",        RDFUtils::GetComponent<0>, {"Fired_Cell_true_hit1"})
             .Define("Fired_Cell_true_Hit_y",        RDFUtils::GetComponent<1>, {"Fired_Cell_true_hit1"})
             .Define("Fired_Cell_true_Hit_z",        RDFUtils::GetComponent<2>, {"Fired_Cell_true_hit1"})
@@ -1996,28 +2218,128 @@ ROOT::RDF::RNode RDFUtils::DIGIT::AddColumnsFromDigit(ROOT::RDF::RNode& df){
             .Define("ExpectedNeutron_HitPosition_z",RDFUtils::GetComponent3<2>, {"ExpectedNeutron_HitPosition"})
             .Define("ExpectedNeutron_FlightLength", RDFUtils::DIGIT::GetFlightLength, {"Primaries_vtx", "ExpectedNeutron_HitPosition"})
             .Define("ExpectedNeutron_TOF",          RDFUtils::DIGIT::GetTOF, {"ExpectedNeutron_FlightLength", "ExpectedNeutron_Beta"})
-            .Define("Expected_HitTime",             "ExpectedNeutron_TOF + Primaries_vtxT")
+            .Define("ExpectedNeutron_HitTime",      "ExpectedNeutron_TOF + Primaries_vtxT")
             /*
                 Recontructed hit from cells TDC
             */
-            .Define("Reconstructed_HitPosition",    RDFUtils::DIGIT::XfromTDC, {"dg_cell"})
+            .Define("Reconstructed_HitPosition",    RDFUtils::DIGIT::XfromTDC, {"dg_cell", "X_CALIBRATION_OFFSET", "Y_CALIBRATION_OFFSET"})
             .Define("Reconstructed_HitPosition_x",  RDFUtils::GetComponent3<0>, {"Reconstructed_HitPosition"})
             .Define("Reconstructed_HitPosition_y",  RDFUtils::GetComponent3<1>, {"Reconstructed_HitPosition"})
             .Define("Reconstructed_HitPosition_z",  RDFUtils::GetComponent3<2>, {"Reconstructed_HitPosition"})
-            .Define("Reconstructed_HitTime",        RDFUtils::DIGIT::TfromTDC, {"dg_cell"})
+            .Define("Reconstructed_HitTime",        RDFUtils::DIGIT::TfromTDC, {"dg_cell", "TIME_CALIBRATION_OFFSET"})
+            .Define("Reconstructed_Energy",         RDFUtils::DIGIT::EfromTDC, {"dg_cell","X_CALIBRATION_OFFSET","Fired_Cell_true_Hit_e"})                                                                                    
+            .Define("IsEarliestCell_neutron",       RDFUtils::FindMinimum2, {"Reconstructed_HitTime", "Fired_by_primary_neutron"})
+            .Define("IsEarliestCell_antimu",        RDFUtils::FindMinimum2, {"Reconstructed_HitTime", "Fired_by_primary_antimu"})
             .Define("Reconstructed_FlightLength",   RDFUtils::DIGIT::GetFlightLength, {"Primaries_vtx", "Reconstructed_HitPosition"})
+        
+            // reconstructed neutron
+            // .Define("Reconstructed_Beta",           RDFUtils::DIGIT::GetBeta, {"ExpectedNeutron_FlightLength", 
+            //                                                                    "Reconstructed_HitTime",
+            //                                                                    "Primaries_vtxT"})
+            // .Define("Reconstructed_Ptot_GeV",       RDFUtils::DIGIT::GetPFromBeta, {"Reconstructed_Beta",
+            //                                                                         "NEUTRON_MASS_GeV"})
+            // .Define("Reconstructed_neutronKin_MeV", RDFUtils::DIGIT::GetKinEFromBeta, {"Reconstructed_Beta",
+            //                                                                            "NEUTRON_MASS_MeV"})
+            // .Define("Expected_neutron_direction",   "ExpectedHadronSystP3.Unit()")                                                                                    
+            // .Define("Reconstructed_neutronP3_GeV",  RDFUtils::DIGIT::GetRecoP3,{"Reconstructed_Ptot_GeV", "Expected_neutron_direction"})
+            // .Define("Reconstructed_MissingPT",      RDFUtils::DIGIT::GetMissingPT,{"FinalStateLepton4Momentum","Reconstructed_neutronP3_GeV"})                                                                                                                                                             
             /*
                 Residuals
             */
-            .Define("Residuals_HitTime",            RDFUtils::DIGIT::TimeResiduals, {"Expected_HitTime", "Reconstructed_HitTime", "isCellComplete"})
             .Define("Residuals_HitSpace",           RDFUtils::DIGIT::SpaceResiduals, {"ExpectedNeutron_HitPosition", "Reconstructed_HitPosition", "isCellComplete"})
-            .Define("IsSpaceCompatible",            RDFUtils::DIGIT::IsSpaceCompatible, {"Residuals_HitSpace"})
-            .Define("isCandidate",                  RDFUtils::DIGIT::IsCandidateCell, {"IsSpaceCompatible", "Residuals_HitTime"})
-            .Define("event_has_candidate",          RDFUtils::DIGIT::isCandidateSignal, {"isCandidate"})
+            .Define("IsCompatible",                 RDFUtils::DIGIT::IsCompatible, {"Residuals_HitSpace"})
+            .Define("compatible_cell_weighted",     RDFUtils::DIGIT::WeightedCell, {"Reconstructed_HitPosition", "Reconstructed_Energy", "IsCompatible"})
+            // .Define("EarliestCompatible",           RDFUtils::DIGIT::, {"Reconstructed_HitTime","IsCompatible"})
+            // .Define("isCandidate",                  RDFUtils::DIGIT::IsCandidateCell, {"IsCompatible", "Reconstructed_MissingPT"})
+            // .Define("event_has_candidate",          RDFUtils::DIGIT::isCandidateSignal, {"isCandidate"})
+            ;
+}
+
+ROOT::VecOps::RVec<dg_cell> RDFUtils::DIGIT::FitlerCells(const ROOT::VecOps::RVec<dg_cell>& cells,
+                                                        const ROOT::VecOps::RVec<int>& is_complete,
+                                                        const ROOT::VecOps::RVec<int>& is_fired_by_neutron){
+    /*
+        Given all the fired cells of a given event, retreive only the complete cells fired by signal neutron
+    */                                                                
+    ROOT::VecOps::RVec<dg_cell> filtered_cells;
+
+    for (size_t i = 0; i < is_fired_by_neutron.size(); i++)
+    {
+        if(is_fired_by_neutron[i] == 1 && is_complete[i] == 1){
+            filtered_cells.push_back(cells[i]);
+        }
+    }
+    return filtered_cells;
+}
+
+ROOT::VecOps::RVec<int>  RDFUtils::DIGIT::GetCellMod(const ROOT::VecOps::RVec<dg_cell>& cells){
+    ROOT::VecOps::RVec<int> mods(cells.size());
+    for (size_t i = 0; i < cells.size(); i++)
+    {
+        mods[i] = cells[i].mod;
+    }
+    return mods;
+}
+
+ROOT::VecOps::RVec<int>  RDFUtils::DIGIT::GetCellId(const ROOT::VecOps::RVec<dg_cell>& cells){
+    ROOT::VecOps::RVec<int> ids(cells.size());
+    for (size_t i = 0; i < cells.size(); i++)
+    {
+        ids[i] = cells[i].id;
+    }
+    return ids;
+}
+
+ROOT::VecOps::RVec<double>  RDFUtils::DIGIT::GetCellX(const ROOT::VecOps::RVec<dg_cell>& cells){
+    ROOT::VecOps::RVec<int> X(cells.size());
+    for (size_t i = 0; i < cells.size(); i++)
+    {
+        X[i] = cells[i].x;
+    }
+    return X;
+}
+
+ROOT::VecOps::RVec<double>  RDFUtils::DIGIT::GetCellY(const ROOT::VecOps::RVec<dg_cell>& cells){
+    ROOT::VecOps::RVec<int> Y(cells.size());
+    for (size_t i = 0; i < cells.size(); i++)
+    {
+        Y[i] = cells[i].y;
+    }
+    return Y;
+}
+
+ROOT::VecOps::RVec<double>  RDFUtils::DIGIT::GetCellZ(const ROOT::VecOps::RVec<dg_cell>& cells){
+    ROOT::VecOps::RVec<int> Z(cells.size());
+    for (size_t i = 0; i < cells.size(); i++)
+    {
+        Z[i] = cells[i].z;
+    }
+    return Z;
+}
+
+ROOT::RDF::RNode RDFUtils::DIGIT::GetInfoCellsFromSignal(ROOT::RDF::RNode& df){
+    return df
+            .Filter("CCQEonHydrogen")
+            .Define("filtered_cells",       RDFUtils::DIGIT::FitlerCells, {"dg_cell", 
+                                                                           "isCellComplete",
+                                                                           "Fired_by_primary_neutron"})
+            .Define("neutrons_cells_mod",   RDFUtils::DIGIT::GetCellMod, {"filtered_cells"})
+            .Define("neutrons_cells_id",    RDFUtils::DIGIT::GetCellId, {"filtered_cells"})
+            .Define("neutrons_cells_x",     RDFUtils::DIGIT::GetCellX, {"filtered_cells"})
+            .Define("neutrons_cells_y",     RDFUtils::DIGIT::GetCellY, {"filtered_cells"})
+            .Define("neutrons_cells_z",     RDFUtils::DIGIT::GetCellZ, {"filtered_cells"})
             /*
-                Reconstruct neutron
+                TRUE HIT
             */
-            // .Define("")
+            .Define("neutrons_cells_hindex1", RDFUtils::DIGIT::GetHindexOfTDC<1>, {"filtered_cells"})                                                         
+            .Define("true_hit",               RDFUtils::EDEPSIM::GetHitFromIndex, {"neutrons_cells_hindex1", "Event"})
+            .Define("true_hit_e",             RDFUtils::EDEPSIM::GetHitEdepFromIndex, {"Fired_Cell_tdc1_hindex","Event"})
+            .Define("true_hit_x",             RDFUtils::GetComponent<0>, {"true_hit"})
+            .Define("true_hit_y",             RDFUtils::GetComponent<1>, {"true_hit"})
+            .Define("true_hit_z",             RDFUtils::GetComponent<2>, {"true_hit"})
+            .Define("true_hit_t",             RDFUtils::GetComponent<3>, {"true_hit"})
+            .Define("true_hit_x3",            RDFUtils::GetVect, {"true_hit"})
+            .Define("true_hit_FlightLength",  RDFUtils::DIGIT::GetFlightLength, {"Primaries_vtx", "true_hit_x3"})                                                     
             ;
 }
 
@@ -2064,10 +2386,12 @@ int RDFUtils::RECO::Test(bool b, const MinuitFitInfos& i){
     }
 }
 
+
 ROOT::RDF::RNode RDFUtils::RECO::AddColumnsFromDriftReco(ROOT::RDF::RNode& df){
     return df
             // .Filter("KeepThisEvent==1")
             .Define("nof_fired_wires", RDFUtils::RECO::GetNofFiredWires, {"fired_wires.did"})
+            .Define("pass_nof_wires_cut", "nof_fired_wires > 69")
             /*
                 true values
             */
@@ -2105,5 +2429,26 @@ ROOT::RDF::RNode RDFUtils::RECO::AddColumnsFromDriftReco(ROOT::RDF::RNode& df){
                                                                                          "NuDirection",
                                                                                         })
             .Define("PredictedNeutron_P3_GeV",          "Neutrino_reconstructed_P4_GeV.Vect() - Antimuon_reconstructed_P4_GeV.Vect()")
+            .Define("PredictedNeutron_E_GeV",           "sqrt(PredictedNeutron_P3_GeV.Mag() * PredictedNeutron_P3_GeV.Mag() + NEUTRON_MASS_GeV * NEUTRON_MASS_GeV)")
+            .Define("PredictedNeutron_Beta",            "PredictedNeutron_E_GeV / PredictedNeutron_P3_GeV.Mag()")
+            .Define("PredictedNeutron_Angle",           "Antimuon_reconstructed_P4_GeV.Vect().Angle(PredictedNeutron_P3_GeV)")
+            /*
+                prediction on neutron hit in ECAL
+            */
+           .Define("ExpectedNeutron_HitPosition_",   RDFUtils::DIGIT::GetExpectedHitPosition, {"Primaries_vtx", "PredictedNeutron_P3_GeV", "dg_cell"})
+           .Define("ExpectedNeutron_HitPosition_x_", RDFUtils::GetComponent3<0>, {"ExpectedNeutron_HitPosition_"})
+           .Define("ExpectedNeutron_HitPosition_y_", RDFUtils::GetComponent3<1>, {"ExpectedNeutron_HitPosition_"})
+           .Define("ExpectedNeutron_HitPosition_z_", RDFUtils::GetComponent3<2>, {"ExpectedNeutron_HitPosition_"})
+           .Define("ExpectedNeutron_FlightLength_",  RDFUtils::DIGIT::GetFlightLength, {"Primaries_vtx", "ExpectedNeutron_HitPosition_"})
+           .Define("ExpectedNeutron_TOF_",           RDFUtils::DIGIT::GetTOF, {"ExpectedNeutron_FlightLength_", "PredictedNeutron_Beta"})
+           .Define("Expected_HitTime_",              "ExpectedNeutron_TOF_ + Primaries_vtxT")
+        //    /*
+        //         Look for candidate cells
+        //    */
+        //     .Define("Residuals_HitTime_",            RDFUtils::DIGIT::TimeResiduals, {"Expected_HitTime_", "Reconstructed_HitTime", "isCellComplete"})
+        //     .Define("Residuals_HitSpace_",           RDFUtils::DIGIT::SpaceResiduals, {"ExpectedNeutron_HitPosition_", "Reconstructed_HitPosition", "isCellComplete"})
+        //     .Define("IsSpaceCompatible_",            RDFUtils::DIGIT::IsSpaceCompatible, {"Residuals_HitSpace_"})
+        //     .Define("isCandidate_",                  RDFUtils::DIGIT::IsCandidateCell, {"IsSpaceCompatible_", "Residuals_HitTime_"})
+        //     .Define("event_has_candidate_",          RDFUtils::DIGIT::isCandidateSignal, {"isCandidate_"})
     ;
 }

@@ -59,13 +59,64 @@ bool GeoUtils::ECAL::is_ecal_barrel(const TString& volume_name){
 
 
 double GeoUtils::ECAL::TfromTDC(const double tdc1, const double tdc2, const double length){
-    // vlfb 5 [ns/m]
-    return 0.5 * (tdc1 + tdc2 - GeoUtils::ECAL::vlfb * length / 1e3);
+    // vlfb 5.85 [ns/mm]
+    return 0.5 * (tdc1 + tdc2 - GeoUtils::ECAL::vlfb * length);
 }
 
 double GeoUtils::ECAL::XfromTDC(const double tdc1, const double tdc2){
-    // vlfb [m/ns]
-    return 0.5 * (tdc1 - tdc2) / (GeoUtils::ECAL::vlfb * 1e-3); // mm
+    // vlfb 5.85 [ns/mm]
+    return 0.5 * (tdc1 - tdc2) / GeoUtils::ECAL::vlfb; // mm
+}
+
+double GeoUtils::ECAL::EfromADCsingle(double adc, double f){
+  return adc / (f * GeoUtils::ECAL::attpassratio * GeoUtils::ECAL::pe2ADC *
+                GeoUtils::ECAL::e2pe);
+}
+
+double GeoUtils::ECAL::AttenuationFactor(double d, int planeID){
+  /*
+       dE/dx attenuation - Ea=p1*exp(-d/atl1)+(1.-p1)*exp(-d/atl2)
+         d    distance from photocatode - 2 cells/cell; d1 and d2
+        atl1  50. cm
+        atl2  430 cm planes 1-2    innermost plane is 1
+              380 cm plane 3
+              330 cm planes 4-5
+         p1   0.35
+  */
+  double atl2 = 0.0;
+
+  switch (planeID) {
+    case 0:
+    case 1:
+      atl2 = GeoUtils::ECAL::atl2_01;
+      break;
+
+    case 2:
+      atl2 = GeoUtils::ECAL::atl2_2;
+      break;
+
+    case 3:
+    case 4:
+      atl2 = GeoUtils::ECAL::atl2_34;
+      break;
+
+    default:
+      // std::cout << "planeID out if range" << std::endl;
+      atl2 = -999.0;
+      break;
+    
+    }
+    return GeoUtils::ECAL::p1 * TMath::Exp(-d / GeoUtils::ECAL::atl1) + (1. - GeoUtils::ECAL::p1) * TMath::Exp(-d / atl2);
+}
+
+double GeoUtils::ECAL::EfromADC(double adc1, double adc2, double d1,
+                                       double d2, int planeID){
+  double f1 = GeoUtils::ECAL::AttenuationFactor(d1, planeID);
+  double f2 = GeoUtils::ECAL::AttenuationFactor(d2, planeID);
+
+  double const attpassratio = 0.187; //new
+  double e = 0.5 * (adc1 / f1 + adc2 / f2) / (attpassratio * GeoUtils::ECAL::pe2ADC * GeoUtils::ECAL::e2pe); 
+  return e;
 }
 
 bool GeoUtils::ECAL::isCellComplete(const dg_cell& cell, int& side){
