@@ -7,4 +7,4 @@ output                  = /storage/gpfs_data/neutrino/users/gi/sand-physics/cond
 error                   = /storage/gpfs_data/neutrino/users/gi/sand-physics/condor_submission/logs/AnalyseDigit.err
 should_transfer_files   = Yes
 when_to_transfer_output = ON_EXIT
-queue from seq 0 9 |
+queue from seq 0 19 |

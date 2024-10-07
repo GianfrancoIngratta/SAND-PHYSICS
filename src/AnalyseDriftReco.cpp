@@ -8,6 +8,161 @@
 
 TGeoManager* geo = nullptr;
 
+std::vector<std::string> output_columns_event_selection = {
+    /*
+        EVENT INFO
+    */
+    "FileName",
+    "CCQEonHydrogen",
+    "EventType",
+    "NuDirection",
+    "Interaction_vtxX",
+    "Interaction_vtxY",
+    "Interaction_vtxZ",
+    "Interaction_vtxT",
+    "InteractionVolume_short",
+    "NofFinalStateChargedParticles",
+    "PrimaryStateHadronicSystemTopology_name",
+    "InteractionTarget",
+    "candidate_signal_event",
+    "nof_fired_wires",
+    "FinalStateHadronicSystemTotal4Momentum", // true neutron
+    "Antimuon_p_true", // true antimuon
+    /*
+        RECONSTRUCTED ANTIMUON
+    */
+    "Antimuon_reconstructed_P4",
+    /*
+        PREDICTED NEUTRON
+    */
+    "Neutrino_reconstructed_P4_GeV",
+    "PredictedNeutron_P3_GeV",
+    "PredictedNeutron_E_GeV",
+    "PredictedNeutron_Beta",
+    /*
+        EVENT FIRED CELL GENERAL INFO    
+    */
+    "Fired_Cells_mod",
+    "Fired_Cells_id",
+    "Fired_Cells_x",
+    "Fired_Cells_y",
+    "Fired_Cells_z",
+    "isCellComplete",
+    "Fired_Cells_adc1",
+    "Fired_Cells_tdc1",
+    "Fired_Cells_adc2",
+    "Fired_Cells_tdc2",
+    "Fired_Cell_true_hit1",
+    "Fired_Cell_true_hit2",
+    "Fired_by_primary_neutron",
+    "Fired_by_primary_antimu",
+    /*
+        TRUE NEUTRON HITS
+    */
+    "Fired_Cell_true_Hit_x",
+    "Fired_Cell_true_Hit_y",
+    "Fired_Cell_true_Hit_z",
+    "Fired_Cell_true_Hit_t",
+    "Fired_Cell_true_Hit_e",
+    "True_FlightLength",
+    /*
+        PREDICTED NEUTRON HITS
+    */
+    "ExpectedNeutron_HitPosition_x_",
+    "ExpectedNeutron_HitPosition_y_",
+    "ExpectedNeutron_HitPosition_z_",
+    "ExpectedNeutron_FlightLength_",
+    "ExpectedNeutron_TOF_",
+    "Expected_HitTime_",
+    /*
+        RECONSTRUCTED NEUTRON HITS
+    */
+    "Reconstructed_HitPosition_x",
+    "Reconstructed_HitPosition_y",
+    "Reconstructed_HitPosition_z",
+    "Reconstructed_HitTime",
+    "Reconstructed_Energy",
+    "IsEarliestCell_neutron",
+    "Reconstructed_FlightLength",
+    /*
+        CELLS WITH COINCIDENCES
+    */
+   "Residuals_HitTime_",
+   "Residuals_HitSpace_",
+   "IsCompatible",
+   "earliest_compatible_cell",
+   "nof_compatible_cells",
+};
+
+std::vector<std::string> columns_neutron_cells = {
+    "FileName",
+    "CCQEonHydrogen",
+    "neutron_P4_true",
+    "neutron_beta_true",
+    //
+    "neutrons_cells_mod",
+    "neutrons_cells_id",
+    "neutrons_cells_x",
+    "neutrons_cells_y",
+    "neutrons_cells_z",
+    /*
+        TRUE HIT
+    */
+    "true_hit_e",
+    "true_hit_x",
+    "true_hit_y",
+    "true_hit_z",
+    "true_hit_t",
+    "true_hit_FlightLength",
+    "true_hit_is_earliest",
+    /*
+        PREDICTED HIT
+    */
+    "predicted_hit_x",
+    "predicted_hit_y",
+    "predicted_hit_z",
+    "predicted_hit_t",
+    "predicted_hit_FlightLength",
+    "predicted_neutron_beta",
+    /*
+        RECONSTRUCTED HIT
+    */
+    "reconstructed_hit_x",
+    "reconstructed_hit_y",
+    "reconstructed_hit_z",
+    "reconstructed_hit_t",
+    "reconstructed_hit_e",
+    "reconstructed_hit_is_earliest",
+    "reconstructed_hit_FlightLength",
+    "reconstructed_neutron_beta",
+    };
+
+
+std::vector<std::string> columns_branch_trj = {
+    "FileName",
+    "CCQEonHydrogen",
+    "NuDirection",
+    "Interaction_vtxX",
+    "Interaction_vtxY",
+    "Interaction_vtxZ",
+    "Interaction_vtxT",
+    "PrimaryStateHadronicSystemTopology_name",
+    "PredictedNeutron_P3_GeV",
+    "Antimuon_reconstructed_P4",
+    /*
+        trj
+    */
+    "trackid",
+    "pdg",
+    "point_x",
+    "point_y",
+    "point_z",
+    "point_px",
+    "point_py",
+    "point_pz",
+    "process",
+};
+
 //___________________________________________________________________
 int main(int argc, char* argv[]){
     unsigned int index;
@@ -17,7 +172,7 @@ int main(int argc, char* argv[]){
     }
 
     index = atoi(argv[1]);
-    unsigned int files_per_jobs = 10u;
+    unsigned int files_per_jobs = 2u;
     unsigned int file_start = index * files_per_jobs;
     unsigned int file_stop = index * files_per_jobs + files_per_jobs;
 
@@ -29,15 +184,20 @@ int main(int argc, char* argv[]){
     auto FOLDER_PRODUCTION = "/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/";
     auto FOLDER_ANALYSIS = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/DriftReco/Wires_cut/";
     auto FOLDER_ANALYSIS_CELLS = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/CompleteCells_neutron_signal/";
+    auto FOLDER_ANALYSIS_SIGNAL_SELECTION = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/Selections/Wires_cut_multi1/";
 
-    auto fInput_genie =TString::Format("%sevents-in-SANDtracker.*.gtrac.root", FOLDER_PRODUCTION);
-    auto fInput_edep =TString::Format("%sevents-in-SANDtracker.*.edep-sim.root", FOLDER_PRODUCTION);
-    auto fInput_digit =TString::Format("%sevents-in-SANDtracker.*.ecal-digit.root", FOLDER_PRODUCTION);
+    auto fInput_genie = TString::Format("%sevents-in-SANDtracker.*.gtrac.root", FOLDER_PRODUCTION);
+    auto fInput_edep = TString::Format("%sevents-in-SANDtracker.*.edep-sim.root", FOLDER_PRODUCTION);
+    auto fInput_digit = TString::Format("%sevents-in-SANDtracker.*.ecal-digit.root", FOLDER_PRODUCTION);
     auto fInput_drift_reco = TString::Format("%sevents-in-SANDtracker.*.recostruction.NLLmethod.root", FOLDER_PRODUCTION);
+
     auto fOutput = TString::Format("%sevents-in-SANDtracker.%d.to.%d.drift-reco.analysed.root",FOLDER_ANALYSIS, file_start, file_stop);
     auto fOutput_cells = TString::Format("%sevents-in-SANDtracker.%d.to.%d.drift-reco.analysed.root",FOLDER_ANALYSIS_CELLS, file_start, file_stop);
-    // auto fOutput = TString::Format("%sevents-in-SANDtracker.%d.to.%d.all.analysed.root",FOLDER_ANALYSIS, file_start, file_stop);
-    
+    auto fOutput_selected_signal = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_signal.root",FOLDER_ANALYSIS_SIGNAL_SELECTION, file_start, file_stop);
+    auto fOutput_selected_bkg = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_bkg.root",FOLDER_ANALYSIS_SIGNAL_SELECTION, file_start, file_stop);
+    auto fOutput_trj_signal = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_signal.trj.root",FOLDER_ANALYSIS_SIGNAL_SELECTION, file_start, file_stop);
+    auto fOutput_trj_bkg = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_bkg.trj.root",FOLDER_ANALYSIS_SIGNAL_SELECTION, file_start, file_stop);
+
     // if you have multiple files enable multiple thread pocessing
     if(fInput_drift_reco.Contains("*")){
         LOG("I","Enabling multiple threading");
@@ -64,125 +224,38 @@ int main(int argc, char* argv[]){
 
     */
     LOG("I", "Filter events is FV volume");
-    auto df_filtered = RDFUtils::Filter(dfC, "KeepThisEvent");
+    auto df_filtered = RDFUtils::Filter(dfC, "KeepThisEvent", true);
 
     auto dfGENIE = RDFUtils::GENIE::AddColumnsFromGENIE(df_filtered);
     auto dfEDEP = RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(dfGENIE);
     auto dfDigit = RDFUtils::DIGIT::AddColumnsFromDigit(dfEDEP);
     auto dfReco = RDFUtils::RECO::AddColumnsFromDriftReco(dfDigit);
-    
+
+    dfReco = RDFUtils::DIGIT::GetFilteredTrajectories(dfReco);
+
+    // PRE CUT ______________________________________________________________________________________    
     LOG("I", "Filter events with at least 70 fired wires");
-    dfReco = RDFUtils::Filter(dfReco, "pass_nof_wires_cut");
+    auto dfReco_wires_cut = RDFUtils::Filter(dfReco, "pass_nof_wires_cut", true);
+    
+    LOG("I", "Filter events with 1 charged particle in final state");
+    auto dfReco_wires_cut_1cmulti = dfReco_wires_cut.Filter("NofFinalStateChargedParticles==1");
 
-    // RDFUtils::PrintColumns(df);
-    // throw "";
+    // SELECTED SIGNAL _______________________________________________________________________________
+    LOG("I", "Writing ouput file: SELECTED SIGNAL");
+    auto selected_signal = dfReco_wires_cut_1cmulti.Filter("candidate_signal_event == 1");
+    selected_signal.Snapshot("tReco_extended", fOutput_selected_signal.Data(), output_columns_event_selection);
+    selected_signal.Snapshot("traj", fOutput_trj_signal.Data(), columns_branch_trj);
+    
+    // SELECTED BKG __________________________________________________________________________________
+    LOG("I", "Writing ouput file: SELECTED BKG");
+    auto selected_bkg = dfReco_wires_cut_1cmulti.Filter("candidate_signal_event == 0");
+    selected_bkg.Snapshot("tReco_extended", fOutput_selected_bkg.Data(), output_columns_event_selection);
+    selected_bkg.Snapshot("traj", fOutput_trj_bkg.Data(), columns_branch_trj);
+    
+    // NEUTRON CELLS (MC TRUTH) _______________________________________________________________________
+    LOG("I", "Writing ouput file: CELLS FIRED BY NEUTRON");
+    auto complete_cells_fired_by_signal_neutron = RDFUtils::DIGIT::GetInfoCellsFromSignal(dfReco_wires_cut);
+    complete_cells_fired_by_signal_neutron.Snapshot("tReco_extended", fOutput_cells.Data(), columns_neutron_cells);
 
-    LOG("I", "Writing ouput file");
-    // dfReco.Snapshot("tReco_extended", fOutput.Data(), {
-    //     "FileName",
-    //     "CCQEonHydrogen",
-    //     "edep_file_input",
-    //     "digit_file_input",
-    //     "edep_event_index",
-    //     "IncomingNeutrinoP4",
-    //     "NuDirection",
-    //     /*
-    //         ECAL DIGIT & RECO ____________________________
-    //     */
-    //     "Fired_Cells_mod",
-    //     "Fired_Cells_id",
-    //     "Fired_Cells_x",
-    //     "Fired_Cells_y",
-    //     "Fired_Cells_z",
-    //     "Fired_Cells_adc1",
-    //     "Fired_Cells_adc2",
-    //     "Fired_Cells_tdc1",
-    //     "Fired_Cells_tdc2",
-    //     "Fired_Cell_true_hit1",
-    //     "Fired_Cell_true_hit2",
-    //     "Fired_by_primary_neutron",
-    //     "Fired_by_primary_antimu",
-    //     "isCellComplete",
-    //     /*
-    //         ECAL hit true
-    //     */
-    //     "Fired_Cell_true_Hit_x",
-    //     "Fired_Cell_true_Hit_y",
-    //     "Fired_Cell_true_Hit_z",
-    //     "Fired_Cell_true_Hit_t",
-    //     "True_FlightLength",
-    //     /*
-    //         ECAL hit reco
-    //     */
-    //     // "Reconstructed_HitPosition_x",
-    //     // "Reconstructed_HitPosition_y",
-    //     // "Reconstructed_HitPosition_z",
-    //     // "Reconstructed_HitTime",
-    //     // "Reconstructed_FlightLength",
-    //     /*
-    //         DRIFT RECO ___________________________________________
-    //     */
-    //     "nof_fired_wires",
-    //     "Antimuon_Phi0_true",
-    //     "Antimuon_x0_true",
-    //     "Antimuon_pt_true",
-    //     "Antimuon_p_true",
-    //     "Antimuon_ptot_true",
-    //     "Antimuon_dip_true",
-    //     /*
-    //         reconstructed antimuon
-    //     */
-    //     "Antimuon_Phi0_reco",
-    //     "Antimuon_x0_reco",
-    //     "Antimuon_pt_reco",
-    //     "Antimuon_p_reco",
-    //     "Antimuon_ptot_reco",
-    //     "Antimuon_dip_reco",
-    //     "chi2_fit_zy",
-    //     "chi2_fit_xz",
-    //     /*
-    //         predicted neutron
-    //     */
-    //     "Neutrino_reconstructed_P4_GeV",
-    //     "IncomingNeutrinoP4",
-    //     "PredictedNeutron_P3_GeV",
-    //     "FinalStateHadronicSystemTotal4Momentum",
-    //     "PredictedNeutron_E_GeV",
-    //     "PredictedNeutron_Beta",
-    //     "PredictedNeutron_Angle",
-    //     /*
-    //         Define expected cell hits
-    //     */
-    //     "ExpectedNeutron_HitPosition_x_",
-    //     "ExpectedNeutron_HitPosition_y_",
-    //     "ExpectedNeutron_HitPosition_z_",
-    //     "ExpectedNeutron_FlightLength_",
-    //     "ExpectedNeutron_TOF_",
-    //     "Expected_HitTime_",
-    //     });
-    // //...................................................................
-
-    auto complete_cells_fired_by_signal_neutron = RDFUtils::DIGIT::GetInfoCellsFromSignal(dfReco);
-
-    complete_cells_fired_by_signal_neutron.Snapshot("tReco_extended",fOutput_cells.Data(),
-          {
-        "FileName",
-        "CCQEonHydrogen",
-        //
-        "neutrons_cells_mod",
-        "neutrons_cells_id",
-        "neutrons_cells_x",
-        "neutrons_cells_y",
-        "neutrons_cells_z",
-        /*
-            TRUE HIT
-        */
-        "true_hit_e",
-        "true_hit_x",
-        "true_hit_y",
-        "true_hit_z",
-        "true_hit_t",
-        "true_hit_FlightLength",
-    });
     return 0;
 }

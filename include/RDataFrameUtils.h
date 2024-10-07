@@ -80,7 +80,7 @@ TChain* InitTChain(TString production,
 
 ROOT::RDataFrame InitDF(TChain* input_chain);
 
-ROOT::RDF::RNode Filter(ROOT::RDF::RNode& df, const char* condition);
+ROOT::RDF::RNode Filter(ROOT::RDF::RNode& df, const char* condition, bool report);
 
 void PrintColumns(ROOT::RDataFrame& df);
 
@@ -98,6 +98,8 @@ ROOT::VecOps::RVec<int> FindMinimum(const ROOT::VecOps::RVec<double> v);
 
 ROOT::VecOps::RVec<int> FindMinimum2(const ROOT::VecOps::RVec<double> vector,
                                                const ROOT::VecOps::RVec<int> condition);
+
+double FindMinimum3(const ROOT::VecOps::RVec<double> values, const ROOT::VecOps::RVec<int> condition);
 
 double GetColumnSum(const ROOT::VecOps::RVec<double>& v);
 
@@ -345,6 +347,8 @@ ROOT::RDF::RNode GetInfoCellsFromSignal(ROOT::RDF::RNode& df);
 
 ROOT::RDF::RNode GetFilteredTrajectories(ROOT::RDF::RNode& df);
 
+// ROOT::RDF::RNode GetFilteredTrajectories_(ROOT::RDF::RJittedFilter& df);
+
 int NofFiredECALMods(const ROOT::VecOps::RVec<int>& fired_cells_modules);
 
 ROOT::VecOps::RVec<TVector3> XfromTDC(const ROOT::VecOps::RVec<dg_cell>& cells,
@@ -401,18 +405,13 @@ ROOT::VecOps::RVec<TVector3> GetExpectedHitPosition(TVector3 vertex,
                                                    const ROOT::VecOps::RVec<dg_cell>& cells);
 
 ROOT::VecOps::RVec<double> TimeResiduals(const ROOT::VecOps::RVec<double>& expected_t_hit,
-                                                          const ROOT::VecOps::RVec<double>& reconstruced_t_hit,
-                                                          const ROOT::VecOps::RVec<int>& isCellComplete);
+                                                          const ROOT::VecOps::RVec<double>& reconstruced_t_hit);
 
 ROOT::VecOps::RVec<double> SpaceResiduals(const ROOT::VecOps::RVec<TVector3>& expected_x_hit,
-                                                           const ROOT::VecOps::RVec<TVector3>& reconstruced_x_hit,
-                                                           const ROOT::VecOps::RVec<int>& isCellComplete);
+                                                           const ROOT::VecOps::RVec<TVector3>& reconstruced_x_hit);
 
-ROOT::VecOps::RVec<double> SpaceTimeResiduals(const ROOT::VecOps::RVec<double>& time_residuals,
-                                                               const ROOT::VecOps::RVec<double>& space_residuals,
-                                                               const ROOT::VecOps::RVec<int>& isCellComplete);
-
-ROOT::VecOps::RVec<int> IsCompatible(const ROOT::VecOps::RVec<double>& space_residuals);
+ROOT::VecOps::RVec<int> IsCompatible(const ROOT::VecOps::RVec<double>& space_residuals, 
+                                     const ROOT::VecOps::RVec<double>& time_residuals);
 
 ROOT::VecOps::RVec<int> IsCandidateCell(const ROOT::VecOps::RVec<int>& isSpaceCompatible,
                                         const ROOT::VecOps::RVec<double>& t_hit_reco);
@@ -461,6 +460,8 @@ int GetNofFiredWires(const ROOT::VecOps::RVec<int>& wires_id);
 int Test(bool b, const MinuitFitInfos& i);
 
 ROOT::RDF::RNode AddColumnsFromDriftReco(ROOT::RDF::RNode& df);
+
+int isCandidateSignal(std::string interaction_volume, int charge_multiplicity, int nof_cell_candidates);
 
 }// DRIFT RECO
 

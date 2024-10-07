@@ -137,7 +137,6 @@ int main(int argc, char* argv[]){
                                                 "InteractionVolume_short",
                                                 "NofFinalStateChargedParticles",
                                                 "FinalStateLeptonEmissionAngle",
-                                                // "PrimaryStateHadronicSystemTotalKinE",
                                                 "PrimaryStateHadronicSystemTopology_name",
                                                 "InteractionTarget",
                                                 // /*
