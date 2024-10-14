@@ -4,6 +4,8 @@
 #include "TGeoManager.h"
 #include "TLorentzVector.h"
 #include "struct.h"
+#include "ROOT/RDF/RInterface.hxx"
+#include "ROOT/RDataFrame.hxx"
 
 namespace GeoUtils{//GeoUtils
 
@@ -37,6 +39,8 @@ double IntersectWithTube(std::string units,
                          double tube_length);
 
 std::string InteractionVolume_short(const std::string& detailed_name);
+
+ROOT::VecOps::RVec<std::string> InteractionVolume_short_v(const ROOT::VecOps::RVec<std::string>& detailed_name);
 
 namespace ECAL{ // ECAL
 

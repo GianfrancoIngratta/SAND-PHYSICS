@@ -92,13 +92,16 @@ std::vector<std::string> output_columns_event_selection = {
    "IsCompatible",
    "earliest_compatible_cell",
    "nof_compatible_cells",
+   /*
+        RECONSTRUCTED NEUTRON AND NEUTRINO ENERGY
+   */
+    "reconstructed_neutron_KinE_MeV",
+    "reconstructed_neutrino_Energy",
 };
 
 std::vector<std::string> columns_neutron_cells = {
     "FileName",
     "CCQEonHydrogen",
-    "neutron_P4_true",
-    "neutron_beta_true",
     //
     "neutrons_cells_mod",
     "neutrons_cells_id",
@@ -115,6 +118,10 @@ std::vector<std::string> columns_neutron_cells = {
     "true_hit_t",
     "true_hit_FlightLength",
     "true_hit_is_earliest",
+    "true_neutron_P4",
+    "true_neutron_beta",
+    "true_neutron_kinE",
+    "Neutron_deviation_angle",
     /*
         PREDICTED HIT
     */
@@ -135,6 +142,8 @@ std::vector<std::string> columns_neutron_cells = {
     "reconstructed_hit_is_earliest",
     "reconstructed_hit_FlightLength",
     "reconstructed_neutron_beta",
+    "reconstructed_neutron_kinE",
+
     };
 
 
@@ -172,7 +181,7 @@ int main(int argc, char* argv[]){
     }
 
     index = atoi(argv[1]);
-    unsigned int files_per_jobs = 2u;
+    unsigned int files_per_jobs = 100u;
     unsigned int file_start = index * files_per_jobs;
     unsigned int file_stop = index * files_per_jobs + files_per_jobs;
 
@@ -192,7 +201,7 @@ int main(int argc, char* argv[]){
     auto fInput_drift_reco = TString::Format("%sevents-in-SANDtracker.*.recostruction.NLLmethod.root", FOLDER_PRODUCTION);
 
     auto fOutput = TString::Format("%sevents-in-SANDtracker.%d.to.%d.drift-reco.analysed.root",FOLDER_ANALYSIS, file_start, file_stop);
-    auto fOutput_cells = TString::Format("%sevents-in-SANDtracker.%d.to.%d.drift-reco.analysed.root",FOLDER_ANALYSIS_CELLS, file_start, file_stop);
+    auto fOutput_cells = TString::Format("%sevents-in-SANDtracker.%d.to.%d.cells_neutron.root",FOLDER_ANALYSIS_CELLS, file_start, file_stop);
     auto fOutput_selected_signal = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_signal.root",FOLDER_ANALYSIS_SIGNAL_SELECTION, file_start, file_stop);
     auto fOutput_selected_bkg = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_bkg.root",FOLDER_ANALYSIS_SIGNAL_SELECTION, file_start, file_stop);
     auto fOutput_trj_signal = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_signal.trj.root",FOLDER_ANALYSIS_SIGNAL_SELECTION, file_start, file_stop);
@@ -240,21 +249,21 @@ int main(int argc, char* argv[]){
     LOG("I", "Filter events with 1 charged particle in final state");
     auto dfReco_wires_cut_1cmulti = dfReco_wires_cut.Filter("NofFinalStateChargedParticles==1");
 
-    // SELECTED SIGNAL _______________________________________________________________________________
-    LOG("I", "Writing ouput file: SELECTED SIGNAL");
-    auto selected_signal = dfReco_wires_cut_1cmulti.Filter("candidate_signal_event == 1");
-    selected_signal.Snapshot("tReco_extended", fOutput_selected_signal.Data(), output_columns_event_selection);
-    selected_signal.Snapshot("traj", fOutput_trj_signal.Data(), columns_branch_trj);
+    // // SELECTED SIGNAL _______________________________________________________________________________
+    // LOG("I", "Writing ouput file: SELECTED SIGNAL");
+    // auto selected_signal = dfReco_wires_cut_1cmulti.Filter("candidate_signal_event == 1");
+    // selected_signal.Snapshot("tReco_extended", fOutput_selected_signal.Data(), output_columns_event_selection);
+    // selected_signal.Snapshot("traj", fOutput_trj_signal.Data(), columns_branch_trj);
     
-    // SELECTED BKG __________________________________________________________________________________
-    LOG("I", "Writing ouput file: SELECTED BKG");
-    auto selected_bkg = dfReco_wires_cut_1cmulti.Filter("candidate_signal_event == 0");
-    selected_bkg.Snapshot("tReco_extended", fOutput_selected_bkg.Data(), output_columns_event_selection);
-    selected_bkg.Snapshot("traj", fOutput_trj_bkg.Data(), columns_branch_trj);
+    // // SELECTED BKG __________________________________________________________________________________
+    // LOG("I", "Writing ouput file: SELECTED BKG");
+    // auto selected_bkg = dfReco_wires_cut_1cmulti.Filter("candidate_signal_event == 0");
+    // selected_bkg.Snapshot("tReco_extended", fOutput_selected_bkg.Data(), output_columns_event_selection);
+    // selected_bkg.Snapshot("traj", fOutput_trj_bkg.Data(), columns_branch_trj);
     
     // NEUTRON CELLS (MC TRUTH) _______________________________________________________________________
     LOG("I", "Writing ouput file: CELLS FIRED BY NEUTRON");
-    auto complete_cells_fired_by_signal_neutron = RDFUtils::DIGIT::GetInfoCellsFromSignal(dfReco_wires_cut);
+    auto complete_cells_fired_by_signal_neutron = RDFUtils::DIGIT::GetInfoCellsFromSignal(dfReco);
     complete_cells_fired_by_signal_neutron.Snapshot("tReco_extended", fOutput_cells.Data(), columns_neutron_cells);
 
     return 0;

@@ -48,6 +48,16 @@ std::string GeoUtils::InteractionVolume_short(const std::string& detailed_name) 
     }
 }
 
+ROOT::VecOps::RVec<std::string> GeoUtils::InteractionVolume_short_v(const ROOT::VecOps::RVec<std::string>& detailed_name){
+    ROOT::VecOps::RVec<std::string> name(detailed_name.size());
+    for (size_t i = 0; i < detailed_name.size(); i++)
+    {
+        name[i] = GeoUtils::InteractionVolume_short(detailed_name[i]);
+    }
+    
+    return name;
+}
+
 // ECAL functions ____________________
 
 bool GeoUtils::ECAL::is_ecal_barrel(const TString& volume_name){

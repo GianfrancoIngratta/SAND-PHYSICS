@@ -16,7 +16,11 @@
 #pragma link C++ class ROOT::VecOps::RVec < TLorentzVector> + ;
 #pragma link C++ class ROOT::VecOps::RVec < event_topology> + ;
 #pragma link C++ class ROOT::VecOps::RVec < track_hits> + ;
+#pragma link C++ class ROOT::VecOps::RVec < trajectory> + ;
+#pragma link C++ class ROOT::VecOps::RVec < cell> + ;
 #pragma link C++ class event_topology + ;
 #pragma link C++ class track_hits + ;
+#pragma link C++ class trajectory + ;
+#pragma link C++ class cell + ;
 
 #endif

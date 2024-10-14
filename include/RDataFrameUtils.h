@@ -68,9 +68,153 @@ inline void LOG(TString i, const char* out){
     }
 }
 
-namespace RDFUtils{//RDFUtils
+/** ==================
+ * RDF:
+ */ 
+namespace RDFUtils{
 
 const int DEFAULT_NO_DATA = -999;
+
+const TLorentzVector DEFAULT_VECTOR_NO_DATA = {DEFAULT_NO_DATA, DEFAULT_NO_DATA, DEFAULT_NO_DATA, DEFAULT_NO_DATA}; 
+
+struct trajectory
+{
+    int spill_number = DEFAULT_NO_DATA;
+    
+    int vertex_interaction_number = DEFAULT_NO_DATA;
+
+    int id = DEFAULT_NO_DATA;
+
+    int pdg = DEFAULT_NO_DATA;
+
+    std::string name;
+    
+    /***
+     * @attribute: start_point
+     * trajectory starting point
+     */
+    TVector3 start_point;
+    
+    /***
+     * @attribute: initial_momentum
+     * trajectory initial momentum
+     */
+    TLorentzVector initial_momentum;
+    
+    /***
+     * @attribute: hindex_ecal
+     * list of all track hits in ECAL
+     */
+    std::vector<int> hindex_ecal;
+
+    /**
+     * @attribute:earliest_hit
+     * earliest hit in ecal
+     */
+    TLorentzVector earliest_hit = DEFAULT_VECTOR_NO_DATA;
+
+    /**
+     * @attribute:earliest_hit
+     * latest hit in ecal
+     */
+    TLorentzVector latest_hit = DEFAULT_VECTOR_NO_DATA;
+
+    /***
+     * @attribute: edep_in_ecal
+     * energy deposited in ecal
+     */
+    double edep_in_ecal = 0.;
+
+    /***
+     * @attribute: cell_id_ecal
+     * list of all ecal cells whose TDC
+     * is produced by this trajectory
+     */
+    std::vector<int> cell_id_ecal;
+
+};
+
+struct cell
+{
+    int spill_number = DEFAULT_NO_DATA;
+    
+    int vertex_interaction_number = DEFAULT_NO_DATA;
+
+    int id = DEFAULT_NO_DATA;
+    
+    /**
+     * @attribute: track_id of the trajectory
+     * that fired this cell
+     */
+    int fired_by_track_id;
+
+    /**
+     * @attribute: pdg of the trajectory
+     */
+    int fired_by_track_pdg;
+
+    /**
+     * @attribute: cell has both tdc with signal
+     * -1 uninitialized
+     * 0 broken, 1 complete
+     */
+    int is_complete = -1;
+
+    /**
+     * @attribute: edepsim hit that produced the 
+     * observed TDCs
+     */ 
+    TLorentzVector true_hit = DEFAULT_VECTOR_NO_DATA;
+
+    /**
+     * @attribute: true_energy deposited in the cell
+     */
+    double true_edep = DEFAULT_NO_DATA;
+
+    /**
+     * @attribute: reco_hit reconstructed hit from obseved
+     * TDCs
+     */
+    TLorentzVector reco_hit = DEFAULT_VECTOR_NO_DATA;
+
+    /**
+     * @attribute: reconstructed energy deposited in the cell
+     */
+    double reco_edep = DEFAULT_NO_DATA;
+};
+
+ROOT::RDF::RNode CreateDataFrameTrajectories(ROOT::RDF::RNode& df);
+
+ROOT::VecOps::RVec<RDFUtils::cell> CreateCells(TG4Event& ev, 
+                                               const ROOT::VecOps::RVec<TG4Trajectory>& TG4_trajectories,
+                                               const ROOT::VecOps::RVec<dg_cell>& input_cells,
+                                               double calibration_x,
+                                               double calibration_y,
+                                               double calibration_t);
+
+
+
+ROOT::RDF::RNode CreateDataFrameCells(ROOT::RDF::RNode& df);
+
+ROOT::VecOps::RVec<int> GetCellId(const ROOT::VecOps::RVec<RDFUtils::cell>& cells);
+
+ROOT::VecOps::RVec<RDFUtils::trajectory> CreateTrajectories(TG4Event& ev, 
+                                                            const ROOT::VecOps::RVec<TG4Trajectory>& TG4_trajectories,
+                                                            const ROOT::VecOps::RVec<dg_cell>& cells,
+                                                            const ROOT::VecOps::RVec<int>& track_id_tdc1,
+                                                            const ROOT::VecOps::RVec<int>& track_id_tdc2);
+
+ROOT::VecOps::RVec<int> GetTrajectoryId(const ROOT::VecOps::RVec<RDFUtils::trajectory>& trajectoires);
+
+ROOT::VecOps::RVec<int> GetTrajectoryPDG(const ROOT::VecOps::RVec<RDFUtils::trajectory>& trajectoires);
+
+ROOT::VecOps::RVec<std::string> GetTrajectoryName(const ROOT::VecOps::RVec<RDFUtils::trajectory>& trajectoires);
+
+ROOT::VecOps::RVec<double> GetTrajectoryECALedep(const ROOT::VecOps::RVec<RDFUtils::trajectory>& trajectoires);
+
+ROOT::VecOps::RVec<TLorentzVector> GetTrajectoryECALearliest(const ROOT::VecOps::RVec<RDFUtils::trajectory>& trajectoires);
+
+ROOT::VecOps::RVec<TLorentzVector> GetTrajectoryECALlatest(const ROOT::VecOps::RVec<RDFUtils::trajectory>& trajectoires);
 
 // ROOT::RDataFrame InitDF(TString production, const char* tree_name, unsigned int file_index_start = 0, unsigned int file_index_stop = 10);
 TChain* InitTChain(TString production,
@@ -101,6 +245,10 @@ ROOT::VecOps::RVec<int> FindMinimum2(const ROOT::VecOps::RVec<double> vector,
 
 double FindMinimum3(const ROOT::VecOps::RVec<double> values, const ROOT::VecOps::RVec<int> condition);
 
+double slice_w_condition(const ROOT::VecOps::RVec<double>& values,
+                                   const ROOT::VecOps::RVec<double>& mask,
+                                   const double value);
+
 double GetColumnSum(const ROOT::VecOps::RVec<double>& v);
 
 ROOT::VecOps::RVec<double> VectorDifference(const ROOT::VecOps::RVec<double>& v1,
@@ -123,7 +271,11 @@ ROOT::VecOps::RVec<int> IsNULLTLV(const ROOT::VecOps::RVec<TLorentzVector>& V);
 
 ROOT::VecOps::RVec<int> IsValidVector(const ROOT::VecOps::RVec<double>& v);
 
-namespace GENIE{//GENIE
+/** ==================
+ * GENIE:
+ */ 
+
+namespace GENIE{
 
 // bool IsUnphysical(genie::NtpMCEventRecord& m);
 
@@ -210,34 +362,35 @@ ROOT::RDF::RNode AddColumnsFromGENIE(ROOT::RDF::RNode& df);
 
 ROOT::RDF::RNode AddColumnsForHydrogenCarbonSampleSelection(ROOT::RDF::RNode& df); // these is expected to have columns from AddColumnsFromGENIE output
 
-}//GENIE
+}
+/**
+ * GENIE:
+ ==================*/ 
 
-// namespace SANDRECO{//SANDRECO
+/** =================
+ * GEO:
+ * */ 
 
-// ROOT::VecOps::RVec<particle> ParticleGoodTrackFit(const ROOT::VecOps::RVec<particle>& particles);
-
-// ROOT::VecOps::RVec<particle> FilterPrimaries(const ROOT::VecOps::RVec<particle>& particles);
-
-// template<int PDG>
-// ROOT::VecOps::RVec<particle> GetParticlesWithPDG(const ROOT::VecOps::RVec<particle>& particles);
-
-// ROOT::VecOps::RVec<TLorentzVector> GetMomentum(const ROOT::VecOps::RVec<particle>& particles);
-
-// ROOT::VecOps::RVec<TLorentzVector> GetTrackVertex(const ROOT::VecOps::RVec<particle>& particles);
-
-// ROOT::RDF::RNode AddColumnsFromSANDRECO(ROOT::RDF::RNode& df);
-
-// }//SANDRECO
-
-namespace GEO{//GEO
+namespace GEO{
 
 std::string GetMaterialFromCoordinates(double x, double y, double z);
 
 std::string GetVolumeFromCoordinates(std::string, double x, double y, double z);
 
-}//GEO
+ROOT::VecOps::RVec<std::string> GetVolumeFromCoordinates_v(std::string units,
+                                                           const ROOT::VecOps::RVec<double>& vertices_x, 
+                                                           const ROOT::VecOps::RVec<double>& vertices_y, 
+                                                           const ROOT::VecOps::RVec<double>& vertices_z);
 
-namespace EDEPSIM{//EDEPSIM
+}
+/**
+ * GEO:
+ ==================*/ 
+
+/** =================
+ * EDEPSIM:
+*/ 
+namespace EDEPSIM{
 
 // TVector3 GetExpectedNeutronFromMu(const TLorentzVector& lepton);
 
@@ -277,22 +430,52 @@ ROOT::VecOps::RVec<TLorentzVector> GetHitFromIndex(const ROOT::VecOps::RVec<int>
 
 ROOT::VecOps::RVec<double> GetHitEdepFromIndex(const ROOT::VecOps::RVec<int>& h_index, TG4Event& ev);
 
-namespace SPILL{// EDEPSIM::SPILL
+/** =================
+ * EDEPSIM::SPILL:
+*/ 
+namespace SPILL{
 ROOT::RDF::RNode AddColumnsFromEDEPSIM(ROOT::RDF::RNode& df);
 
 template<int coordinate>
 ROOT::VecOps::RVec<double> PrimariesVertex(const ROOT::VecOps::RVec<TG4PrimaryVertex>& vertices);
 
-ROOT::VecOps::RVec<double> PrimariesVertexTimeDiff(ROOT::VecOps::RVec<double>& primaries_time);
+// ROOT::VecOps::RVec<double> PrimariesVertexTimeDiff(ROOT::VecOps::RVec<double>& primaries_time);
 
-ROOT::VecOps::RVec<std::string> EventType(const ROOT::VecOps::RVec<TG4PrimaryVertex>& V);
+// ROOT::VecOps::RVec<std::string> EventType(const ROOT::VecOps::RVec<TG4PrimaryVertex>& V);
 
-ROOT::VecOps::RVec<std::string> FileName(const ROOT::VecOps::RVec<TG4PrimaryVertex>& V);
+template<int token_number>
+ROOT::VecOps::RVec<std::string> EventInfo(const ROOT::VecOps::RVec<TG4PrimaryVertex>& vertices);
+
+ROOT::VecOps::RVec<std::string> FileName(const ROOT::VecOps::RVec<TG4PrimaryVertex>& vertex);
 
 int NofEventsPerSpill(const ROOT::VecOps::RVec<TG4PrimaryVertex>& vertices);
-} // SPILL
 
-namespace NOSPILL{ // EDEPSIM::NOSPILL
+ROOT::VecOps::RVec<int> GetBatchNumber(const ROOT::VecOps::RVec<double>& vertex_time, 
+                                                                 const double batch_duration,
+                                                                 const int nof_batches_in_spill,
+                                                                 const double spill_t0);
+
+ROOT::VecOps::RVec<int> GetBunchNumber(const ROOT::VecOps::RVec<double>& vertex_time,
+                                                                const double batch_duration,
+                                                                const double bunch_separation,
+                                                                const int nof_bunches_in_batch,
+                                                                const double spill_t0);
+
+ROOT::VecOps::RVec<std::string> GetEventType(const ROOT::VecOps::RVec<TG4PrimaryVertex>& vertices);
+
+ROOT::VecOps::RVec<int> IsSignal(const ROOT::VecOps::RVec<TG4PrimaryVertex>& vertices); 
+
+ROOT::VecOps::RVec<int> CountChargedPrimaries(const ROOT::VecOps::RVec<TG4PrimaryVertex>& vertices);
+
+}
+/**
+ * EDEPSIM::SPILL:
+ ==================*/ 
+/** =================
+ * EDEPSIM::NOSPILL:
+ */ 
+
+namespace NOSPILL{
 
 ROOT::RDF::RNode AddColumnsFromEDEPSIM(ROOT::RDF::RNode& df);
 
@@ -335,10 +518,19 @@ ROOT::VecOps::RVec<double> GetDirectionInECAL(const ROOT::VecOps::RVec<TLorentzV
                                               const double vtxZ,
                                               const ROOT::VecOps::RVec<TLorentzVector>& primaries_first_hit);
 
-} // NOSPILL
+}
+/** 
+ * EDEPSIM::NOSPILL:
+ ==================*/ 
 
-}//EDEPSIM
+}
+/** 
+ * EDEPSIM:
+ ==================*/ 
 
+/** =================
+ * DIGIT:
+*/ 
 namespace DIGIT{// DIGIT
 
 ROOT::RDF::RNode AddColumnsFromDigit(ROOT::RDF::RNode& df);
@@ -401,8 +593,8 @@ ROOT::VecOps::RVec<TLorentzVector> Cluster2Vertex4Distance(double x,
                                                            const ROOT::VecOps::RVec<cluster>& clusters);
 
 ROOT::VecOps::RVec<TVector3> GetExpectedHitPosition(TVector3 vertex,
-                                                   const TVector3& momentum_vector,
-                                                   const ROOT::VecOps::RVec<dg_cell>& cells);
+                                                    const TVector3& momentum_vector,
+                                                    const ROOT::VecOps::RVec<TVector3>& hits_reco);
 
 ROOT::VecOps::RVec<double> TimeResiduals(const ROOT::VecOps::RVec<double>& expected_t_hit,
                                                           const ROOT::VecOps::RVec<double>& reconstruced_t_hit);
@@ -451,9 +643,29 @@ ROOT::VecOps::RVec<double>  GetCellY(const ROOT::VecOps::RVec<dg_cell>& cells);
 
 ROOT::VecOps::RVec<double>  GetCellZ(const ROOT::VecOps::RVec<dg_cell>& cells);
 
-}// DIGIT
+/** =================
+ * DIGIT::SPILL:
+*/ 
 
-namespace RECO{// DRIFT RECO
+namespace SPILL
+{
+
+ROOT::RDF::RNode AddColumnsFromDigit(ROOT::RDF::RNode& df);
+
+}
+/**
+ * DIGIT::SPILL:
+ ==================*/
+
+}
+/**
+ * DIGIT:
+ ==================*/
+
+/** =================
+ * RECO:
+*/
+namespace RECO{
 
 int GetNofFiredWires(const ROOT::VecOps::RVec<int>& wires_id);
 
@@ -463,8 +675,14 @@ ROOT::RDF::RNode AddColumnsFromDriftReco(ROOT::RDF::RNode& df);
 
 int isCandidateSignal(std::string interaction_volume, int charge_multiplicity, int nof_cell_candidates);
 
-}// DRIFT RECO
+}
+/**
+ * RECO:
+ ==================*/
+}
 
-}//RDFUtils
+/**
+ * RDF:
+ ==================*/
 
 #endif

@@ -152,6 +152,21 @@ double RDFUtils::FindMinimum3(const ROOT::VecOps::RVec<double> values,
     }
 }
 
+double RDFUtils::slice_w_condition(const ROOT::VecOps::RVec<double>& values,
+                                   const ROOT::VecOps::RVec<double>& mask,
+                                   const double value){
+    if(value == RDFUtils::DEFAULT_NO_DATA){
+        return RDFUtils::DEFAULT_NO_DATA;
+    }else{
+        auto values_filtered = values[mask == value];
+        if(values_filtered.size()==0){
+            return RDFUtils::DEFAULT_NO_DATA;
+        }else{
+            return values_filtered[0];
+        }
+    }                                    
+}
+
 ROOT::VecOps::RVec<TVector3> RDFUtils::GetVect(const ROOT::VecOps::RVec<TLorentzVector>& vTL){
 
     ROOT::VecOps::RVec<TVector3> v(vTL.size());
@@ -790,23 +805,32 @@ double RDFUtils::GENIE::GetNeutronTOF(std::string units_l,
 ROOT::RDF::RNode RDFUtils::AddConstantsToDF(ROOT::RDataFrame& df){
     return df
             // units
-            .Define("GENIE_UNIT_LEGTH",   [](){std::string u = "m";return u;})
-            .Define("GENIE_UNIT_ENERGY",  [](){std::string u = "GeV";return u;})
-            .Define("EDEP_UNIT_LEGTH",    [](){std::string m = "mm";return m;})
-            .Define("EDEP_UNIT_ENERGY",   [](){std::string m = "MeV";return m;})
-            .Define("TGEO_UNIT_LEGTH",    [](){std::string m = "cm";return m;})
+            .Define("GENIE_UNIT_LEGTH",         [](){std::string u = "m";return u;})
+            .Define("GENIE_UNIT_ENERGY",        [](){std::string u = "GeV";return u;})
+            .Define("EDEP_UNIT_LEGTH",          [](){std::string m = "mm";return m;})
+            .Define("EDEP_UNIT_ENERGY",         [](){std::string m = "MeV";return m;})
+            .Define("TGEO_UNIT_LEGTH",          [](){std::string m = "cm";return m;})
             //
-            .Define("PROTON_MASS_GeV",    [](){return GenieUtils::GetMass(2212);})
-            .Define("NEUTRON_MASS_GeV",   [](){return GenieUtils::GetMass(2112);})
-            .Define("NEUTRON_MASS_MeV",   [](){return GenieUtils::GetMass(2112)*1e3;})
-            .Define("MUON_MASS_GeV",      [](){return GenieUtils::GetMass(13);})
-            .Define("MUON_MASS_MeV",      [](){return GenieUtils::GetMass(13)*1e3;})
+            .Define("PROTON_MASS_GeV",          [](){return GenieUtils::GetMass(2212);})
+            .Define("NEUTRON_MASS_GeV",         [](){return GenieUtils::GetMass(2112);})
+            .Define("NEUTRON_MASS_MeV",         [](){return GenieUtils::GetMass(2112)*1e3;})
+            .Define("MUON_MASS_GeV",            [](){return GenieUtils::GetMass(13);})
+            .Define("MUON_MASS_MeV",            [](){return GenieUtils::GetMass(13)*1e3;})
             // offset
-            .Define("TIME_CALIBRATION_OFFSET", [](){return -0.90;}) // ns calubrated on earlist cells 
-            .Define("X_CALIBRATION_OFFSET",    [](){return +0.;}) // mm
-            .Define("Y_CALIBRATION_OFFSET",    [](){return +0.;}) // mm
+            .Define("TIME_CALIBRATION_OFFSET",  [](){return -0.90;}) // ns calubrated on earlist cells 
+            .Define("X_CALIBRATION_OFFSET",     [](){return +0.;}) // mm
+            .Define("Y_CALIBRATION_OFFSET",     [](){return +0.;}) // mm
             // .Define("X_CALIBRATION_OFFSET",    [](){return +0.64;}) // mm
             // .Define("Y_CALIBRATION_OFFSET",    [](){return +0.41;}) // mm
+            /*
+                spills
+            */
+           .Define("nof_batches_in_spill",      [](){return SPILL::nof_batches_in_spill;})
+           .Define("nof_bunches_in_batch",      [](){return SPILL::nof_bunches_in_batch;})
+           .Define("bunch_duration",            [](){return SPILL::bunch_duration;})
+           .Define("bunch_separation",          [](){return SPILL::bunch_separation;})
+           .Define("batch_duration",            [](){return SPILL::batch_duration;})
+           .Define("spill_duration",            [](){return SPILL::spill_duration;})
             ;
 }
 
@@ -954,6 +978,7 @@ ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsFromGENIE(ROOT::RDF::RNode& df){
              ;
 }
 
+
 ROOT::RDF::RNode RDFUtils::GENIE::AddColumnsForHydrogenCarbonSampleSelection(ROOT::RDF::RNode& df){
     /* These variables allows the separation of interacions occurring on free proton (H)
     from those occuring on Carbon. Variables are explained in arXiv:2102.03346v1 and arXiv:1809.08752v2[Petti] */
@@ -1004,6 +1029,18 @@ std::string RDFUtils::GEO::GetVolumeFromCoordinates(std::string units, double x,
     //     std::cout << "volume : " << volume << "x, y, z " << x << " " << y << " " << z << "\n";
     // }
     return volume;
+}
+
+ROOT::VecOps::RVec<std::string> RDFUtils::GEO::GetVolumeFromCoordinates_v(std::string units,
+                                                                          const ROOT::VecOps::RVec<double>& vertices_x, 
+                                                                          const ROOT::VecOps::RVec<double>& vertices_y, 
+                                                                          const ROOT::VecOps::RVec<double>& vertices_z){
+    ROOT::VecOps::RVec<std::string> volumes(vertices_x.size());
+    for (size_t i = 0; i < vertices_x.size(); i++)
+    {
+        volumes[i] = RDFUtils::GEO::GetVolumeFromCoordinates(units, vertices_x[i], vertices_y[i], vertices_z[i]);
+    }
+    return volumes;                                                                            
 }
 
 std::string RDFUtils::GEO::GetMaterialFromCoordinates(double x, double y, double z){
@@ -1140,10 +1177,11 @@ ROOT::VecOps::RVec<int> RDFUtils::EDEPSIM::NOSPILL::GetPrimariesTrackId(const RO
 ROOT::VecOps::RVec<EDepUtils::track_hits> RDFUtils::EDEPSIM::NOSPILL::GetPrimariesHits(TG4Event& ev, 
                                                                                        const ROOT::VecOps::RVec<int>& ids,
                                                                                        const ROOT::VecOps::RVec<int>& pdgs){
-    /*
-        return a vector of trac_hits, that is group hits
-        that belongs to a given primary
-    */
+    /**
+     * @brief: Group epesim hits that belongs to a given primary
+     * INPUT: - TG4Event, id of the primary's trajectory, pdg of the primary
+     * @return: vector of EDepUtils::track_hits  
+     * */        
     std::map<int, EDepUtils::track_hits> map_grouped_hits;
 
     // initialize the map, each key a primary id
@@ -1155,22 +1193,22 @@ ROOT::VecOps::RVec<EDepUtils::track_hits> RDFUtils::EDEPSIM::NOSPILL::GetPrimari
         map_grouped_hits[ids[i]] = t;
     }
 
-    int j = 0;
-    for(auto hit: ev.SegmentDetectors["EMCalSci"]){
+    auto calo_hits = ev.SegmentDetectors["EMCalSci"]; 
+    for(size_t j = 0; j < calo_hits.size(); j++){
+        
         // retreive the track id of the most important particle associated with this hit
-        auto hit_primary_id = hit.GetPrimaryId();
+        auto hit_primary_id = calo_hits[j].GetPrimaryId();
 
         // check if the track id associated to the hit belongs to one of the primaries id
         auto it = std::find(ids.begin(), ids.end(), hit_primary_id);
 
         if (it != ids.end()){
             // update info of EDepUtils::track_hits that belongs to the primary whose id is hit_primary_id
-            auto hit_middle = (hit.GetStop() + hit.GetStart())*0.5;
+            auto hit_middle = (calo_hits[j].GetStop() + calo_hits[j].GetStart())*0.5;
             map_grouped_hits[hit_primary_id].h_indices.push_back(j);
-            map_grouped_hits[hit_primary_id].hit_edep.push_back(hit.GetEnergyDeposit());
+            map_grouped_hits[hit_primary_id].hit_edep.push_back(calo_hits[j].GetEnergyDeposit());
             map_grouped_hits[hit_primary_id].hit_LorentzVector.push_back(hit_middle);
         }
-        j++;
     }
 
     ROOT::VecOps::RVec<EDepUtils::track_hits> T;
@@ -1189,12 +1227,11 @@ ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::NOSPILL::GetPrimariesEDepECAL(cons
     }
     return primaries_edep;
 }
-
 ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::NOSPILL::GetDirectionInECAL(const ROOT::VecOps::RVec<TLorentzVector>& P4,
                                                                            const double vtxX,
                                                                            const double vtxY,
                                                                            const double vtxZ,
-                                                                           const ROOT::VecOps::RVec<TLorentzVector>& primaries_first_hit){
+                                                                           const ROOT::VecOps::RVec<TLorentzVector>& primaries_first_hit) {
     /**
      * @brief Calculates the angle between the direction of emission of the primary particle and
      * its direction when it is in ECAL.
@@ -1206,19 +1243,22 @@ ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::NOSPILL::GetDirectionInECAL(const 
      * @return RVec<double>  Angles (in radians) or RDFUtils::DEFAULT_NO_DATA if no hit.
      * @note Ensure all input coordinates are in meters.
     */
-     
+
     ROOT::VecOps::RVec<double> directions(primaries_first_hit.size());
-    TVector3 vtx_mm = {vtxX * 1e3, vtxY * 1e3, vtxZ * 1e3}; // [mm]                                                             
-    for (size_t i = 0; i < primaries_first_hit.size(); i++)
-    {
-        // if no hit in ECAL defaul is null TLV, return default directopn RDFUtils::DEFAULT_NO_DATA
-        if(primaries_first_hit[i].Mag() == 0.){
+    const TVector3 vtx_mm = {vtxX * 1e3, vtxY * 1e3, vtxZ * 1e3}; // Convert to millimeters                                                             
+    for (size_t i = 0; i < primaries_first_hit.size(); i++) {
+        // If no hit in ECAL, return default direction RDFUtils::DEFAULT_NO_DATA
+        if (primaries_first_hit[i].Mag() == 0.) {
             directions[i] = RDFUtils::DEFAULT_NO_DATA;
-        }else{
-            TVector3 intial_momentum = P4[i].Vect();
-            TVector3 first_hit_ = primaries_first_hit[i].Vect(); // [mm]
-            TVector3 direction_in_ECAL = first_hit_ - vtx_mm;
-            double argument = direction_in_ECAL.Dot(intial_momentum) / ((direction_in_ECAL.Mag())*(intial_momentum.Mag()));
+        } else {
+            const TVector3 initial_momentum = P4[i].Vect();
+            const TVector3 first_hit_position = primaries_first_hit[i].Vect(); // [mm]
+            const TVector3 direction_in_ECAL = first_hit_position - vtx_mm;
+
+            // Calculate the cosine of the angle and clamp it within [-1, 1] to avoid domain errors
+            double argument = direction_in_ECAL.Dot(initial_momentum) / 
+                              ((direction_in_ECAL.Mag()) * (initial_momentum.Mag()));
+            argument = std::max(-1.0, std::min(1.0, argument));                              
             directions[i] = acos(argument);
         }
     }
@@ -1539,26 +1579,28 @@ ROOT::RDF::RNode RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(ROOT::RDF::RN
              .Define("PrimariesTrackId",        RDFUtils::EDEPSIM::NOSPILL::GetPrimariesTrackId, {"Primaries"})
              .Define("PrimariesP4",             RDFUtils::EDEPSIM::NOSPILL::GetPrimariesP4, {"Primaries"})
              .Define("PrimariesBeta",           RDFUtils::GENIE::GetBeta, {"PrimariesP4"})
-            //  .Define("Primaries_beta",          RDFUtils::GENIE::GetBeta, {"PrimariesP4"})
+             .Define("PrimariesEmissionAngle",  RDFUtils::EDEPSIM::NOSPILL::GetEmissionAngle, {"NuDirection", "PrimariesP4"})
              .Define("Primaries_vtxX",          [](const ROOT::VecOps::RVec<TLorentzVector>& vertices){return vertices[0].X();},{"Primaries.Position"})
              .Define("Primaries_vtxY",          [](const ROOT::VecOps::RVec<TLorentzVector>& vertices){return vertices[0].Y();},{"Primaries.Position"})
              .Define("Primaries_vtxZ",          [](const ROOT::VecOps::RVec<TLorentzVector>& vertices){return vertices[0].Z();},{"Primaries.Position"})
              .Define("Primaries_vtxT",          [](const ROOT::VecOps::RVec<TLorentzVector>& vertices){return vertices[0].T();},{"Primaries.Position"})
-              // ECAL track_hits
+              /*
+                ECAL track hits
+              */
              .Define("PrimariesHitsECAL",       RDFUtils::EDEPSIM::NOSPILL::GetPrimariesHits, {"Event", "PrimariesTrackId", "PrimariesPDG"})
              .Define("PrimariesHitsX",          RDFUtils::EDEPSIM::NOSPILL::GetECALHitPos<0>, {"PrimariesHitsECAL"})
              .Define("PrimariesHitsY",          RDFUtils::EDEPSIM::NOSPILL::GetECALHitPos<1>, {"PrimariesHitsECAL"})
              .Define("PrimariesHitsZ",          RDFUtils::EDEPSIM::NOSPILL::GetECALHitPos<2>, {"PrimariesHitsECAL"})
-             // ECAL hits
-             .Define("PrimariesEmissionAngle",  RDFUtils::EDEPSIM::NOSPILL::GetEmissionAngle, {"NuDirection", "PrimariesP4"})
              .Define("PrimariesFirstHitECAL",   RDFUtils::EDEPSIM::NOSPILL::GetPrimariesFirstHitECAL, {"PrimariesHitsECAL"})
             //  .Define("IsECALHitMissing",        RDFUtils::IsNULLTLV, {"PrimariesFirstHitECAL"})
              .Define("PrimariesEDepECAL",       RDFUtils::EDEPSIM::NOSPILL::GetPrimariesEDepECAL, {"PrimariesHitsECAL"})
-             .Define("DeviationAngle",RDFUtils::EDEPSIM::NOSPILL::GetDirectionInECAL,  {"PrimariesP4",
+             .Define("DeviationAngle",          RDFUtils::EDEPSIM::NOSPILL::GetDirectionInECAL,  {"PrimariesP4",
                                                                                                   "Interaction_vtxX",
                                                                                                   "Interaction_vtxY",
                                                                                                   "Interaction_vtxZ",
                                                                                                   "PrimariesFirstHitECAL"})
+             .Define("Neutron_deviation_angle" ,[](const ROOT::VecOps::RVec<int>& pdgs, const ROOT::VecOps::RVec<double>& angles){return angles[pdgs == 2112];}, 
+                                                                                                {"PrimariesPDG","DeviationAngle"})                                                                                                  
              ;
 }
 
@@ -1568,34 +1610,63 @@ int RDFUtils::EDEPSIM::SPILL::NofEventsPerSpill(const ROOT::VecOps::RVec<TG4Prim
     return vertices.size();
 }
 
-ROOT::VecOps::RVec<std::string> RDFUtils::EDEPSIM::SPILL::EventType(const ROOT::VecOps::RVec<TG4PrimaryVertex>& V){
-    ROOT::VecOps::RVec<std::string> types = {};
-    for(const auto& v : V){
-        TString s = v.GetReaction();
-        if(s.Contains("DIS")){
-            types.push_back("DIS");
-        }else if(s.Contains("RES")){
-            types.push_back("RES");
-        }else if(s.Contains("QES")){
-            types.push_back("QES");
-        }else if(s.Contains("COH")){
-            types.push_back("COH");
-        }else if(s.Contains("MEC")){
-            types.push_back("MEC");
-        }else if(s.Contains("Unknown")){
-            types.push_back("Unknown");
-        }
-        else{
-            types.push_back("Other");
-        }
+ROOT::VecOps::RVec<std::string> RDFUtils::EDEPSIM::SPILL::GetEventType(const ROOT::VecOps::RVec<TG4PrimaryVertex>& vertices){
+    ROOT::VecOps::RVec<std::string> event_type(vertices.size());
+    for (size_t i = 0; i < vertices.size(); ++i) {
+        TString reaction = vertices[i].GetReaction();
+        event_type[i] = GenieUtils::ShortEventType(reaction);
     }
-    return types;
+    return event_type;
 }
 
-ROOT::VecOps::RVec<std::string> RDFUtils::EDEPSIM::SPILL::FileName(const ROOT::VecOps::RVec<TG4PrimaryVertex>& V){
-    ROOT::VecOps::RVec<std::string> files = {};
-    for(const auto& v : V) files.push_back(v.GetFilename());
-    return files;
+template<int token_number>
+ROOT::VecOps::RVec<std::string> RDFUtils::EDEPSIM::SPILL::EventInfo(const ROOT::VecOps::RVec<TG4PrimaryVertex>& vertices) {
+    /**
+     * @brief Retrieve information from each interaction vertex as integers.
+     * Tokens:
+     *  - 0 nu:14 -> interacting neutrino (returns 14)
+     *  - 1 tgt:1000260560 -> nuclear target (returns 1000260560)
+     *  - 2 N:2112 -> nucleon target (returns 2112 or "other)
+     */
+    ROOT::VecOps::RVec<std::string> infos(vertices.size()); // default to -1 in case of errors
+
+    for (size_t i = 0; i < vertices.size(); ++i) {
+        TString reaction = vertices[i].GetReaction();
+        
+        // Tokenize the reaction string
+        TObjArray* reaction_tokens = reaction.Tokenize(";");
+        
+        if (reaction_tokens && reaction_tokens->GetEntries() > token_number) {
+            TObjString* token = dynamic_cast<TObjString*>(reaction_tokens->At(token_number));
+            if (token) {
+                // Tokenize the specific token using ":"
+                TObjArray* sub_tokens = token->GetString().Tokenize(":");
+                
+                if (sub_tokens && sub_tokens->GetEntries() > 1) {
+                    TObjString* sub_token = dynamic_cast<TObjString*>(sub_tokens->At(1));
+                    if (sub_token) {
+                        TString result = sub_token->GetString();
+                        
+                        // Handle special case for token_number == 2 with "Weak" check
+                        if (token_number == 2 && result.Contains("Weak")) {
+                            infos[i] = "other"; // Use -999 to indicate "other"
+                        } else {
+                            // Convert to integer
+                            infos[i] = GenieUtils::PDG2Name(std::stoi(result.Data()));  // Safe to use stoi since "result" is expected to be numeric
+                        }
+                    }
+                }
+                
+                // Deallocate sub_tokens
+                delete sub_tokens;
+            }
+        }
+
+        // Deallocate reaction_tokens
+        delete reaction_tokens;
+    }
+    
+    return infos;
 }
 
 template<int coordinate>
@@ -1610,26 +1681,493 @@ ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::SPILL::PrimariesVertex(const ROOT:
     return vertices_positions;
 }
 
-ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::SPILL::PrimariesVertexTimeDiff(ROOT::VecOps::RVec<double>& primaries_time)
-{
-    ROOT::VecOps::RVec<double> time_diff;
+// ROOT::VecOps::RVec<double> RDFUtils::EDEPSIM::SPILL::PrimariesVertexTimeDiff(const ROOT::VecOps::RVec<double>& primaries_time)
+// {
+//     ROOT::VecOps::RVec<double> time_diff;
 
-    for(auto i=1u; i<primaries_time.size(); i++)
-    {
-        time_diff.emplace_back(primaries_time[i]-primaries_time[i-1]);
+//     for(auto i=1u; i<primaries_time.size(); i++)
+//     {
+//         time_diff.emplace_back(primaries_time[i]-primaries_time[i-1]);
+//     }
+//     return time_diff;
+// }
+ROOT::VecOps::RVec<int> RDFUtils::EDEPSIM::SPILL::GetBunchNumber(const ROOT::VecOps::RVec<double>& vertex_time,
+                                                                const double batch_duration,
+                                                                const double bunch_separation,
+                                                                const int nof_bunches_in_batch,
+                                                                const double spill_t0) {
+    ROOT::VecOps::RVec<int> bunch_number(vertex_time.size());
+
+    for (size_t i = 0; i < vertex_time.size(); i++) {
+        // Calcola il tempo all'interno dello spill
+        if (vertex_time[i] >= spill_t0) {
+            // Tempo relativo all'inizio dello spill
+            double time_within_spill = vertex_time[i] - spill_t0;
+            
+            // Tempo all'interno del batch corrente
+            double time_within_batch = std::fmod(time_within_spill, batch_duration);
+
+            // Calcola il numero di bunch dividendo per la separazione tra bunches e indicizzando da 1
+            bunch_number[i] = static_cast<int>(time_within_batch / bunch_separation) + 1;
+        } else {
+            // Indica tempo non valido
+            bunch_number[i] = -1;
+        }
+
+        // Limita il numero del bunch al range corretto (1 a 84)
+        if (bunch_number[i] > nof_bunches_in_batch) {
+            bunch_number[i] = nof_bunches_in_batch;
+        } else if (bunch_number[i] < 1) {
+            bunch_number[i] = 1;
+        }
     }
-    return time_diff;
+
+    return bunch_number;
+}
+
+ROOT::VecOps::RVec<int> RDFUtils::EDEPSIM::SPILL::GetBatchNumber(const ROOT::VecOps::RVec<double>& vertex_time, 
+                                                                 const double batch_duration,
+                                                                 const int nof_batches_in_spill,
+                                                                 const double spill_t0) {
+    ROOT::VecOps::RVec<int> batch_number(vertex_time.size());
+
+    for (size_t i = 0; i < vertex_time.size(); i++) {
+        if (vertex_time[i] >= spill_t0) {
+            // Calcola il numero del batch dividendo per la durata del batch e indicizzando da 1
+            batch_number[i] = static_cast<int>((vertex_time[i] - spill_t0) / batch_duration) + 1;
+        } else {
+            // Indica tempo non valido
+            batch_number[i] = -1;
+        }
+
+        // Limita il numero del batch al range corretto (1 a 6)
+        if (batch_number[i] > nof_batches_in_spill) {
+            batch_number[i] = nof_batches_in_spill;
+        } else if (batch_number[i] < 1) {
+            batch_number[i] = 1;
+        }
+    }
+
+    return batch_number;
+}
+
+ROOT::VecOps::RVec<std::string> RDFUtils::EDEPSIM::SPILL::FileName(const ROOT::VecOps::RVec<TG4PrimaryVertex>& vertex){
+    ROOT::VecOps::RVec<std::string> names(vertex.size());
+    for (size_t i = 0; i < vertex.size(); i++)
+    {
+        names[i] = vertex[i].GetFilename();
+    }
+    return names;
+}
+
+ROOT::VecOps::RVec<int> RDFUtils::EDEPSIM::SPILL::IsSignal(const ROOT::VecOps::RVec<TG4PrimaryVertex>& vertices) {
+    ROOT::VecOps::RVec<int> is_signal(vertices.size(), -1);
+    
+    for (size_t i = 0; i < vertices.size(); i++) {
+        TString reaction = vertices[i].GetReaction();
+        
+        if (reaction.Contains("nu:-14") && 
+            reaction.Contains("tgt:1000010010") && // free-proton
+            reaction.Contains("Weak[CC],QES")) {
+            is_signal[i] = 1;  
+        } else {
+            is_signal[i] = 0;  
+        }
+    }
+    
+    return is_signal;
+}
+
+ROOT::VecOps::RVec<int> RDFUtils::EDEPSIM::SPILL::CountChargedPrimaries(const ROOT::VecOps::RVec<TG4PrimaryVertex>& vertices){
+    ROOT::VecOps::RVec<int> vertex_charge_multiplicity(vertices.size());
+    for (size_t i = 0; i < vertices.size(); i++)
+    {
+        int count = 0;
+        auto primaries = vertices[i].Particles;
+        for (size_t j = 0; j < primaries.size(); j++)
+        {
+            int pdg = primaries[j].GetPDGCode();
+            int charge = GenieUtils::GetCharge(pdg);
+
+            if(charge != 0) count++;
+        }
+        vertex_charge_multiplicity[i] = count;
+    }
+    return vertex_charge_multiplicity;
 }
 
 ROOT::RDF::RNode RDFUtils::EDEPSIM::SPILL::AddColumnsFromEDEPSIM(ROOT::RDF::RNode& df){
     return df
-             .Define("NofEventsPerSpill", RDFUtils::EDEPSIM::SPILL::NofEventsPerSpill, {"Primaries"})
-             .Define("PrimariesVertexX", RDFUtils::EDEPSIM::SPILL::PrimariesVertex<0>,{"Primaries"})
-             .Define("PrimariesVertexY", RDFUtils::EDEPSIM::SPILL::PrimariesVertex<1>,{"Primaries"})
-             .Define("PrimariesVertexZ", RDFUtils::EDEPSIM::SPILL::PrimariesVertex<2>,{"Primaries"})
-             .Define("PrimariesVertexT", RDFUtils::EDEPSIM::SPILL::PrimariesVertex<3>,{"Primaries"})
-             .Define("PrimariesVertexTimeDiff", RDFUtils::EDEPSIM::SPILL::PrimariesVertexTimeDiff,{"PrimariesVertexT"})
+             .Define("nof_vertices_in_spill",        RDFUtils::EDEPSIM::SPILL::NofEventsPerSpill,                {"Primaries"})
+             .Define("vertex_name",                  RDFUtils::EDEPSIM::SPILL::FileName,                         {"Primaries"})
+             .Define("vertex_x",                     RDFUtils::EDEPSIM::SPILL::PrimariesVertex<0>,               {"Primaries"})
+             .Define("vertex_y",                     RDFUtils::EDEPSIM::SPILL::PrimariesVertex<1>,               {"Primaries"})
+             .Define("vertex_z",                     RDFUtils::EDEPSIM::SPILL::PrimariesVertex<2>,               {"Primaries"})
+             .Define("vertex_t",                     RDFUtils::EDEPSIM::SPILL::PrimariesVertex<3>,               {"Primaries"})
+             .Define("neutrino_flavor",              RDFUtils::EDEPSIM::SPILL::EventInfo<0>,                     {"Primaries"})
+             .Define("nuclear_target",               RDFUtils::EDEPSIM::SPILL::EventInfo<1>,                     {"Primaries"})
+             .Define("nucleon_target",               RDFUtils::EDEPSIM::SPILL::EventInfo<2>,                     {"Primaries"})
+             .Define("event_type",                   RDFUtils::EDEPSIM::SPILL::GetEventType,                     {"Primaries"})
+             .Define("interaction_volume",           RDFUtils::GEO::GetVolumeFromCoordinates_v,                  {"EDEP_UNIT_LEGTH", "vertex_x", "vertex_y", "vertex_z"})
+             .Define("InteractionVolume_short",      GeoUtils::InteractionVolume_short_v,                        {"interaction_volume"})
+             .Define("vertex_antinumuCCQEonH",       RDFUtils::EDEPSIM::SPILL::IsSignal,                         {"Primaries"})
+             .Define("vertex_cherge_multiplicity",   RDFUtils::EDEPSIM::SPILL::CountChargedPrimaries,            {"Primaries"})
+             .Define("spill_t0",                     [](const ROOT::VecOps::RVec<double>& times){return ROOT::VecOps::Min(times);}, {"vertex_t"})
+             .Define("spill_tmax",                   [](const ROOT::VecOps::RVec<double>& times){return ROOT::VecOps::Max(times);}, {"vertex_t"})
+             .Define("Batch_number",                 RDFUtils::EDEPSIM::SPILL::GetBatchNumber,                   {"vertex_t",
+                                                                                                                 "batch_duration",
+                                                                                                                 "nof_batches_in_spill",
+                                                                                                                 "spill_t0"})
+             .Define("Bunch_number",                 RDFUtils::EDEPSIM::SPILL::GetBunchNumber,                   {"vertex_t",
+                                                                                                                 "batch_duration", 
+                                                                                                                 "bunch_separation", 
+                                                                                                                 "nof_bunches_in_batch", 
+                                                                                                                 "spill_t0"})
              ;
+}
+
+/**
+ * @brief Creates a vector of RDFUtils::trajectory objects from TG4Event and TG4Trajectory data.
+ * 
+ * This function processes all TG4Trajectory objects from a TG4Event (spill) and maps each 
+ * TG4Trajectory to an RDFUtils::trajectory structure. Each trajectory is associated with 
+ * calorimeter hits from the "EMCalSci" detector segment, identified by their track IDs. The function 
+ * populates the RDFUtils::trajectory objects with information including track ID, PDG code, energy 
+ * deposition in the calorimeter, and the index of each hit in the calorimeter hit list. Additionally, 
+ * it associates cell information with the trajectories, using cell data from `cells` and comparing 
+ * track IDs from `track_id_tdc1` and `track_id_tdc2`.
+ * 
+ * - If the track ID associated with a cell matches in both `track_id_tdc1` and `track_id_tdc2`, 
+ *   the cell is associated with the trajectory identified by that track ID.
+ * 
+ * @param ev The TG4Event containing calorimeter hits and segment information.
+ * @param TG4_trajectories A vector of TG4Trajectory objects representing all event trajectories.
+ * @param cells A vector of cell identifiers associated with specific tracks.
+ * @param track_id_tdc1 A vector of track IDs corresponding to the first hit time of cells.
+ * @param track_id_tdc2 A vector of track IDs corresponding to the second hit time of cells.
+ * @return ROOT::VecOps::RVec<RDFUtils::trajectory> A vector of RDFUtils::trajectory objects, 
+ *         each containing track ID, PDG code, associated calorimeter hit data, and cell associations.
+ */
+ROOT::VecOps::RVec<RDFUtils::trajectory> RDFUtils::CreateTrajectories(TG4Event& ev, 
+                                                                      const ROOT::VecOps::RVec<TG4Trajectory>& TG4_trajectories,
+                                                                      const ROOT::VecOps::RVec<dg_cell>& cells,
+                                                                      const ROOT::VecOps::RVec<int>& track_id_tdc1,
+                                                                      const ROOT::VecOps::RVec<int>& track_id_tdc2) {
+    
+    // Initialize the RDF_trajectories vector with the same size as TG4_trajectories
+    ROOT::VecOps::RVec<RDFUtils::trajectory> RDF_trajectories(TG4_trajectories.size());
+
+    // Map to associate track ID to the corresponding index in RDF_trajectories
+    /*
+        0 <---> trajectory 0
+        1 <---> trajectory 1
+        2 <---> trajectory 2
+        ...
+    */
+    std::map<int, size_t> track_id_to_index;
+
+    // Populate RDF_trajectories and track_id_to_index
+    for (size_t i = 0; i < TG4_trajectories.size(); ++i) {
+        RDFUtils::trajectory t;
+        t.id = TG4_trajectories[i].GetTrackId();  // Track ID for this trajectory
+        t.pdg = TG4_trajectories[i].GetPDGCode(); // PDG code for particle type
+        t.name = GenieUtils::PDG2Name(t.pdg);
+        t.initial_momentum = TG4_trajectories[i].GetInitialMomentum();
+        t.start_point = TG4_trajectories[i].Points[0].GetPosition().Vect();
+
+        // Map track ID to the index in RDF_trajectories
+        track_id_to_index[t.id] = i;
+        RDF_trajectories[i] = t;  // Assign the trajectory object to the vector
+    }
+
+    // Access all calorimeter hits from the "EMCalSci" detector segment
+    const auto& all_calorimeter_hits = ev.SegmentDetectors["EMCalSci"];
+
+    // Process each calorimeter hit and associate it with the corresponding trajectory
+    for (size_t j = 0; j < all_calorimeter_hits.size(); ++j) {
+        const auto& hit = all_calorimeter_hits[j];
+        int hit_track_id = hit.GetPrimaryId();       // Track ID for the hit
+        auto hit_middle = (hit.GetStop() + hit.GetStart()) * 0.5; // Calculate hit midpoint
+
+        // Check if the track ID exists in track_id_to_index
+        if (track_id_to_index.find(hit_track_id) != track_id_to_index.end()) {
+            size_t index = track_id_to_index[hit_track_id];
+            
+            // Add the hit index to the hindex_ecal vector and update energy deposition
+            RDF_trajectories[index].hindex_ecal.push_back(j);
+            RDF_trajectories[index].edep_in_ecal += hit.GetEnergyDeposit();
+            
+            if (hit_middle.T() < RDF_trajectories[index].earliest_hit.T() || (RDF_trajectories[index].earliest_hit.T() == -1)){
+                RDF_trajectories[index].earliest_hit = hit_middle;
+            }
+            
+            if (hit_middle.T() > RDF_trajectories[index].latest_hit.T() || (RDF_trajectories[index].latest_hit.T() == -1)){
+                RDF_trajectories[index].latest_hit = hit_middle;
+            }
+
+        }
+    }
+
+    // Process each cell and associate it with the corresponding trajectory if track IDs match
+    for (size_t k = 0; k < cells.size(); k++) {
+        int cell_id = cells[k].id;
+
+        // Check if track IDs match
+        if (track_id_tdc1[k] == track_id_tdc2[k]) {
+            int matching_track_id = track_id_tdc1[k];
+
+            // Ensure track_id exists in RDF_trajectories
+            if (track_id_to_index.find(matching_track_id) != track_id_to_index.end()) {
+                size_t index = track_id_to_index[matching_track_id];
+                RDF_trajectories[index].cell_id_ecal.push_back(cell_id);
+            }
+        }
+    }
+
+    return RDF_trajectories;
+}
+
+
+ROOT::VecOps::RVec<int> RDFUtils::GetTrajectoryId(const ROOT::VecOps::RVec<RDFUtils::trajectory>& trajectoires){
+    ROOT::VecOps::RVec<int> ids(trajectoires.size());
+    for (size_t i = 0; i < trajectoires.size(); i++)
+    {
+        ids[i] = trajectoires[i].id;
+    }
+    return ids;
+}
+
+ROOT::VecOps::RVec<int> RDFUtils::GetTrajectoryPDG(const ROOT::VecOps::RVec<RDFUtils::trajectory>& trajectoires){
+    ROOT::VecOps::RVec<int> pdgs(trajectoires.size());
+    for (size_t i = 0; i < trajectoires.size(); i++)
+    {
+        pdgs[i] = trajectoires[i].pdg;
+    }
+    return pdgs;
+}
+
+ROOT::VecOps::RVec<std::string> RDFUtils::GetTrajectoryName(const ROOT::VecOps::RVec<RDFUtils::trajectory>& trajectoires){
+    ROOT::VecOps::RVec<std::string> names(trajectoires.size());
+    for (size_t i = 0; i < trajectoires.size(); i++)
+    {
+        names[i] = trajectoires[i].name;
+    }
+    return names;
+}
+
+ROOT::VecOps::RVec<double> RDFUtils::GetTrajectoryECALedep(const ROOT::VecOps::RVec<RDFUtils::trajectory>& trajectoires){
+    ROOT::VecOps::RVec<double> edep(trajectoires.size());
+    for (size_t i = 0; i < trajectoires.size(); i++)
+    {
+        edep[i] = trajectoires[i].edep_in_ecal;
+    }
+    return edep;
+}
+
+ROOT::VecOps::RVec<TLorentzVector> RDFUtils::GetTrajectoryECALearliest(const ROOT::VecOps::RVec<RDFUtils::trajectory>& trajectoires){
+    ROOT::VecOps::RVec<TLorentzVector> earliest(trajectoires.size());
+    for (size_t i = 0; i < trajectoires.size(); i++)
+    {
+        earliest[i] = trajectoires[i].earliest_hit;
+    }
+    return earliest;
+}
+
+ROOT::VecOps::RVec<TLorentzVector> RDFUtils::GetTrajectoryECALlatest(const ROOT::VecOps::RVec<RDFUtils::trajectory>& trajectoires){
+    ROOT::VecOps::RVec<TLorentzVector> latest(trajectoires.size());
+    for (size_t i = 0; i < trajectoires.size(); i++)
+    {
+        latest[i] = trajectoires[i].earliest_hit;
+    }
+    return latest;
+}
+
+/**
+ * @brief Adds a new column "trajectories" to the DataFrame by calling RDFUtils::CreateTrajectories.
+ * 
+ * This function takes an input RDataFrame, retrieves the list of columns (both input and defined),
+ * and checks for the necessary columns "Event" and "Trajectories". If these columns are found, it 
+ * defines a new column "trajectories" using the CreateTrajectories function. If either column is 
+ * missing, the function throws a runtime error with an appropriate message.
+ * 
+ * @param df The ROOT::RDF::RNode object representing the input RDataFrame.
+ * @return ROOT::RDF::RNode The modified DataFrame with the new column "trajectories".
+ * 
+ * @throws std::runtime_error If the required columns "Event" or "Trajectories" are not found in df.
+ */
+ROOT::RDF::RNode RDFUtils::CreateDataFrameTrajectories(ROOT::RDF::RNode& df) {
+    // Retrieve the list of column names and defined column names in the DataFrame
+    auto colNames = df.GetColumnNames();
+    auto definedColNames = df.GetDefinedColumnNames();
+
+    // Funzione per controllare se una colonna è presente in entrambe le liste
+    auto columnExists = [&](const std::string& colName) {
+        return std::find(colNames.begin(), colNames.end(), colName) != colNames.end() ||
+               std::find(definedColNames.begin(), definedColNames.end(), colName) != definedColNames.end();
+    };
+
+    // Check for the presence of "Event" column
+    if (!columnExists("Event")) {
+        throw std::runtime_error("Error: Column 'Event' is required and not found in the DataFrame.");
+    }
+
+    // Check for the presence of "Trajectories" column
+    if (!columnExists("Trajectories")) {
+        throw std::runtime_error("Error: Column 'Trajectories' is required and not found in the DataFrame.");
+    }
+
+    // Define the new column "trajectories" using CreateTrajectories
+    return df
+            .Define("trajectories",                     RDFUtils::CreateTrajectories,           {"Event", 
+                                                                                                 "Trajectories",
+                                                                                                 "dg_cell",
+                                                                                                 "trackid_producing_tdc1", 
+                                                                                                 "trackid_producing_tdc2"})
+            .Define("trajectories_id",                  RDFUtils::GetTrajectoryId,              {"trajectories"})
+            .Define("trajectories_pdg",                 RDFUtils::GetTrajectoryPDG,             {"trajectories"})
+            .Define("trajectories_name",                RDFUtils::GetTrajectoryName,             {"trajectories"})
+            .Define("trajectories_ecal_edep",           RDFUtils::GetTrajectoryECALedep,        {"trajectories"})
+            .Define("trajectories_earliest_hit_ecal",   RDFUtils::GetTrajectoryECALearliest,    {"trajectories"})
+            .Define("trajectories_latest_hit_ecal",     RDFUtils::GetTrajectoryECALlatest,      {"trajectories"})
+        ;
+}
+/**
+ * @brief Creates a vector of `RDFUtils::cell` objects from input detector cells and event data.
+ * 
+ * This function processes calorimeter hit information and trajectory data to create reconstructed
+ * cells based on input detector cells. It matches each input cell to its associated calorimeter hit, 
+ * retrieves relevant trajectory information, and calculates reconstructed energy, coordinates, and 
+ * time for each cell based on TDC (Time to Digital Converter) and ADC (Analog to Digital Converter) 
+ * data. Additionally, the function applies calibration factors to account for detector-specific 
+ * calibration offsets.
+ * 
+ * @param ev TG4Event containing event-specific data, including calorimeter hits.
+ * @param TG4_trajectories A vector of TG4Trajectory objects associated with the event.
+ * @param input_cells A vector of dg_cell objects representing the input cells to be processed.
+ * @param calibration_x Calibration offset in the x-coordinate.
+ * @param calibration_y Calibration offset in the y-coordinate.
+ * @param calibration_t Calibration offset for time.
+ * 
+ * @return ROOT::VecOps::RVec<RDFUtils::cell> A vector of `RDFUtils::cell` objects with filled 
+ *         properties including hit information, energy deposition, and reconstructed coordinates.
+ */
+ROOT::VecOps::RVec<RDFUtils::cell> RDFUtils::CreateCells(
+    TG4Event& ev, 
+    const ROOT::VecOps::RVec<TG4Trajectory>& TG4_trajectories,
+    const ROOT::VecOps::RVec<dg_cell>& input_cells,
+    double calibration_x,
+    double calibration_y,
+    double calibration_t) 
+{
+    // Preallocate `cells` with the same size as `input_cells`
+    ROOT::VecOps::RVec<RDFUtils::cell> cells(input_cells.size());
+
+    // Access all calorimeter hits from the "EMCalSci" detector segment in the event
+    const auto& all_calorimeter_hits = ev.SegmentDetectors["EMCalSci"];
+
+    // Iterate over `input_cells` by index to populate `cells`
+    for (size_t i = 0; i < input_cells.size(); ++i) {
+        RDFUtils::cell cell;
+        int broken_side = -1;
+
+        cell.id = input_cells[i].id;
+        cell.is_complete = GeoUtils::ECAL::isCellComplete(input_cells[i], broken_side);
+
+        
+        if(cell.is_complete){
+            /*
+                input cell general info
+            */
+            double tdc1 = input_cells[i].ps1[0].tdc;
+            double tdc2 = input_cells[i].ps2[0].tdc;
+            double adc1 = input_cells[i].ps1[0].adc;
+            double adc2 = input_cells[i].ps2[0].adc;
+            double cell_length = input_cells[i].l;
+            int cell_layer = input_cells[i].lay;
+            int cell_mod = input_cells[i].mod;
+
+            /*
+                reconstructed quantities from TDC
+            */
+            double reco_coordinate = GeoUtils::ECAL::XfromTDC(tdc1, tdc2);
+            double reco_time = GeoUtils::ECAL::TfromTDC(tdc1, tdc2, cell_length) + calibration_t;
+            double d1 = 0.5 * cell_length + reco_coordinate;
+            double d2 = 0.5 * cell_length - reco_coordinate;
+            cell.reco_edep = GeoUtils::ECAL::EfromADC(adc1, adc2, d1, d2, cell_layer);
+            cell.reco_hit = (cell_mod < 30) 
+                ? TLorentzVector(input_cells[i].x - reco_coordinate + calibration_x, input_cells[i].y, input_cells[i].z, reco_time)
+                : TLorentzVector(input_cells[i].x, input_cells[i].y - reco_coordinate + calibration_y, input_cells[i].z, reco_time);
+
+            size_t hit_index_pmt1 = RDFUtils::DIGIT::Get_TDC_hindex(input_cells[i].ps1[0]);
+            size_t hit_index_pmt2 = RDFUtils::DIGIT::Get_TDC_hindex(input_cells[i].ps2[0]);
+            
+            /*
+                MC truth hits and trajectory
+            */
+            if ((hit_index_pmt1 == hit_index_pmt2) &&  
+                hit_index_pmt1 < all_calorimeter_hits.size()) {
+                
+                auto ecal_hit = all_calorimeter_hits[hit_index_pmt2];
+                int hit_track_id = ecal_hit.GetPrimaryId();
+                cell.fired_by_track_id = hit_track_id;
+
+                // Verify that the track index is valid
+                if (hit_track_id >= 0 && static_cast<size_t>(hit_track_id) < TG4_trajectories.size()) {
+                    cell.fired_by_track_pdg = TG4_trajectories[hit_track_id].GetPDGCode();
+                }
+
+                cell.true_hit = (ecal_hit.GetStop() + ecal_hit.GetStart()) * 0.5;
+                cell.true_edep = ecal_hit.GetEnergyDeposit();
+            }
+
+        }
+        cells[i] = cell;
+    }
+    return cells;
+}
+
+// ROOT::VecOps::RVec<int> RDFUtils::GetCellId(const ROOT::VecOps::RVec<RDFUtils::cell>& cells){
+//     ROOT::VecOps::RVec<int> id(cells.size());
+//     for (size_t i = 0; i < cells.size(); i++)
+//     {
+//         id[i] = cells[i].id;
+//     }
+//     return id;
+// }
+
+ROOT::RDF::RNode RDFUtils::CreateDataFrameCells(ROOT::RDF::RNode& df){
+    // Retrieve the list of column names and defined column names in the DataFrame
+    auto colNames = df.GetColumnNames();
+    auto definedColNames = df.GetDefinedColumnNames();
+
+    // Funzione per controllare se una colonna è presente in entrambe le liste
+    auto columnExists = [&](const std::string& colName) {
+        return std::find(colNames.begin(), colNames.end(), colName) != colNames.end() ||
+               std::find(definedColNames.begin(), definedColNames.end(), colName) != definedColNames.end();
+    };
+
+    // Check for the presence of "Event" column
+    if (!columnExists("Event")) {
+        throw std::runtime_error("Error: Column 'Event' is required and not found in the DataFrame.");
+    }
+
+    if (!columnExists("dg_cell")) {
+        throw std::runtime_error("Error: Column 'dg_cell' is required and not found in the DataFrame.");
+    }
+    return df
+            .Define("cell_mod",              "dg_cell.mod")
+            .Define("cell_id",               "dg_cell.id")
+            .Define("cell_x",                "dg_cell.x")
+            .Define("cell_y",                "dg_cell.y")
+            .Define("cell_z",                "dg_cell.z")
+            .Define("cells",                 RDFUtils::CreateCells,          {"Event", 
+                                                                              "Trajectories",
+                                                                              "dg_cell",
+                                                                              "X_CALIBRATION_OFFSET",
+                                                                              "Y_CALIBRATION_OFFSET",
+                                                                              "TIME_CALIBRATION_OFFSET"
+                                                                              })
+            ;
 }
 
 //RDFUtils::DIGIT_______________________________________________________________
@@ -1770,7 +2308,7 @@ ROOT::VecOps::RVec<double> RDFUtils::DIGIT::TfromTDC(const ROOT::VecOps::RVec<dg
             // t_reco = RDFUtils::DEFAULT_NO_DATA;
         } else{ // complete cell
             tdc1 = cell.ps1.at(0).tdc;
-            tdc2 = cell.ps2.at(0).tdc;
+            tdc2 = cell.ps2.at(0).tdc;  
             t_reco = GeoUtils::ECAL::TfromTDC(tdc1, tdc2, cell.l) + calibration_const;
         }
         t_hit_reco.push_back(t_reco);
@@ -1872,54 +2410,50 @@ double RDFUtils::DIGIT::WeightedCellTime(const ROOT::VecOps::RVec<double>& t_hit
 
 ROOT::VecOps::RVec<TVector3> RDFUtils::DIGIT::GetExpectedHitPosition(TVector3 vertex,
                                                                     const TVector3& momentum_vector,
-                                                                    const ROOT::VecOps::RVec<dg_cell>& cells) {
-    
+                                                                    const ROOT::VecOps::RVec<TVector3>& hits_reco){
     /**
-     * @brief Computes expected hit positions in calorimeter cells.
-     *
-     * Given the particle's vertex and momentum, calculates expected hit positions in each calorimeter cell.
-     * Chack that the intersection happpen inside the ECAL
-     *
-     * @param vertex The origin point of the particle (TVector3).
-     * @param momentum_vector The momentum direction of the particle (TVector3).
-     * @param cells A vector of calorimeter cells, each with center coordinates.
-     * 
-     * @return A vector of expected hit positions, or {-999, -999, -999} for cells where the hit is not valid.
-     */                                                                        
-    ROOT::VecOps::RVec<TVector3> Expected_hit_position(cells.size());
-
-    // Calculate the minimum t required to intersect the calorimeter (ECAL)
+     * @brief Calcola la minima distanza tra i colpi ricostruiti e la traiettoria del neutrone
+     * all'interno dell'intervallo dell'ECAL. Il punto relativo alla distanza minima è considerato il punto di impatto previsto.
+     */
+    ROOT::VecOps::RVec<TVector3> hits_expected(hits_reco.size());
+    TVector3 dummy(RDFUtils::DEFAULT_NO_DATA, RDFUtils::DEFAULT_NO_DATA, RDFUtils::DEFAULT_NO_DATA);
+    
+    // Direzione del neutrone come versore
     TVector3 neutron_direction = momentum_vector.Unit();
-    
-    double min_t = GeoUtils::IntersectWithTube("mm",
-                                     vertex, 
-                                     neutron_direction, 
-                                     GeoUtils::SAND_INNER_VOL_DIAMETER, 
-                                     GeoUtils::SAND_INNER_VOL_X_LENGTH
-                                     ); // ecal entry point
-    
-    double max_t = GeoUtils::IntersectWithTube("mm",
-                                     vertex, 
-                                     neutron_direction, 
-                                     GeoUtils::SAND_INNER_VOL_DIAMETER + 2 * GeoUtils::ECAL::thickness, 
-                                     GeoUtils::SAND_INNER_VOL_X_LENGTH + 2 * GeoUtils::ECAL::thickness
-                                     ); // ecal exit point
-
-    for (size_t i = 0; i < cells.size(); i++) {
-        // Calculate t for each cell based on the z-coordinate
-        double t = (cells[i].z - vertex.Z()) / neutron_direction.Z();
         
-        if ( t > min_t && t < max_t) { // point is in ECAL range
-            Expected_hit_position[i] = vertex + t * neutron_direction;
+    // Calcola i punti di ingresso e uscita del neutrone all'interno dell'ECAL
+    double min_t = GeoUtils::IntersectWithTube("mm", vertex, neutron_direction,
+                                               GeoUtils::SAND_INNER_VOL_DIAMETER,
+                                               GeoUtils::SAND_INNER_VOL_X_LENGTH);
+    
+    double max_t = GeoUtils::IntersectWithTube("mm", vertex, neutron_direction,
+                                               GeoUtils::SAND_INNER_VOL_DIAMETER + 2 * GeoUtils::ECAL::thickness,
+                                               GeoUtils::SAND_INNER_VOL_X_LENGTH + 2 * GeoUtils::ECAL::thickness);
+    
+    TVector3 entry_point = vertex + min_t * neutron_direction;                             
+    TVector3 exit_point = vertex + max_t * neutron_direction;                             
+
+    // Ciclo sui colpi ricostruiti
+    for (size_t i = 0; i < hits_reco.size(); i++) {
+        if (hits_reco[i].Z() == RDFUtils::DEFAULT_NO_DATA) {
+            hits_expected[i] = dummy;
         } else {
-            // If t is too small, return a placeholder invalid position
-            Expected_hit_position[i] = TVector3(RDFUtils::DEFAULT_NO_DATA, RDFUtils::DEFAULT_NO_DATA, RDFUtils::DEFAULT_NO_DATA);
+            TVector3 diff = hits_reco[i] - vertex;
+            double t = diff.Dot(neutron_direction); // neutron_direction normalizzato
+            
+            // Verifica se il punto proiettato è all'interno dell'intervallo dell'ECAL
+            if (t >= min_t && t <= max_t) {
+                hits_expected[i] = vertex + t * neutron_direction;
+            } else {
+                // Scegli tra il punto di ingresso e quello di uscita in base alla distanza
+                hits_expected[i] = ((entry_point - hits_reco[i]).Mag() < (exit_point - hits_reco[i]).Mag())
+                                 ? entry_point : exit_point;
+            }
         }
     }
     
-    return Expected_hit_position;
+    return hits_expected;
 }
-
 
 ROOT::VecOps::RVec<int> RDFUtils::DIGIT::IsCellComplete(const ROOT::VecOps::RVec<dg_cell>& cells){
     ROOT::VecOps::RVec<int> isComplete;
@@ -2105,8 +2639,8 @@ ROOT::VecOps::RVec<int> RDFUtils::DIGIT::IsCompatible(const ROOT::VecOps::RVec<d
         if((space_residuals[i] == RDFUtils::DEFAULT_NO_DATA)){
             isCompatible[i] = 0;
         }else{
-            // 10 cm precision in the determination of neutron position and 0.8 ns in time
-            if((fabs(space_residuals[i]) <= 100) & (fabs(time_residuals[i]) <= 0.8)){
+            // 10 cm precision in the determination of neutron position and 1 ns in time
+            if((fabs(space_residuals[i]) <= 150) && (fabs(time_residuals[i]) <= 1)){
                 isCompatible[i] = 1;
             }else{
                 isCompatible[i] = 0;
@@ -2204,17 +2738,6 @@ ROOT::RDF::RNode RDFUtils::DIGIT::AddColumnsFromDigit(ROOT::RDF::RNode& df){
             .Define("Fired_Cell_true_HitPos",       RDFUtils::GetVect,                              {"Fired_Cell_true_hit1"})
             .Define("True_FlightLength",            RDFUtils::DIGIT::GetFlightLength,               {"Primaries_vtx", "Fired_Cell_true_HitPos"})
             /*
-                Expected neutron hit in cells from MC truth
-            */
-            .Alias("ExpectedNeutron_Beta",          "ExpectedHadronSystBeta")
-            .Define("ExpectedNeutron_HitPosition",  RDFUtils::DIGIT::GetExpectedHitPosition,        {"Primaries_vtx", "ExpectedHadronSystP3", "dg_cell"})
-            .Define("ExpectedNeutron_HitPosition_x",RDFUtils::GetComponent3<0>,                     {"ExpectedNeutron_HitPosition"})
-            .Define("ExpectedNeutron_HitPosition_y",RDFUtils::GetComponent3<1>,                     {"ExpectedNeutron_HitPosition"})
-            .Define("ExpectedNeutron_HitPosition_z",RDFUtils::GetComponent3<2>,                     {"ExpectedNeutron_HitPosition"})
-            .Define("ExpectedNeutron_FlightLength", RDFUtils::DIGIT::GetFlightLength,               {"Primaries_vtx", "ExpectedNeutron_HitPosition"})
-            .Define("ExpectedNeutron_TOF",          RDFUtils::DIGIT::GetTOF,                        {"ExpectedNeutron_FlightLength", "ExpectedNeutron_Beta"})
-            .Define("ExpectedNeutron_HitTime",      "ExpectedNeutron_TOF + Primaries_vtxT")
-            /*
                 Recontructed hit from cells TDC
             */
             .Define("Reconstructed_HitPosition",    RDFUtils::DIGIT::XfromTDC,                      {"dg_cell", "X_CALIBRATION_OFFSET", "Y_CALIBRATION_OFFSET"})
@@ -2226,11 +2749,46 @@ ROOT::RDF::RNode RDFUtils::DIGIT::AddColumnsFromDigit(ROOT::RDF::RNode& df){
             .Define("IsEarliestCell_neutron",       RDFUtils::FindMinimum2,                         {"Reconstructed_HitTime", "Fired_by_primary_neutron"})
             .Define("IsEarliestCell_antimu",        RDFUtils::FindMinimum2,                         {"Reconstructed_HitTime", "Fired_by_primary_antimu"})
             .Define("Reconstructed_FlightLength",   RDFUtils::DIGIT::GetFlightLength,               {"Primaries_vtx", "Reconstructed_HitPosition"})
-        
+            /*
+                Expected neutron hit in cells from MC truth
+            */
+            .Alias("ExpectedNeutron_Beta",          "ExpectedHadronSystBeta")
+            .Define("ExpectedNeutron_HitPosition",  RDFUtils::DIGIT::GetExpectedHitPosition,        {"Primaries_vtx", "ExpectedHadronSystP3", "Reconstructed_HitPosition"})
+            .Define("ExpectedNeutron_HitPosition_x",RDFUtils::GetComponent3<0>,                     {"ExpectedNeutron_HitPosition"})
+            .Define("ExpectedNeutron_HitPosition_y",RDFUtils::GetComponent3<1>,                     {"ExpectedNeutron_HitPosition"})
+            .Define("ExpectedNeutron_HitPosition_z",RDFUtils::GetComponent3<2>,                     {"ExpectedNeutron_HitPosition"})
+            .Define("ExpectedNeutron_FlightLength", RDFUtils::DIGIT::GetFlightLength,               {"Primaries_vtx", "ExpectedNeutron_HitPosition"})
+            .Define("ExpectedNeutron_TOF",          RDFUtils::DIGIT::GetTOF,                        {"ExpectedNeutron_FlightLength", "ExpectedNeutron_Beta"})
+            .Define("ExpectedNeutron_HitTime",      "ExpectedNeutron_TOF + Primaries_vtxT")
             // reconstructed neutron
-            .Define("Reconstructed_Beta",           RDFUtils::DIGIT::GetBeta,                       {"ExpectedNeutron_FlightLength", "Reconstructed_HitTime", "Primaries_vtxT"})
+            .Define("Reconstructed_Beta",           RDFUtils::DIGIT::GetBeta,                       {"Reconstructed_FlightLength", "Reconstructed_HitTime", "Primaries_vtxT"})
             .Define("Reconstructed_Ptot_GeV",       RDFUtils::DIGIT::GetPFromBeta,                  {"Reconstructed_Beta", "NEUTRON_MASS_GeV"})
             .Define("Reconstructed_neutronKin_MeV", RDFUtils::DIGIT::GetKinEFromBeta,               {"Reconstructed_Beta", "NEUTRON_MASS_MeV"})
+            ;
+}
+
+ROOT::RDF::RNode RDFUtils::DIGIT::SPILL::AddColumnsFromDigit(ROOT::RDF::RNode& df){
+        return df
+            .Define("NofEventFiredModules",         RDFUtils::DIGIT::NofFiredECALMods ,             {"dg_cell.mod"})
+            .Define("EventFiredModules",            RDFUtils::DIGIT::FiredECALMods ,                {"dg_cell.mod"})
+            .Define("Fired_Cells_mod",              "dg_cell.mod")
+            .Define("Fired_Cells_id",               "dg_cell.id")
+            .Define("Fired_Cells_x",                "dg_cell.x")
+            .Define("Fired_Cells_y",                "dg_cell.y")
+            .Define("Fired_Cells_z",                "dg_cell.z")
+            .Define("isCellComplete",               RDFUtils::DIGIT::IsCellComplete,                {"dg_cell"})
+            .Define("Fired_Cells_tdc1",             RDFUtils::DIGIT::FiredECALGetTDC<1>,            {"dg_cell"})
+            .Define("Fired_Cells_adc1",             RDFUtils::DIGIT::FiredECALGetADC<1>,            {"dg_cell"})
+            .Define("Fired_Cell_tdc1_hindex",       RDFUtils::DIGIT::GetHindexOfTDC<1>,             {"dg_cell"})
+            .Define("trackid_producing_tdc1",       RDFUtils::EDEPSIM::GetHitTrajectoryId,          {"Fired_Cell_tdc1_hindex", "Event"})
+            .Define("Fired_by_primary_neutron",     RDFUtils::EDEPSIM::CheckTrajId<2112>,           {"trackid_producing_tdc1", "Event"})
+            .Define("Fired_by_primary_antimu",      RDFUtils::EDEPSIM::CheckTrajId<-13>,            {"trackid_producing_tdc1", "Event"})
+            .Define("ECALactive_trajectories",      RDFUtils::EDEPSIM::GetTrajectories,             {"trackid_producing_tdc1", "Event"})
+            .Define("Fired_Cells_tdc2",             RDFUtils::DIGIT::FiredECALGetTDC<2>,            {"dg_cell"})
+            .Define("Fired_Cells_adc2",             RDFUtils::DIGIT::FiredECALGetADC<2>,            {"dg_cell"})
+            .Define("Fired_Cell_tdc2_hindex",       RDFUtils::DIGIT::GetHindexOfTDC<2>,             {"dg_cell"})
+            .Define("Fired_Cell_true_hit2",         RDFUtils::EDEPSIM::GetHitFromIndex,             {"Fired_Cell_tdc2_hindex", "Event"})
+            .Define("trackid_producing_tdc2",       RDFUtils::EDEPSIM::GetHitTrajectoryId,          {"Fired_Cell_tdc2_hindex", "Event"})
             ;
 }
 
@@ -2333,16 +2891,6 @@ ROOT::RDF::RNode RDFUtils::DIGIT::GetInfoCellsFromSignal(ROOT::RDF::RNode& df){
             .Define("true_hit_x3",                  RDFUtils::GetVect,                         {"true_hit"})
             .Define("true_hit_FlightLength",        RDFUtils::DIGIT::GetFlightLength,          {"Primaries_vtx", "true_hit_x3"})
             .Define("true_hit_is_earliest",         RDFUtils::FindMinimum,                     {"true_hit_t"})
-            /*
-                PREDICTED HIT
-            */
-           .Define("predicted_hit_x3",              RDFUtils::DIGIT::GetExpectedHitPosition,   {"Primaries_vtx", "PredictedNeutron_P3_GeV", "filtered_cells"})
-           .Define("predicted_hit_x",               RDFUtils::GetComponent3<0>,                {"predicted_hit_x3"})
-           .Define("predicted_hit_y",               RDFUtils::GetComponent3<1>,                {"predicted_hit_x3"})
-           .Define("predicted_hit_z",               RDFUtils::GetComponent3<2>,                {"predicted_hit_x3"})
-           .Define("predicted_hit_FlightLength",    RDFUtils::DIGIT::GetFlightLength,          {"Primaries_vtx", "predicted_hit_x3"})
-           .Define("predicted_hit_TOF",             RDFUtils::DIGIT::GetTOF,                   {"predicted_hit_FlightLength", "PredictedNeutron_Beta"})
-           .Define("predicted_hit_t",               "predicted_hit_TOF + Primaries_vtxT")
            /*
                 RECONSTRUCTED HIT
            */
@@ -2355,12 +2903,24 @@ ROOT::RDF::RNode RDFUtils::DIGIT::GetInfoCellsFromSignal(ROOT::RDF::RNode& df){
            .Define("reconstructed_hit_is_earliest",  RDFUtils::FindMinimum,                  {"reconstructed_hit_t"})
            .Define("reconstructed_hit_FlightLength", RDFUtils::DIGIT::GetFlightLength,       {"Primaries_vtx", "reconstructed_hit"})
            .Define("reconstructed_neutron_beta",     RDFUtils::DIGIT::GetBeta,               {"reconstructed_hit_FlightLength", "reconstructed_hit_t", "Primaries_vtxT"})
+           .Define("reconstructed_neutron_kinE",     RDFUtils::DIGIT::GetKinEFromBeta,       {"reconstructed_neutron_beta", "NEUTRON_MASS_MeV"})
+            /*
+                PREDICTED HIT
+            */
+           .Define("predicted_hit_x3",              RDFUtils::DIGIT::GetExpectedHitPosition,   {"Primaries_vtx", "PredictedNeutron_P3_GeV", "reconstructed_hit"})
+           .Define("predicted_hit_x",               RDFUtils::GetComponent3<0>,                {"predicted_hit_x3"})
+           .Define("predicted_hit_y",               RDFUtils::GetComponent3<1>,                {"predicted_hit_x3"})
+           .Define("predicted_hit_z",               RDFUtils::GetComponent3<2>,                {"predicted_hit_x3"})
+           .Define("predicted_hit_FlightLength",    RDFUtils::DIGIT::GetFlightLength,          {"Primaries_vtx", "predicted_hit_x3"})
+           .Define("predicted_hit_TOF",             RDFUtils::DIGIT::GetTOF,                   {"predicted_hit_FlightLength", "PredictedNeutron_Beta"})
+           .Define("predicted_hit_t",               "predicted_hit_TOF + Primaries_vtxT")
+            .Alias("predicted_neutron_beta",         "PredictedNeutron_Beta")
            /*
                 NEUTRON
            */
-            .Alias("neutron_P4_true",                "FinalStateHadronicSystemTotal4Momentum")
-            .Define("neutron_beta_true",             "neutron_P4_true.Beta()")
-            .Alias("predicted_neutron_beta",         "PredictedNeutron_Beta")
+            .Alias("true_neutron_P4",                "FinalStateHadronicSystemTotal4Momentum")
+            .Define("true_neutron_kinE",             "true_neutron_P4.T() - NEUTRON_MASS_GeV")
+            .Define("true_neutron_beta",             "true_neutron_P4.Beta()")
             ;
 }
 
@@ -2480,7 +3040,7 @@ ROOT::RDF::RNode RDFUtils::RECO::AddColumnsFromDriftReco(ROOT::RDF::RNode& df){
             /*
                 PREDICTED HITS
             */
-           .Define("ExpectedNeutron_HitPosition_",                   RDFUtils::DIGIT::GetExpectedHitPosition,   {"Primaries_vtx", "PredictedNeutron_P3_GeV", "dg_cell"})
+           .Define("ExpectedNeutron_HitPosition_",                   RDFUtils::DIGIT::GetExpectedHitPosition,   {"Primaries_vtx", "PredictedNeutron_P3_GeV", "Reconstructed_HitPosition"})
            .Define("ExpectedNeutron_HitPosition_x_",                 RDFUtils::GetComponent3<0>,                {"ExpectedNeutron_HitPosition_"})
            .Define("ExpectedNeutron_HitPosition_y_",                 RDFUtils::GetComponent3<1>,                {"ExpectedNeutron_HitPosition_"})
            .Define("ExpectedNeutron_HitPosition_z_",                 RDFUtils::GetComponent3<2>,                {"ExpectedNeutron_HitPosition_"})
@@ -2496,5 +3056,8 @@ ROOT::RDF::RNode RDFUtils::RECO::AddColumnsFromDriftReco(ROOT::RDF::RNode& df){
             .Define("earliest_compatible_cell",                     RDFUtils::FindMinimum3,                     {"Reconstructed_HitTime","IsCompatible"})
             .Define("nof_compatible_cells",                         [](const ROOT::VecOps::RVec<int>& compatibles){return static_cast<int>(compatibles[compatibles==1].size());}, {"IsCompatible"})
             .Define("candidate_signal_event",                       RDFUtils::RECO::isCandidateSignal,          {"InteractionVolume_short","NofFinalStateChargedParticles","nof_compatible_cells"})
+            .Define("reconstructed_neutron_KinE_MeV",               RDFUtils::slice_w_condition,                {"Reconstructed_neutronKin_MeV","Reconstructed_HitTime", "earliest_compatible_cell"})
+            .Define("reconstructed_neutron_E",                      "reconstructed_neutron_KinE_MeV + NEUTRON_MASS_MeV")
+            .Define("reconstructed_neutrino_Energy",                "reconstructed_neutron_E + Antimuon_reconstructed_P4[3]")
     ;
 }
