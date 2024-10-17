@@ -112,7 +112,7 @@ const double SAND_CENTER_Z = 23910.;
 // !!! FIDUCIAL CUT
 
 // distance in mm from SUPERMOD frames
-const double FIDUCIAL_CUT = 50.;
+const double FIDUCIAL_CUT = 300.; // mm
 
 // height in mm
 const double SUPERMOD_Y_HEIGHT[5] = {3755.16996258, // A1, A2

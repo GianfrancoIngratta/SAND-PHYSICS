@@ -216,7 +216,7 @@ int main(int argc, char* argv[]){
     });                                                    
 
     LOG("I", "Writing trajectory file");
-    auto dfTraj = RDFUtils::DIGIT::GetFilteredTrajectories(dfDigit);
+    auto dfTraj = RDFUtils::DIGIT::GetFilteredTrajectories(dfDigit, "ECALactive_trajectories");
     
     dfTraj.Snapshot("trj_extended", fOutput_filtered_trj.Data(), {
                                                  "FileName",

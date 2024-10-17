@@ -26,6 +26,7 @@ std::vector<std::string> output_columns_event_selection = {
     "InteractionTarget",
     "candidate_signal_event",
     "nof_fired_wires",
+    "IncomingNeutrinoP4",
     "FinalStateHadronicSystemTotal4Momentum", // true neutron
     "Antimuon_p_true", // true antimuon
     /*
@@ -96,7 +97,7 @@ std::vector<std::string> output_columns_event_selection = {
         RECONSTRUCTED NEUTRON AND NEUTRINO ENERGY
    */
     "reconstructed_neutron_KinE_MeV",
-    "reconstructed_neutrino_Energy",
+    // "reconstructed_neutrino_Energy",
 };
 
 std::vector<std::string> columns_neutron_cells = {
@@ -232,15 +233,19 @@ int main(int argc, char* argv[]){
            - nof_fired_wires > 70
 
     */
-    LOG("I", "Filter events is FV volume");
+    LOG("I", "Filter events reconstructed muons with at least 70 fired wires");
     auto df_filtered = RDFUtils::Filter(dfC, "KeepThisEvent", true);
 
     auto dfGENIE = RDFUtils::GENIE::AddColumnsFromGENIE(df_filtered);
-    auto dfEDEP = RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(dfGENIE);
+    
+    LOG("I", TString::Format("Filter events is FV volume of %f mm", GeoUtils::DRIFT::FIDUCIAL_CUT).Data());
+    df_filtered = RDFUtils::Filter(dfGENIE, "isInFiducialVolume==1", true);
+    
+    auto dfEDEP = RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(df_filtered);
     auto dfDigit = RDFUtils::DIGIT::AddColumnsFromDigit(dfEDEP);
     auto dfReco = RDFUtils::RECO::AddColumnsFromDriftReco(dfDigit);
 
-    dfReco = RDFUtils::DIGIT::GetFilteredTrajectories(dfReco);
+    dfReco = RDFUtils::DIGIT::GetFilteredTrajectories(dfReco, "ECALactive_trajectories");
 
     // PRE CUT ______________________________________________________________________________________    
     LOG("I", "Filter events with at least 70 fired wires");
@@ -249,22 +254,27 @@ int main(int argc, char* argv[]){
     LOG("I", "Filter events with 1 charged particle in final state");
     auto dfReco_wires_cut_1cmulti = dfReco_wires_cut.Filter("NofFinalStateChargedParticles==1");
 
-    // // SELECTED SIGNAL _______________________________________________________________________________
-    // LOG("I", "Writing ouput file: SELECTED SIGNAL");
-    // auto selected_signal = dfReco_wires_cut_1cmulti.Filter("candidate_signal_event == 1");
-    // selected_signal.Snapshot("tReco_extended", fOutput_selected_signal.Data(), output_columns_event_selection);
-    // selected_signal.Snapshot("traj", fOutput_trj_signal.Data(), columns_branch_trj);
+    // SELECTED SIGNAL _______________________________________________________________________________
+    LOG("I", "Writing ouput file: SELECTED SIGNAL");
+    LOG("i", fOutput_selected_signal.Data());
+    LOG("i", fOutput_trj_signal.Data());
+    auto selected_signal = dfReco_wires_cut_1cmulti.Filter("candidate_signal_event == 1");
+    selected_signal.Snapshot("selected_signal", fOutput_selected_signal.Data(), output_columns_event_selection);
+    selected_signal.Snapshot("selected_signal_traj", fOutput_trj_signal.Data(), columns_branch_trj);
     
-    // // SELECTED BKG __________________________________________________________________________________
-    // LOG("I", "Writing ouput file: SELECTED BKG");
-    // auto selected_bkg = dfReco_wires_cut_1cmulti.Filter("candidate_signal_event == 0");
-    // selected_bkg.Snapshot("tReco_extended", fOutput_selected_bkg.Data(), output_columns_event_selection);
-    // selected_bkg.Snapshot("traj", fOutput_trj_bkg.Data(), columns_branch_trj);
+    // SELECTED BKG __________________________________________________________________________________
+    LOG("I", "Writing ouput file: SELECTED BKG");
+    LOG("i", fOutput_selected_bkg.Data());
+    LOG("i", fOutput_trj_bkg.Data());
+    auto selected_bkg = dfReco_wires_cut_1cmulti.Filter("candidate_signal_event == 0");
+    selected_bkg.Snapshot("selected_bkg", fOutput_selected_bkg.Data(), output_columns_event_selection);
+    selected_bkg.Snapshot("selected_bkg_traj", fOutput_trj_bkg.Data(), columns_branch_trj);
     
     // NEUTRON CELLS (MC TRUTH) _______________________________________________________________________
-    LOG("I", "Writing ouput file: CELLS FIRED BY NEUTRON");
-    auto complete_cells_fired_by_signal_neutron = RDFUtils::DIGIT::GetInfoCellsFromSignal(dfReco);
-    complete_cells_fired_by_signal_neutron.Snapshot("tReco_extended", fOutput_cells.Data(), columns_neutron_cells);
+    // LOG("I", "Writing ouput file: CELLS FIRED BY NEUTRON");
+    // LOG("i", fOutput_cells.Data());
+    // auto complete_cells_fired_by_signal_neutron = RDFUtils::DIGIT::GetInfoCellsFromSignal(dfReco);
+    // complete_cells_fired_by_signal_neutron.Snapshot("nutron_cells", fOutput_cells.Data(), columns_neutron_cells);
 
     return 0;
 }

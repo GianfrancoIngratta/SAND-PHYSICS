@@ -1851,8 +1851,8 @@ ROOT::RDF::RNode RDFUtils::EDEPSIM::SPILL::AddColumnsFromEDEPSIM(ROOT::RDF::RNod
 ROOT::VecOps::RVec<RDFUtils::trajectory> RDFUtils::CreateTrajectories(TG4Event& ev, 
                                                                       const ROOT::VecOps::RVec<TG4Trajectory>& TG4_trajectories,
                                                                       const ROOT::VecOps::RVec<dg_cell>& cells,
-                                                                      const ROOT::VecOps::RVec<int>& track_id_tdc1,
-                                                                      const ROOT::VecOps::RVec<int>& track_id_tdc2) {
+                                                                      const ROOT::VecOps::RVec<int>& track_id_pmt1_hit,
+                                                                      const ROOT::VecOps::RVec<int>& track_id_pmt2_hit) {
     
     // Initialize the RDF_trajectories vector with the same size as TG4_trajectories
     ROOT::VecOps::RVec<RDFUtils::trajectory> RDF_trajectories(TG4_trajectories.size());
@@ -1869,11 +1869,14 @@ ROOT::VecOps::RVec<RDFUtils::trajectory> RDFUtils::CreateTrajectories(TG4Event& 
     // Populate RDF_trajectories and track_id_to_index
     for (size_t i = 0; i < TG4_trajectories.size(); ++i) {
         RDFUtils::trajectory t;
+        t.file_edep = ev.Primaries[0].GetFilename();
+        t.spill_number = ev.EventId;
         t.id = TG4_trajectories[i].GetTrackId();  // Track ID for this trajectory
         t.pdg = TG4_trajectories[i].GetPDGCode(); // PDG code for particle type
         t.name = GenieUtils::PDG2Name(t.pdg);
         t.initial_momentum = TG4_trajectories[i].GetInitialMomentum();
-        t.start_point = TG4_trajectories[i].Points[0].GetPosition().Vect();
+        t.start_point = TG4_trajectories[i].Points[0].GetPosition();
+        t.start_volume = GeoUtils::InteractionVolume_short(RDFUtils::GEO::GetVolumeFromCoordinates("mm", t.start_point.X(), t.start_point.Y(), t.start_point.Z()));
 
         // Map track ID to the index in RDF_trajectories
         track_id_to_index[t.id] = i;
@@ -1899,6 +1902,7 @@ ROOT::VecOps::RVec<RDFUtils::trajectory> RDFUtils::CreateTrajectories(TG4Event& 
             
             if (hit_middle.T() < RDF_trajectories[index].earliest_hit.T() || (RDF_trajectories[index].earliest_hit.T() == -1)){
                 RDF_trajectories[index].earliest_hit = hit_middle;
+                RDF_trajectories[index].tof_to_ecal = hit_middle.T() - RDF_trajectories[index].start_point.T();
             }
             
             if (hit_middle.T() > RDF_trajectories[index].latest_hit.T() || (RDF_trajectories[index].latest_hit.T() == -1)){
@@ -1913,8 +1917,8 @@ ROOT::VecOps::RVec<RDFUtils::trajectory> RDFUtils::CreateTrajectories(TG4Event& 
         int cell_id = cells[k].id;
 
         // Check if track IDs match
-        if (track_id_tdc1[k] == track_id_tdc2[k]) {
-            int matching_track_id = track_id_tdc1[k];
+        if (track_id_pmt1_hit[k] == track_id_pmt2_hit[k]) {
+            int matching_track_id = track_id_pmt1_hit[k];
 
             // Ensure track_id exists in RDF_trajectories
             if (track_id_to_index.find(matching_track_id) != track_id_to_index.end()) {
@@ -1927,6 +1931,15 @@ ROOT::VecOps::RVec<RDFUtils::trajectory> RDFUtils::CreateTrajectories(TG4Event& 
     return RDF_trajectories;
 }
 
+
+ROOT::VecOps::RVec<int> RDFUtils::GetTrajectorySpillNumber(const ROOT::VecOps::RVec<RDFUtils::trajectory>& trajectoires){
+    ROOT::VecOps::RVec<int> spill(trajectoires.size());
+    for (size_t i = 0; i < trajectoires.size(); i++)
+    {
+        spill[i] = trajectoires[i].spill_number;
+    }
+    return spill;
+}
 
 ROOT::VecOps::RVec<int> RDFUtils::GetTrajectoryId(const ROOT::VecOps::RVec<RDFUtils::trajectory>& trajectoires){
     ROOT::VecOps::RVec<int> ids(trajectoires.size());
@@ -1946,13 +1959,31 @@ ROOT::VecOps::RVec<int> RDFUtils::GetTrajectoryPDG(const ROOT::VecOps::RVec<RDFU
     return pdgs;
 }
 
-ROOT::VecOps::RVec<std::string> RDFUtils::GetTrajectoryName(const ROOT::VecOps::RVec<RDFUtils::trajectory>& trajectoires){
+ROOT::VecOps::RVec<std::string> RDFUtils::GetTrajectoryFileName(const ROOT::VecOps::RVec<RDFUtils::trajectory>& trajectoires){
     ROOT::VecOps::RVec<std::string> names(trajectoires.size());
     for (size_t i = 0; i < trajectoires.size(); i++)
     {
         names[i] = trajectoires[i].name;
     }
     return names;
+}
+
+ROOT::VecOps::RVec<std::string> RDFUtils::GetTrajectoryName(const ROOT::VecOps::RVec<RDFUtils::trajectory>& trajectoires){
+    ROOT::VecOps::RVec<std::string> names(trajectoires.size());
+    for (size_t i = 0; i < trajectoires.size(); i++)
+    {
+        names[i] = trajectoires[i].file_edep;
+    }
+    return names;
+}
+
+ROOT::VecOps::RVec<std::string> RDFUtils::GetTrajectoryVolume(const ROOT::VecOps::RVec<RDFUtils::trajectory>& trajectoires){
+    ROOT::VecOps::RVec<std::string> volumes(trajectoires.size());
+    for (size_t i = 0; i < trajectoires.size(); i++)
+    {
+        volumes[i] = trajectoires[i].start_volume;
+    }
+    return volumes;
 }
 
 ROOT::VecOps::RVec<double> RDFUtils::GetTrajectoryECALedep(const ROOT::VecOps::RVec<RDFUtils::trajectory>& trajectoires){
@@ -1980,6 +2011,16 @@ ROOT::VecOps::RVec<TLorentzVector> RDFUtils::GetTrajectoryECALlatest(const ROOT:
         latest[i] = trajectoires[i].earliest_hit;
     }
     return latest;
+}
+
+ROOT::VecOps::RVec<double> RDFUtils::GetTrajectoryTOF2ECAL(const ROOT::VecOps::RVec<RDFUtils::trajectory>& trajectoires){
+    ROOT::VecOps::RVec<double> tof(trajectoires.size());
+    for (size_t i = 0; i < trajectoires.size(); i++)
+    {
+        tof[i] = trajectoires[i].tof_to_ecal;
+    }
+    return tof;
+
 }
 
 /**
@@ -2016,21 +2057,36 @@ ROOT::RDF::RNode RDFUtils::CreateDataFrameTrajectories(ROOT::RDF::RNode& df) {
         throw std::runtime_error("Error: Column 'Trajectories' is required and not found in the DataFrame.");
     }
 
+    // Check for the presence of "Trajectories" column
+    if (!columnExists("track_id_pmt1_hit")) {
+        throw std::runtime_error("Error: Column 'track_id_pmt1_hit' is required and not found in the DataFrame.");
+    }
+
+    // Check for the presence of "Trajectories" column
+    if (!columnExists("track_id_pmt2_hit")) {
+        throw std::runtime_error("Error: Column 'track_id_pmt2_hit' is required and not found in the DataFrame.");
+    }
+
     // Define the new column "trajectories" using CreateTrajectories
     return df
             .Define("trajectories",                     RDFUtils::CreateTrajectories,           {"Event", 
                                                                                                  "Trajectories",
                                                                                                  "dg_cell",
-                                                                                                 "trackid_producing_tdc1", 
-                                                                                                 "trackid_producing_tdc2"})
+                                                                                                 "track_id_pmt1_hit", 
+                                                                                                 "track_id_pmt2_hit"})
+            .Define("trajectories_file_name",           RDFUtils::GetTrajectoryFileName,        {"trajectories"})                                                                                                 
+            .Define("trajectories_spill_number",        RDFUtils::GetTrajectorySpillNumber,      {"trajectories"})
+            .Define("trajectories_starting_volume",     RDFUtils::GetTrajectoryVolume,          {"trajectories"})
             .Define("trajectories_id",                  RDFUtils::GetTrajectoryId,              {"trajectories"})
             .Define("trajectories_pdg",                 RDFUtils::GetTrajectoryPDG,             {"trajectories"})
-            .Define("trajectories_name",                RDFUtils::GetTrajectoryName,             {"trajectories"})
+            .Define("trajectories_name",                RDFUtils::GetTrajectoryName,            {"trajectories"})
             .Define("trajectories_ecal_edep",           RDFUtils::GetTrajectoryECALedep,        {"trajectories"})
             .Define("trajectories_earliest_hit_ecal",   RDFUtils::GetTrajectoryECALearliest,    {"trajectories"})
             .Define("trajectories_latest_hit_ecal",     RDFUtils::GetTrajectoryECALlatest,      {"trajectories"})
+            .Define("trajectories_TOF2ECAL",            RDFUtils::GetTrajectoryTOF2ECAL,        {"trajectories"})
         ;
 }
+
 /**
  * @brief Creates a vector of `RDFUtils::cell` objects from input detector cells and event data.
  * 
@@ -2069,11 +2125,13 @@ ROOT::VecOps::RVec<RDFUtils::cell> RDFUtils::CreateCells(
     for (size_t i = 0; i < input_cells.size(); ++i) {
         RDFUtils::cell cell;
         int broken_side = -1;
-
+        
+        // Fill basic event information for each cell
+        cell.file_edep = ev.Primaries[0].GetFilename();
+        cell.spill_number = ev.EventId;
         cell.id = input_cells[i].id;
         cell.is_complete = GeoUtils::ECAL::isCellComplete(input_cells[i], broken_side);
 
-        
         if(cell.is_complete){
             /*
                 input cell general info
@@ -2098,32 +2156,154 @@ ROOT::VecOps::RVec<RDFUtils::cell> RDFUtils::CreateCells(
                 ? TLorentzVector(input_cells[i].x - reco_coordinate + calibration_x, input_cells[i].y, input_cells[i].z, reco_time)
                 : TLorentzVector(input_cells[i].x, input_cells[i].y - reco_coordinate + calibration_y, input_cells[i].z, reco_time);
 
+            // Retrieve TDC indices
             size_t hit_index_pmt1 = RDFUtils::DIGIT::Get_TDC_hindex(input_cells[i].ps1[0]);
             size_t hit_index_pmt2 = RDFUtils::DIGIT::Get_TDC_hindex(input_cells[i].ps2[0]);
             
             /*
                 MC truth hits and trajectory
             */
-            if ((hit_index_pmt1 == hit_index_pmt2) &&  
-                hit_index_pmt1 < all_calorimeter_hits.size()) {
-                
-                auto ecal_hit = all_calorimeter_hits[hit_index_pmt2];
-                int hit_track_id = ecal_hit.GetPrimaryId();
-                cell.fired_by_track_id = hit_track_id;
+            if (hit_index_pmt1 < all_calorimeter_hits.size() && hit_index_pmt2 < all_calorimeter_hits.size()) {
+                auto ecal_hit_tdc1 = all_calorimeter_hits[hit_index_pmt1];
+                auto ecal_hit_tdc2 = all_calorimeter_hits[hit_index_pmt2];
 
-                // Verify that the track index is valid
-                if (hit_track_id >= 0 && static_cast<size_t>(hit_track_id) < TG4_trajectories.size()) {
-                    cell.fired_by_track_pdg = TG4_trajectories[hit_track_id].GetPDGCode();
+                cell.track_id_pmt1_hit = ecal_hit_tdc1.GetPrimaryId();
+                cell.track_id_pmt2_hit = ecal_hit_tdc2.GetPrimaryId();
+
+                // Validate `track_id_pmt1_hit` and `track_id_pmt2_hit` before accessing TG4_trajectories
+                if (cell.track_id_pmt1_hit >= 0 && static_cast<size_t>(cell.track_id_pmt1_hit) < TG4_trajectories.size()) {
+                    cell.track_pdg_pmt1_hit = TG4_trajectories[cell.track_id_pmt1_hit].GetPDGCode();
+                }
+                if (cell.track_id_pmt2_hit >= 0 && static_cast<size_t>(cell.track_id_pmt2_hit) < TG4_trajectories.size()) {
+                    cell.track_pdg_pmt2_hit = TG4_trajectories[cell.track_id_pmt2_hit].GetPDGCode();
                 }
 
-                cell.true_hit = (ecal_hit.GetStop() + ecal_hit.GetStart()) * 0.5;
-                cell.true_edep = ecal_hit.GetEnergyDeposit();
+                cell.true_hit1 = (ecal_hit_tdc1.GetStop() + ecal_hit_tdc1.GetStart()) * 0.5;
+                cell.true_hit2 = (ecal_hit_tdc2.GetStop() + ecal_hit_tdc2.GetStart()) * 0.5;
+                cell.true_edep1 = ecal_hit_tdc1.GetEnergyDeposit();
+                cell.true_edep2 = ecal_hit_tdc2.GetEnergyDeposit();
             }
-
         }
         cells[i] = cell;
     }
     return cells;
+}
+
+ROOT::VecOps::RVec<std::string> RDFUtils::GetCellFileName(const ROOT::VecOps::RVec<RDFUtils::cell>& cells){
+    ROOT::VecOps::RVec<std::string> names(cells.size());
+    for (size_t i = 0; i < cells.size(); i++)
+    {
+        names[i] = cells[i].file_edep;
+    }
+    return names;
+}
+
+ROOT::VecOps::RVec<int> RDFUtils::GetCellSpillNumber(const ROOT::VecOps::RVec<RDFUtils::cell>& cells){
+    ROOT::VecOps::RVec<int> spill(cells.size());
+    for (size_t i = 0; i < cells.size(); i++)
+    {
+        spill[i] = cells[i].spill_number;
+    }
+    return spill;
+}
+
+ROOT::VecOps::RVec<int> RDFUtils::IsCellComplete(const ROOT::VecOps::RVec<RDFUtils::cell>& cells){
+    ROOT::VecOps::RVec<int> is_complete(cells.size());
+    for (size_t i = 0; i < cells.size(); i++)
+    {
+        is_complete[i] = cells[i].is_complete;
+    }
+    return is_complete;
+}
+
+ROOT::VecOps::RVec<int> RDFUtils::GetCellTrackId1(const ROOT::VecOps::RVec<RDFUtils::cell>& cells){
+    ROOT::VecOps::RVec<int> track_id(cells.size());
+    for (size_t i = 0; i < cells.size(); i++)
+    {
+        track_id[i] = cells[i].track_id_pmt1_hit;
+    }
+    return track_id;
+}
+
+ROOT::VecOps::RVec<int> RDFUtils::GetCellTrackId2(const ROOT::VecOps::RVec<RDFUtils::cell>& cells){
+    ROOT::VecOps::RVec<int> track_id(cells.size());
+    for (size_t i = 0; i < cells.size(); i++)
+    {
+        track_id[i] = cells[i].track_id_pmt2_hit;
+    }
+    return track_id;
+}
+
+ROOT::VecOps::RVec<int> RDFUtils::GetCellTrackPDG1(const ROOT::VecOps::RVec<RDFUtils::cell>& cells){
+    ROOT::VecOps::RVec<int> pdg(cells.size());
+    for (size_t i = 0; i < cells.size(); i++)
+    {
+        pdg[i] = cells[i].track_pdg_pmt1_hit;
+    }
+    return pdg;
+}
+
+ROOT::VecOps::RVec<int> RDFUtils::GetCellTrackPDG2(const ROOT::VecOps::RVec<RDFUtils::cell>& cells){
+    ROOT::VecOps::RVec<int> pdg(cells.size());
+    for (size_t i = 0; i < cells.size(); i++)
+    {
+        pdg[i] = cells[i].track_pdg_pmt2_hit;
+    }
+    return pdg;
+}
+
+ROOT::VecOps::RVec<TLorentzVector> RDFUtils::GetCellTrueHit1(const ROOT::VecOps::RVec<RDFUtils::cell>& cells){
+    ROOT::VecOps::RVec<TLorentzVector> hit(cells.size());
+    for (size_t i = 0; i < cells.size(); i++)
+    {
+       hit[i] = cells[i].true_hit1;
+    }
+    return hit;
+}
+
+ROOT::VecOps::RVec<TLorentzVector> RDFUtils::GetCellTrueHit2(const ROOT::VecOps::RVec<RDFUtils::cell>& cells){
+    ROOT::VecOps::RVec<TLorentzVector> hit(cells.size());
+    for (size_t i = 0; i < cells.size(); i++)
+    {
+       hit[i] = cells[i].true_hit2;
+    }
+    return hit;
+}
+
+ROOT::VecOps::RVec<TLorentzVector> RDFUtils::GetCellRecoHit(const ROOT::VecOps::RVec<RDFUtils::cell>& cells){
+    ROOT::VecOps::RVec<TLorentzVector> hit(cells.size());
+    for (size_t i = 0; i < cells.size(); i++)
+    {
+       hit[i] = cells[i].reco_hit;
+    }
+    return hit;
+}
+
+ROOT::VecOps::RVec<double> RDFUtils::GetCellTrueEdep1(const ROOT::VecOps::RVec<RDFUtils::cell>& cells){
+    ROOT::VecOps::RVec<double> edep(cells.size());
+    for (size_t i = 0; i < cells.size(); i++)
+    {
+        edep[i] = cells[i].true_edep1;
+    }
+    return edep;
+}
+
+ROOT::VecOps::RVec<double> RDFUtils::GetCellTrueEdep2(const ROOT::VecOps::RVec<RDFUtils::cell>& cells){
+    ROOT::VecOps::RVec<double> edep(cells.size());
+    for (size_t i = 0; i < cells.size(); i++)
+    {
+        edep[i] = cells[i].true_edep2;
+    }
+    return edep;
+}
+
+ROOT::VecOps::RVec<double> RDFUtils::GetCellRecoEdep(const ROOT::VecOps::RVec<RDFUtils::cell>& cells){
+    ROOT::VecOps::RVec<double> edep(cells.size());
+    for (size_t i = 0; i < cells.size(); i++)
+    {
+        edep[i] = cells[i].reco_edep;
+    }
+    return edep;
 }
 
 // ROOT::VecOps::RVec<int> RDFUtils::GetCellId(const ROOT::VecOps::RVec<RDFUtils::cell>& cells){
@@ -2160,13 +2340,26 @@ ROOT::RDF::RNode RDFUtils::CreateDataFrameCells(ROOT::RDF::RNode& df){
             .Define("cell_x",                "dg_cell.x")
             .Define("cell_y",                "dg_cell.y")
             .Define("cell_z",                "dg_cell.z")
-            .Define("cells",                 RDFUtils::CreateCells,          {"Event", 
-                                                                              "Trajectories",
-                                                                              "dg_cell",
-                                                                              "X_CALIBRATION_OFFSET",
-                                                                              "Y_CALIBRATION_OFFSET",
-                                                                              "TIME_CALIBRATION_OFFSET"
-                                                                              })
+            .Define("cells",                 RDFUtils::CreateCells,             {"Event", 
+                                                                                "Trajectories",
+                                                                                "dg_cell",
+                                                                                "X_CALIBRATION_OFFSET",
+                                                                                "Y_CALIBRATION_OFFSET",
+                                                                                "TIME_CALIBRATION_OFFSET"
+                                                                                })
+            .Define("file_name",            RDFUtils::GetCellFileName,          {"cells"})                                                                              
+            .Define("spill_number",         RDFUtils::GetCellSpillNumber,       {"cells"})
+            .Define("is_complete",          RDFUtils::IsCellComplete,           {"cells"})
+            .Define("track_id_pmt1_hit",    RDFUtils::GetCellTrackId1,          {"cells"})
+            .Define("track_id_pmt2_hit",    RDFUtils::GetCellTrackId2,          {"cells"})
+            .Define("track_pdg_pmt1_hit",   RDFUtils::GetCellTrackPDG1,         {"cells"})    
+            .Define("track_pdg_pmt2_hit",   RDFUtils::GetCellTrackPDG2,         {"cells"})    
+            .Define("true_hit1",            RDFUtils::GetCellTrueHit1,          {"cells"})
+            .Define("true_hit2",            RDFUtils::GetCellTrueHit2,          {"cells"})
+            .Define("true_edep1",           RDFUtils::GetCellTrueEdep1,         {"cells"})
+            .Define("true_edep2",           RDFUtils::GetCellTrueEdep2,         {"cells"})
+            .Define("reco_hit",             RDFUtils::GetCellRecoHit,           {"cells"})
+            .Define("reco_edep",            RDFUtils::GetCellRecoEdep,          {"cells"})
             ;
 }
 
@@ -2767,31 +2960,6 @@ ROOT::RDF::RNode RDFUtils::DIGIT::AddColumnsFromDigit(ROOT::RDF::RNode& df){
             ;
 }
 
-ROOT::RDF::RNode RDFUtils::DIGIT::SPILL::AddColumnsFromDigit(ROOT::RDF::RNode& df){
-        return df
-            .Define("NofEventFiredModules",         RDFUtils::DIGIT::NofFiredECALMods ,             {"dg_cell.mod"})
-            .Define("EventFiredModules",            RDFUtils::DIGIT::FiredECALMods ,                {"dg_cell.mod"})
-            .Define("Fired_Cells_mod",              "dg_cell.mod")
-            .Define("Fired_Cells_id",               "dg_cell.id")
-            .Define("Fired_Cells_x",                "dg_cell.x")
-            .Define("Fired_Cells_y",                "dg_cell.y")
-            .Define("Fired_Cells_z",                "dg_cell.z")
-            .Define("isCellComplete",               RDFUtils::DIGIT::IsCellComplete,                {"dg_cell"})
-            .Define("Fired_Cells_tdc1",             RDFUtils::DIGIT::FiredECALGetTDC<1>,            {"dg_cell"})
-            .Define("Fired_Cells_adc1",             RDFUtils::DIGIT::FiredECALGetADC<1>,            {"dg_cell"})
-            .Define("Fired_Cell_tdc1_hindex",       RDFUtils::DIGIT::GetHindexOfTDC<1>,             {"dg_cell"})
-            .Define("trackid_producing_tdc1",       RDFUtils::EDEPSIM::GetHitTrajectoryId,          {"Fired_Cell_tdc1_hindex", "Event"})
-            .Define("Fired_by_primary_neutron",     RDFUtils::EDEPSIM::CheckTrajId<2112>,           {"trackid_producing_tdc1", "Event"})
-            .Define("Fired_by_primary_antimu",      RDFUtils::EDEPSIM::CheckTrajId<-13>,            {"trackid_producing_tdc1", "Event"})
-            .Define("ECALactive_trajectories",      RDFUtils::EDEPSIM::GetTrajectories,             {"trackid_producing_tdc1", "Event"})
-            .Define("Fired_Cells_tdc2",             RDFUtils::DIGIT::FiredECALGetTDC<2>,            {"dg_cell"})
-            .Define("Fired_Cells_adc2",             RDFUtils::DIGIT::FiredECALGetADC<2>,            {"dg_cell"})
-            .Define("Fired_Cell_tdc2_hindex",       RDFUtils::DIGIT::GetHindexOfTDC<2>,             {"dg_cell"})
-            .Define("Fired_Cell_true_hit2",         RDFUtils::EDEPSIM::GetHitFromIndex,             {"Fired_Cell_tdc2_hindex", "Event"})
-            .Define("trackid_producing_tdc2",       RDFUtils::EDEPSIM::GetHitTrajectoryId,          {"Fired_Cell_tdc2_hindex", "Event"})
-            ;
-}
-
 ROOT::VecOps::RVec<dg_cell> RDFUtils::DIGIT::FitlerCells(const ROOT::VecOps::RVec<dg_cell>& cells,
                                                         const ROOT::VecOps::RVec<int>& is_complete,
                                                         const ROOT::VecOps::RVec<int>& is_fired_by_neutron){
@@ -2854,21 +3022,6 @@ ROOT::VecOps::RVec<double>  RDFUtils::DIGIT::GetCellZ(const ROOT::VecOps::RVec<d
     return Z;
 }
 
-// // add
-// ROOT::VecOps::RVec<TVector3> RDFUtils::DIGIT::GetDirection(const TVector3& vertex,
-//                                                            ROOT::VecOps::RVec<TVector3>& hit_reco){
-//     ROOT::VecOps::RVec<TVector3> directions(hit_reco.size());
-//     for (size_t i = 0; i < hit_reco.size(); i++)
-//     {
-//         if(hit_reco[i].Z() == RDFUtils::DEFAULT_NO_DATA){
-//             directions[i] == RDFUtils::DEFAULT_NO_DATA;
-//         }else{
-//             directions[i] ==  (hit_reco[i] - vertex).Unit();
-//         }
-//     }
-//     return directions                                                    
-// }
-
 ROOT::RDF::RNode RDFUtils::DIGIT::GetInfoCellsFromSignal(ROOT::RDF::RNode& df){
     return df
             .Filter("CCQEonHydrogen")
@@ -2924,15 +3077,15 @@ ROOT::RDF::RNode RDFUtils::DIGIT::GetInfoCellsFromSignal(ROOT::RDF::RNode& df){
             ;
 }
 
-ROOT::RDF::RNode RDFUtils::DIGIT::GetFilteredTrajectories(ROOT::RDF::RNode& df){
+ROOT::RDF::RNode RDFUtils::DIGIT::GetFilteredTrajectories(ROOT::RDF::RNode& df, std::string column_name_TG4_trajectories){
     /**
      * @brief Take as input columns of AddColumnsFromDigit and retreive info
      * about trajecotries that have fired ECAL cells
      */
     return df
-          .Define("trackid",                      RDFUtils::EDEPSIM::ExpandIndex,               {"ECALactive_trajectories"})
-          .Define("pdg",                          RDFUtils::EDEPSIM::ExpandPDG,                 {"ECALactive_trajectories"})
-          .Define("Points_all_trajectories",      RDFUtils::EDEPSIM::GetTrjPointsAll,           {"ECALactive_trajectories"})
+          .Define("trackid",                      RDFUtils::EDEPSIM::ExpandIndex,               {column_name_TG4_trajectories})
+          .Define("pdg",                          RDFUtils::EDEPSIM::ExpandPDG,                 {column_name_TG4_trajectories})
+          .Define("Points_all_trajectories",      RDFUtils::EDEPSIM::GetTrjPointsAll,           {column_name_TG4_trajectories})
           .Define("point_x",                      RDFUtils::EDEPSIM::GetPointComponent<0>,      {"Points_all_trajectories"})
           .Define("point_y",                      RDFUtils::EDEPSIM::GetPointComponent<1>,      {"Points_all_trajectories"})
           .Define("point_z",                      RDFUtils::EDEPSIM::GetPointComponent<2>,      {"Points_all_trajectories"})
@@ -2942,27 +3095,6 @@ ROOT::RDF::RNode RDFUtils::DIGIT::GetFilteredTrajectories(ROOT::RDF::RNode& df){
           .Define("process",                      RDFUtils::EDEPSIM::GetPointProcess,           {"Points_all_trajectories"})
         ;
 }
-
-// ROOT::RDF::RNode RDFUtils::DIGIT::GetFilteredTrajectories_(ROOT::RDF::RJittedFilter& df){
-//     /**
-//      * @brief Take as input columns of AddColumnsFromDigit and retreive info
-//      * about trajecotries that have fired ECAL cells
-//      */
-//     return df
-//           .Define("trackid",                      RDFUtils::EDEPSIM::ExpandIndex,               {"ECALactive_trajectories"})
-//           .Define("pdg",                          RDFUtils::EDEPSIM::ExpandPDG,                 {"ECALactive_trajectories"})
-//           .Define("Points_all_trajectories",      RDFUtils::EDEPSIM::GetTrjPointsAll,           {"ECALactive_trajectories"})
-//           .Define("point_x",                      RDFUtils::EDEPSIM::GetPointComponent<0>,      {"Points_all_trajectories"})
-//           .Define("point_y",                      RDFUtils::EDEPSIM::GetPointComponent<1>,      {"Points_all_trajectories"})
-//           .Define("point_z",                      RDFUtils::EDEPSIM::GetPointComponent<2>,      {"Points_all_trajectories"})
-//           .Define("point_t",                      RDFUtils::EDEPSIM::GetPointComponent<3>,      {"Points_all_trajectories"})
-//           .Define("point_px",                     RDFUtils::EDEPSIM::GetPointMomentum<0>,       {"Points_all_trajectories"})
-//           .Define("point_py",                     RDFUtils::EDEPSIM::GetPointMomentum<1>,       {"Points_all_trajectories"})
-//           .Define("point_pz",                     RDFUtils::EDEPSIM::GetPointMomentum<2>,       {"Points_all_trajectories"})
-//           .Define("point_E",                      RDFUtils::EDEPSIM::GetPointMomentum<3>,       {"Points_all_trajectories"})
-//           .Define("process",                      RDFUtils::EDEPSIM::GetPointProcess,           {"Points_all_trajectories"})
-//         ;
-// }
 
 // RDFUtils::RECO_______________________________________________________________________________
 
@@ -2985,7 +3117,7 @@ int RDFUtils::RECO::Test(bool b, const MinuitFitInfos& i){
     }
 }
 
-int RDFUtils::RECO::isCandidateSignal(std::string interaction_volume, int charge_multiplicity, int nof_cell_candidates){
+int RDFUtils::RECO::isCandidateSignal(int charge_multiplicity, int nof_cell_candidates){
     /***
      * @brief events is candidate signa if:
      * - the interaction vertex is in one of C3H6 target
@@ -2993,7 +3125,7 @@ int RDFUtils::RECO::isCandidateSignal(std::string interaction_volume, int charge
      * - the nof cell with possible space-time coincidence is at lest 1
      */
     int is_candidate = 0;
-    if((interaction_volume == "C3H6_Target") && (charge_multiplicity == 1) && (nof_cell_candidates > 0)){
+    if((charge_multiplicity == 1) && (nof_cell_candidates > 0)){
         return 1;
     }
     return is_candidate;
@@ -3055,7 +3187,7 @@ ROOT::RDF::RNode RDFUtils::RECO::AddColumnsFromDriftReco(ROOT::RDF::RNode& df){
             .Define("IsCompatible",                                 RDFUtils::DIGIT::IsCompatible,              {"Residuals_HitSpace_", "Residuals_HitTime_"})
             .Define("earliest_compatible_cell",                     RDFUtils::FindMinimum3,                     {"Reconstructed_HitTime","IsCompatible"})
             .Define("nof_compatible_cells",                         [](const ROOT::VecOps::RVec<int>& compatibles){return static_cast<int>(compatibles[compatibles==1].size());}, {"IsCompatible"})
-            .Define("candidate_signal_event",                       RDFUtils::RECO::isCandidateSignal,          {"InteractionVolume_short","NofFinalStateChargedParticles","nof_compatible_cells"})
+            .Define("candidate_signal_event",                       RDFUtils::RECO::isCandidateSignal,          {"NofFinalStateChargedParticles","nof_compatible_cells"})
             .Define("reconstructed_neutron_KinE_MeV",               RDFUtils::slice_w_condition,                {"Reconstructed_neutronKin_MeV","Reconstructed_HitTime", "earliest_compatible_cell"})
             .Define("reconstructed_neutron_E",                      "reconstructed_neutron_KinE_MeV + NEUTRON_MASS_MeV")
             .Define("reconstructed_neutrino_Energy",                "reconstructed_neutron_E + Antimuon_reconstructed_P4[3]")

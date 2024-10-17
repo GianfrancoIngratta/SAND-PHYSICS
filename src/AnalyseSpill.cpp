@@ -31,19 +31,55 @@ std::vector<std::string> columns_df = {
 };
 
 std::vector<std::string> columns_trj = {
-    "nof_vertices_in_spill",
-    // add vertex time to calculate tof to ecal
+    "trajectories_spill_number",
     "trajectories_id",
     "trajectories_pdg",
     "trajectories_name",
+    "trajectories_starting_volume",
     "trajectories_ecal_edep",
     "trajectories_earliest_hit_ecal",
     "trajectories_latest_hit_ecal",
+    "trajectories_TOF2ECAL",
+};
+
+std::vector<std::string> columns_trj_points = {
+    "file_name",
+    "trajectories_starting_volume",
+    "trajectories_ecal_edep",
+    "trajectories_TOF2ECAL",
+    /*
+        trj
+    */
+    "trackid",
+    "pdg",
+    "point_x",
+    "point_y",
+    "point_z",
+    "point_px",
+    "point_py",
+    "point_pz",
+    "process",
 };
 
 std::vector<std::string> columns_cells = {
-    "nof_vertices_in_spill",
+    "file_name",
+    "spill_number",
+    "cell_mod",
+    "cell_id",
     "cell_x",
+    "cell_y",
+    "cell_z",
+    "is_complete",
+    "track_id_pmt1_hit",
+    "track_id_pmt2_hit",
+    "track_pdg_pmt1_hit",
+    "track_pdg_pmt2_hit",
+    "true_hit1",
+    "true_hit2",
+    "true_edep1",
+    "true_edep2",
+    "reco_hit",
+    "reco_edep",
 };
 
 //___________________________________________________________________
@@ -56,7 +92,7 @@ int main(int argc, char* argv[]){
 
     index = atoi(argv[1]);
     // unsigned int files_per_jobs = 100u;
-    unsigned int files_per_jobs = 2u;
+    unsigned int files_per_jobs = 10u;
     unsigned int file_start = index * files_per_jobs;
     unsigned int file_stop = index * files_per_jobs + files_per_jobs;
 
@@ -75,6 +111,7 @@ int main(int argc, char* argv[]){
 
     auto fOutput = TString::Format("%ssand-drift-events.%d.to.%d.analysed.root",FOLDER_ANALYSIS, file_start, file_stop);
     auto fOutput_traj = TString::Format("%ssand-drift-events.%d.to.%d.analysed.trj.root",FOLDER_ANALYSIS, file_start, file_stop);
+    auto fOutput_traj_points_spill = TString::Format("%ssand-drift-events.%d.to.%d.analysed.trj_points_spill.root",FOLDER_ANALYSIS, file_start, file_stop);
     auto fOutput_cells = TString::Format("%ssand-drift-events.%d.to.%d.analysed.cells.root",FOLDER_ANALYSIS, file_start, file_stop);
 
         if(fInput_edep.Contains("*")){
@@ -97,16 +134,20 @@ int main(int argc, char* argv[]){
 
     // df_ = RDFUtils::GENIE::AddColumnsFromGENIE(df_);
     df_ = RDFUtils::EDEPSIM::SPILL::AddColumnsFromEDEPSIM(df_);
-    df_ = RDFUtils::DIGIT::SPILL::AddColumnsFromDigit(df_);
 
-    df_= RDFUtils::CreateDataFrameTrajectories(df_);
     df_= RDFUtils::CreateDataFrameCells(df_);
+    df_= RDFUtils::CreateDataFrameTrajectories(df_);
+
+    // for plotting
+    auto df_trajectory_points = RDFUtils::DIGIT::GetFilteredTrajectories(df_, "Trajectories");
 
     // RDFUtils::PrintColumns(df);
 
-    // df_.Snapshot("digit_extended", fOutput.Data(), columns_df);
-    // df_.Snapshot("trajectories", fOutput_traj.Data(), columns_trj);
-    df_.Snapshot("cells", fOutput_traj.Data(), columns_cells);
+    df_.Snapshot("digit_extended", fOutput.Data(), columns_df);
+    df_.Snapshot("cells", fOutput_cells.Data(), columns_cells);
+    df_.Snapshot("trajectories", fOutput_traj.Data(), columns_trj);
+    // for plotting
+    df_trajectory_points.Snapshot("trajectories_points", fOutput_traj_points_spill.Data(), columns_trj_points);
 
     return 0;
 }
