@@ -8,6 +8,37 @@
 
 TGeoManager* geo = nullptr;
 
+std::vector<std::string> columns_preselection = {
+    /*
+        EVENT INFO
+    */
+    "FileName",
+    "CCQEonHydrogen",
+    "EventType",
+    "IncomingNeutrinoP4",
+    "InteractionVolume_short",  
+    "InteractionTarget",
+    "PrimaryStateHadronicSystemTopology_name",
+    "Antimuon_p_true", // true antimuon
+    "FinalStateHadronicSystemTotal4Momentum", // true neutron
+    "Interaction_vtxX",
+    "Interaction_vtxY",
+    "Interaction_vtxZ",
+    "Interaction_vtxT",
+    "NofFinalStateChargedParticles",
+    "nof_fired_wires",
+    /*
+        RECONSTRUCTED ANTIMUON
+    */
+    "Antimuon_reconstructed_P4",
+    /*
+        PREDICTED NEUTRON
+    */
+    "Neutrino_reconstructed_P4_GeV",
+    "PredictedNeutron_P3_GeV",
+    "PredictedNeutron_E_GeV",
+};
+
 std::vector<std::string> output_columns_event_selection = {
     /*
         EVENT INFO
@@ -49,6 +80,7 @@ std::vector<std::string> output_columns_event_selection = {
     "Fired_Cells_y",
     "Fired_Cells_z",
     "isCellComplete",
+    "AreTDCsConsistent",
     "Fired_Cells_adc1",
     "Fired_Cells_tdc1",
     "Fired_Cells_adc2",
@@ -56,7 +88,7 @@ std::vector<std::string> output_columns_event_selection = {
     "Fired_Cell_true_hit1",
     "Fired_Cell_true_hit2",
     "Fired_by_primary_neutron",
-    "Fired_by_primary_antimu",
+    "Fired_by_primary_antimu",  
     /*
         TRUE NEUTRON HITS
     */
@@ -173,6 +205,67 @@ std::vector<std::string> columns_branch_trj = {
     "process",
 };
 
+const char* hist_names[] = {"total",
+                            "CCQE_on_H",
+                            "others_on_H",
+                            "on_C_plastic",
+                            "on_C_graphite",
+                            "others",
+                            };
+
+const char* spectra_names[] = {
+                            "interacting_neutrino_true_energy",
+                            "antimuon_true_energy",
+                            "final_state_hadronic_kinetic_energy"
+
+}
+
+TH1I* report_histos[sizeof(hist_names)/sizeof(void*)];
+
+TH1D* spectra[sizeof(spectra_names)/sizeof(void*)];
+
+int nof_report_calls = 1;
+
+void Report(ROOT::RDF::RNode& input_df, std::ofstream& stream, const char* report_stage){
+    auto total_in_FV = input_df.Count().GetValue();
+    auto nof_CCQE_on_H_in_FV = input_df.Filter("CCQEonHydrogen==1").Count().GetValue();
+    auto nof_others_on_H_in_FV = input_df.Filter("CCQEonHydrogen==0").Filter(TString::Format("InteractionTarget == \"%s\"", "proton").Data()).Count().GetValue();
+    auto nof_on_C_plastic_in_FV = input_df.Filter(TString::Format("InteractionTarget == \"%s\"", "C12").Data()).Filter(TString::Format("InteractionVolume_short == \"%s\"", "C3H6_Target").Data()).Count().GetValue();
+    auto nof_on_C_grphite_in_FV = input_df.Filter(TString::Format("InteractionTarget == \"%s\"", "C12").Data()).Filter(TString::Format("InteractionVolume_short == \"%s\"", "C_Target").Data()).Count().GetValue();
+    auto others = total_in_FV - nof_CCQE_on_H_in_FV - nof_others_on_H_in_FV - nof_on_C_plastic_in_FV - nof_on_C_grphite_in_FV;
+    stream << "############### " << report_stage << " ###############\n";
+    stream << "TOTAL                 : " << total_in_FV << "\n";
+    stream << "TOTAL H               : " << nof_CCQE_on_H_in_FV + nof_others_on_H_in_FV << "\n";
+    stream << "CCQE ON H             : " << nof_CCQE_on_H_in_FV << "\n";
+    stream << "OTHERS ON H           : " << nof_others_on_H_in_FV << "\n";
+    stream << "ANY INT ON C PLASTIC  : " << nof_on_C_plastic_in_FV << "\n";
+    stream << "ANY INT ON C GRAPHITE : " << nof_on_C_grphite_in_FV << "\n";
+    stream << "OTHERS                : " << others << "\n\n";
+};
+
+void Report(ROOT::RDF::RNode& input_df, TFile* f, const char* report_stage){
+    auto total_in_FV = input_df.Count().GetValue();
+    auto nof_CCQE_on_H_in_FV = input_df.Filter("CCQEonHydrogen==1").Count().GetValue();
+    auto nof_others_on_H_in_FV = input_df.Filter("CCQEonHydrogen==0").Filter(TString::Format("InteractionTarget == \"%s\"", "proton").Data()).Count().GetValue();
+    auto nof_on_C_plastic_in_FV = input_df.Filter(TString::Format("InteractionTarget == \"%s\"", "C12").Data()).Filter(TString::Format("InteractionVolume_short == \"%s\"", "C3H6_Target").Data()).Count().GetValue();
+    auto nof_on_C_grphite_in_FV = input_df.Filter(TString::Format("InteractionTarget == \"%s\"", "C12").Data()).Filter(TString::Format("InteractionVolume_short == \"%s\"", "C_Target").Data()).Count().GetValue();
+    auto others = total_in_FV - nof_CCQE_on_H_in_FV - nof_others_on_H_in_FV - nof_on_C_plastic_in_FV - nof_on_C_grphite_in_FV;
+
+    report_histos[0]->SetBinContent(nof_report_calls, total_in_FV);
+    report_histos[0]->GetXaxis()->SetBinLabel(nof_report_calls, report_stage);
+    report_histos[1]->SetBinContent(nof_report_calls, nof_CCQE_on_H_in_FV);
+    report_histos[1]->GetXaxis()->SetBinLabel(nof_report_calls, report_stage);
+    report_histos[2]->SetBinContent(nof_report_calls, nof_others_on_H_in_FV);
+    report_histos[2]->GetXaxis()->SetBinLabel(nof_report_calls, report_stage);
+    report_histos[3]->SetBinContent(nof_report_calls, nof_on_C_plastic_in_FV);
+    report_histos[3]->GetXaxis()->SetBinLabel(nof_report_calls, report_stage);
+    report_histos[4]->SetBinContent(nof_report_calls, nof_on_C_grphite_in_FV);
+    report_histos[4]->GetXaxis()->SetBinLabel(nof_report_calls, report_stage);
+    report_histos[5]->SetBinContent(nof_report_calls, others);
+    report_histos[5]->GetXaxis()->SetBinLabel(nof_report_calls, report_stage);
+    nof_report_calls++;
+};
+
 //___________________________________________________________________
 int main(int argc, char* argv[]){
     unsigned int index;
@@ -192,22 +285,33 @@ int main(int argc, char* argv[]){
     geo = TGeoManager::Import("/storage/gpfs_data/neutrino/users/gi/dunendggd/SAND_opt3_DRIFT1.root");
 
     auto FOLDER_PRODUCTION = "/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/";
-    auto FOLDER_ANALYSIS = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/DriftReco/Wires_cut/";
-    auto FOLDER_ANALYSIS_CELLS = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/CompleteCells_neutron_signal/";
-    auto FOLDER_ANALYSIS_SIGNAL_SELECTION = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/Selections/Wires_cut_multi1/";
+    auto FOLDER_ECAL_CELLS = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/CompleteCells_neutron_signal/";
+    auto FOLDER_PRESELECTION = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/antinumu_CCQE_on_H_like/Preselection/";
+    auto FOLDER_SELECTED_SIGNAL = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/antinumu_CCQE_on_H_like/";
 
     auto fInput_genie = TString::Format("%sevents-in-SANDtracker.*.gtrac.root", FOLDER_PRODUCTION);
     auto fInput_edep = TString::Format("%sevents-in-SANDtracker.*.edep-sim.root", FOLDER_PRODUCTION);
     auto fInput_digit = TString::Format("%sevents-in-SANDtracker.*.ecal-digit.root", FOLDER_PRODUCTION);
     auto fInput_drift_reco = TString::Format("%sevents-in-SANDtracker.*.recostruction.NLLmethod.root", FOLDER_PRODUCTION);
 
-    auto fOutput = TString::Format("%sevents-in-SANDtracker.%d.to.%d.drift-reco.analysed.root",FOLDER_ANALYSIS, file_start, file_stop);
-    auto fOutput_cells = TString::Format("%sevents-in-SANDtracker.%d.to.%d.cells_neutron.root",FOLDER_ANALYSIS_CELLS, file_start, file_stop);
-    auto fOutput_selected_signal = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_signal.root",FOLDER_ANALYSIS_SIGNAL_SELECTION, file_start, file_stop);
-    auto fOutput_selected_bkg = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_bkg.root",FOLDER_ANALYSIS_SIGNAL_SELECTION, file_start, file_stop);
-    auto fOutput_trj_signal = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_signal.trj.root",FOLDER_ANALYSIS_SIGNAL_SELECTION, file_start, file_stop);
-    auto fOutput_trj_bkg = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_bkg.trj.root",FOLDER_ANALYSIS_SIGNAL_SELECTION, file_start, file_stop);
-
+    auto fOutput_cells = TString::Format("%sevents-in-SANDtracker.%d.to.%d.cells_neutron.root",FOLDER_ECAL_CELLS, file_start, file_stop);
+    auto fOutput_preselection = TString::Format("%sevents-in-SANDtracker.%d.to.%d.preselection.root", FOLDER_PRESELECTION, file_start, file_stop);
+    auto fOutput_selected_signal = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_signal.root", FOLDER_SELECTED_SIGNAL, file_start, file_stop);
+    auto fOutput_selected_bkg = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_bkg.root",FOLDER_SELECTED_SIGNAL, file_start, file_stop);
+    auto fOutput_trj_signal = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_signal.trj.root",FOLDER_SELECTED_SIGNAL, file_start, file_stop);
+    auto fOutput_trj_bkg = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_bkg.trj.root",FOLDER_SELECTED_SIGNAL, file_start, file_stop);
+    auto fOutput_report = TString::Format("%sreports/events-in-SANDtracker.%d.to.%d.report.root", FOLDER_SELECTED_SIGNAL, file_start, file_stop);
+    auto fOutput_spectra = TString::Format("%sreports/events-in-SANDtracker.%d.to.%d.spectra.root", FOLDER_SELECTED_SIGNAL, file_start, file_stop);
+    
+    TFile* report_file = new TFile(fOutput_report.Data(), "RECREATE");
+    report_file->cd();
+    for (size_t i = 0; i < 6; i++)
+    {
+        report_histos[i] = new TH1I(hist_names[i], hist_names[i], 10, 0, 10);
+    }
+    
+    // std::ofstream report_file(fOutput_report.Data());
+    // report_file.open();
     // if you have multiple files enable multiple thread pocessing
     if(fInput_drift_reco.Contains("*")){
         LOG("I","Enabling multiple threading");
@@ -228,53 +332,69 @@ int main(int argc, char* argv[]){
     auto df = RDFUtils::InitDF(chain_drift_reco);
     auto dfC = RDFUtils::AddConstantsToDF(df); // add some columns with usefull constants
     /*
-        APPLY FILTERS:
-           - KeepThisEvent==1 : vertex is in FV
-           - nof_fired_wires > 70
-
+        FILTER:
+           - KeepThisEvent==1 : vertex is in FV has enough minimum hits to be reconstructed
     */
-    LOG("I", "Filter events reconstructed muons with at least 70 fired wires");
-    auto df_filtered = RDFUtils::Filter(dfC, "KeepThisEvent", true);
-
-    auto dfGENIE = RDFUtils::GENIE::AddColumnsFromGENIE(df_filtered);
+    auto dfC_initial_filter = RDFUtils::Filter(dfC, "KeepThisEvent==1",true);
     
-    LOG("I", TString::Format("Filter events is FV volume of %f mm", GeoUtils::DRIFT::FIDUCIAL_CUT).Data());
-    df_filtered = RDFUtils::Filter(dfGENIE, "isInFiducialVolume==1", true);
-    
-    auto dfEDEP = RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(df_filtered);
-    auto dfDigit = RDFUtils::DIGIT::AddColumnsFromDigit(dfEDEP);
-    auto dfReco = RDFUtils::RECO::AddColumnsFromDriftReco(dfDigit);
+    LOG("I", "Adding columns ... ");
 
+    LOG("i", "from GENIE");
+    auto dfGENIE = RDFUtils::GENIE::AddColumnsFromGENIE(dfC_initial_filter);
+
+    LOG("i", "from edepsim");
+    auto dfEDEP = RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(dfGENIE);
+
+    LOG("i", "from digit file");
+    auto dfDIGIT = RDFUtils::DIGIT::AddColumnsFromDigit(dfEDEP);
+
+    LOG("i", "from drift reco file");
+    auto dfReco = RDFUtils::RECO::AddColumnsFromDriftReco(dfDIGIT);
+    dfReco = dfReco.Filter("KeepThisEvent==1");
     dfReco = RDFUtils::DIGIT::GetFilteredTrajectories(dfReco, "ECALactive_trajectories");
-
-    // PRE CUT ______________________________________________________________________________________    
-    LOG("I", "Filter events with at least 70 fired wires");
-    auto dfReco_wires_cut = RDFUtils::Filter(dfReco, "pass_nof_wires_cut", true);
     
-    LOG("I", "Filter events with 1 charged particle in final state");
-    auto dfReco_wires_cut_1cmulti = dfReco_wires_cut.Filter("NofFinalStateChargedParticles==1");
+    // CUT FIDUCIAL VOLUME______________________________________________________________________________________
+    LOG("I", TString::Format("CUT: Filter events is FV volume of %f mm", GeoUtils::DRIFT::FIDUCIAL_CUT).Data());
+    auto df_filtered = RDFUtils::Filter(dfReco, "isInFiducialVolume==1", true);
+    Report(df_filtered, report_file, "FIDUCIAL VOLUME CUT");
+    auto interacting_neutrino_true_E = df_filtered.Histo1D({"interacting nu", "interacting neutrino Energy;[GeV]", 100u, 0., 8.}, "IncomingNeutrino_energy")
+    // df_filtered.Snapshot("preselection", fOutput_preselection.Data(), columns_preselection);
 
-    // SELECTED SIGNAL _______________________________________________________________________________
+    // CUT 70 FIRED WIRES ______________________________________________________________________________________    
+    LOG("I", "CUT: Filter events with at least 70 fired wires"); // 70% events
+    auto dfReco_wires_cut = RDFUtils::Filter(df_filtered, "pass_nof_wires_cut", true);
+    Report(dfReco_wires_cut, report_file, "MINIMUM NOF WIRES ON RECONSTRUCTED MU+");
+    
+    // // CUT 1 FINAL STATE CHARGED PARTICLE _______________________________________________________________________
+    LOG("I", "CUT: Filter events with 1 charged particle in final state");
+    auto dfReco_wires_cut_1cmulti = RDFUtils::Filter(dfReco_wires_cut, "NofFinalStateChargedParticles==1", true);
+    Report(dfReco_wires_cut_1cmulti, report_file, "CHARGE MULTIPLICITY");
+
+    // dfReco_wires_cut_1cmulti.Snapshot("test", "test/test.root", output_columns_event_selection);
+    // dfReco_wires_cut_1cmulti.Snapshot("test_trj", "test/test_trj.root", columns_branch_trj);
+
+    // // SELECTED SIGNAL __________________________________________________________________________________________
     LOG("I", "Writing ouput file: SELECTED SIGNAL");
-    LOG("i", fOutput_selected_signal.Data());
-    LOG("i", fOutput_trj_signal.Data());
-    auto selected_signal = dfReco_wires_cut_1cmulti.Filter("candidate_signal_event == 1");
-    selected_signal.Snapshot("selected_signal", fOutput_selected_signal.Data(), output_columns_event_selection);
-    selected_signal.Snapshot("selected_signal_traj", fOutput_trj_signal.Data(), columns_branch_trj);
+    // LOG("i", fOutput_selected_signal.Data());
+    // LOG("i", fOutput_trj_signal.Data());
+    auto selected_signal = RDFUtils::Filter(dfReco_wires_cut_1cmulti, "candidate_signal_event == 1", true);
+    Report(selected_signal, report_file, "SIGNAL SELECTION");
+    // selected_signal.Snapshot("selected_signal", fOutput_selected_signal.Data(), output_columns_event_selection);
+    // selected_signal.Snapshot("selected_signal_traj", fOutput_trj_signal.Data(), columns_branch_trj);
     
-    // SELECTED BKG __________________________________________________________________________________
-    LOG("I", "Writing ouput file: SELECTED BKG");
-    LOG("i", fOutput_selected_bkg.Data());
-    LOG("i", fOutput_trj_bkg.Data());
-    auto selected_bkg = dfReco_wires_cut_1cmulti.Filter("candidate_signal_event == 0");
-    selected_bkg.Snapshot("selected_bkg", fOutput_selected_bkg.Data(), output_columns_event_selection);
-    selected_bkg.Snapshot("selected_bkg_traj", fOutput_trj_bkg.Data(), columns_branch_trj);
+    // // EXCLUDED FROM SELECTION ___________________________________________________________________________________
+    // LOG("I", "Writing ouput file: SELECTED BKG");
+    // LOG("i", fOutput_selected_bkg.Data());
+    // LOG("i", fOutput_trj_bkg.Data());
+    // auto selected_bkg = dfReco_wires_cut_1cmulti.Filter("candidate_signal_event == 0");
+    // selected_bkg.Snapshot("selected_bkg", fOutput_selected_bkg.Data(), output_columns_event_selection);
+    // selected_bkg.Snapshot("selected_bkg_traj", fOutput_trj_bkg.Data(), columns_branch_trj);
     
-    // NEUTRON CELLS (MC TRUTH) _______________________________________________________________________
+    // // NEUTRON CELLS (MC TRUTH) _______________________________________________________________________
     // LOG("I", "Writing ouput file: CELLS FIRED BY NEUTRON");
     // LOG("i", fOutput_cells.Data());
     // auto complete_cells_fired_by_signal_neutron = RDFUtils::DIGIT::GetInfoCellsFromSignal(dfReco);
-    // complete_cells_fired_by_signal_neutron.Snapshot("nutron_cells", fOutput_cells.Data(), columns_neutron_cells);
-
+    // complete_cells_fired_by_signal_neutron.Snapshot("neutron_cells", fOutput_cells.Data(), columns_neutron_cells);
+    report_file->Write();
     return 0;
 }

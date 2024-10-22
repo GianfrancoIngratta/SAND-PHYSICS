@@ -92,7 +92,7 @@ int main(int argc, char* argv[]){
 
     index = atoi(argv[1]);
     // unsigned int files_per_jobs = 100u;
-    unsigned int files_per_jobs = 10u;
+    unsigned int files_per_jobs = 1000u;
     unsigned int file_start = index * files_per_jobs;
     unsigned int file_stop = index * files_per_jobs + files_per_jobs;
 

@@ -441,15 +441,18 @@ ROOT::VecOps::RVec<int> GetHitTrajectoryId(const ROOT::VecOps::RVec<int>& pmts_h
                                  TG4Event& ev);
 
 template<int PDG>
-ROOT::VecOps::RVec<int> CheckTrajId(const ROOT::VecOps::RVec<int>& track_ids, TG4Event& ev);
-
+ROOT::VecOps::RVec<int> CheckTrajId(const ROOT::VecOps::RVec<int>& track_ids_pmt1,
+                                    const ROOT::VecOps::RVec<int>& track_ids_pmt2,
+                                    TG4Event& ev);
 
 ROOT::VecOps::RVec<double> GetNeutronEKin(const ROOT::VecOps::RVec<int>& track_ids,
                                          const ROOT::VecOps::RVec<int>& is_primary_neutron, 
                                          TG4Event& ev,
                                          const double neutron_mass);
 
-ROOT::VecOps::RVec<TG4Trajectory> GetTrajectories(const ROOT::VecOps::RVec<int>& track_ids, TG4Event& ev);
+ROOT::VecOps::RVec<TG4Trajectory> GetTrajectories(const ROOT::VecOps::RVec<int>& track_ids_pmt1, 
+                                                  const ROOT::VecOps::RVec<int>& track_ids_pmt2,
+                                                  TG4Event& ev);
 
 ROOT::VecOps::RVec<int> ExpandIndex(const ROOT::VecOps::RVec<TG4Trajectory>& trajectories);
 
@@ -587,6 +590,10 @@ ROOT::VecOps::RVec<TVector3> XfromTDC(const ROOT::VecOps::RVec<dg_cell>& cells,
 ROOT::VecOps::RVec<double> TfromTDC(const ROOT::VecOps::RVec<dg_cell>& cells, 
                                     const double calibration_const);
 
+ROOT::VecOps::RVec<int> CheckTDCsConsistency(const ROOT::VecOps::RVec<dg_cell>& cells,
+                                                              const ROOT::VecOps::RVec<TVector3> x_hit_reco, 
+                                                              const ROOT::VecOps::RVec<double> t_hit_reco);
+
 ROOT::VecOps::RVec<double> EfromTDC(const ROOT::VecOps::RVec<dg_cell>& cells,
                                                      const double calibration_const,
                                                      const ROOT::VecOps::RVec<double>& e_true);
@@ -639,8 +646,10 @@ ROOT::VecOps::RVec<double> TimeResiduals(const ROOT::VecOps::RVec<double>& expec
 ROOT::VecOps::RVec<double> SpaceResiduals(const ROOT::VecOps::RVec<TVector3>& expected_x_hit,
                                                            const ROOT::VecOps::RVec<TVector3>& reconstruced_x_hit);
 
-ROOT::VecOps::RVec<int> IsCompatible(const ROOT::VecOps::RVec<double>& space_residuals, 
-                                     const ROOT::VecOps::RVec<double>& time_residuals);
+
+ROOT::VecOps::RVec<int> IsCompatible(const ROOT::VecOps::RVec<double>& space_residuals,
+                                     const ROOT::VecOps::RVec<double>& time_residuals,
+                                     const ROOT::VecOps::RVec<int>& are_tdc_cell_consistent);
 
 ROOT::VecOps::RVec<int> IsCandidateCell(const ROOT::VecOps::RVec<int>& isSpaceCompatible,
                                         const ROOT::VecOps::RVec<double>& t_hit_reco);

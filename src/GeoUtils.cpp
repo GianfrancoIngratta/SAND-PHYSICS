@@ -74,7 +74,7 @@ double GeoUtils::ECAL::TfromTDC(const double tdc1, const double tdc2, const doub
 }
 
 double GeoUtils::ECAL::XfromTDC(const double tdc1, const double tdc2){
-    // vlfb 5.85 [ns/mm]
+    // vlfb 5.85 * 1e-3[ns/mm]
     return 0.5 * (tdc1 - tdc2) / GeoUtils::ECAL::vlfb; // mm
 }
 
