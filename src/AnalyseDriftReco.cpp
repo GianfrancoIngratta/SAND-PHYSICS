@@ -432,11 +432,11 @@ int main(int argc, char* argv[]){
      */
     LOG("I", "Defining HIST STAGE 1");
     // XSEC
-    // auto total_xsex_vs_neutrino_energy                          = df_filtered.Profile1D({"total_xsex_vs_neutrino_energy", "total_xsex_vs_neutrino_energy", 1000u, 0., 50.},"IncomingNeutrino_energy","EvtXSec");
+    auto total_xsex_vs_neutrino_energy                          = df_filtered.Profile1D({"total_xsex_vs_neutrino_energy", "total_xsex_vs_neutrino_energy", 1000u, 0., 50.},"IncomingNeutrino_energy","EvtXSec");
 
-    // auto ccqe_on_H_xsec_vs_neutrino_energy                      = df_filtered.Filter("CCQEonHydrogen==1").Profile1D({"ccqe_on_H_xsec_vs_neutrino_energy", "ccqe_on_H_xsec_vs_neutrino_energy", 1000u, 0., 50.},"IncomingNeutrino_energy","EvtXSec");
+    auto ccqe_on_H_xsec_vs_neutrino_energy                      = df_filtered.Filter("CCQEonHydrogen==1").Profile1D({"ccqe_on_H_xsec_vs_neutrino_energy", "ccqe_on_H_xsec_vs_neutrino_energy", 1000u, 0., 50.},"IncomingNeutrino_energy","EvtXSec");
 
-    // auto ccqe_on_H_xsec_vs_hadronic_K_profile                   = df_filtered.Filter("CCQEonHydrogen==1").Profile1D({"ccqe_on_H_xsec_vs_hadronic_K", "ccqe_on_H_xsec; final state hadronic kinetic E [GeV] ", 100u, 0., 20.},"FinalStateHadronicSystemTotalKinE","EvtXSec");
+    auto ccqe_on_H_xsec_vs_hadronic_K_profile                   = df_filtered.Filter("CCQEonHydrogen==1").Profile1D({"ccqe_on_H_xsec_vs_hadronic_K", "ccqe_on_H_xsec; final state hadronic kinetic E [GeV] ", 100u, 0., 20.},"FinalStateHadronicSystemTotalKinE","EvtXSec");
 
     auto ccqe_on_H_xsec_vs_hadronic_K                           = df_filtered.Filter("CCQEonHydrogen==1").Graph("FinalStateHadronicSystemTotalKinE","EvtXSec");
 
@@ -447,9 +447,9 @@ int main(int argc, char* argv[]){
 
     auto fs_hadron_syst_Kin                                     = df_filtered.Histo1D({"fs_hadron_syst_Kin_stage1", "final state hadron system true K;[GeV]", 100u, 0., 2.}, "PrimaryStateHadronicSystemTotalKinE");
     
-    /***
-     * STAGE: 2 _____________________________________________________________________________________________________________________________________________________________________________________________
-     */
+    // /***
+    //  * STAGE: 2 _____________________________________________________________________________________________________________________________________________________________________________________________
+    //  */
     LOG("I", "Defining HIST STAGE 2");
     // TRUE
     auto interacting_neutrino_true_E_cut_wires                  = dfReco_wires_cut.Histo1D({"interacting_nu_stage2", "interacting neutrino true Energy;[GeV]", 100u, 0., 8.}, "IncomingNeutrino_energy");
@@ -458,9 +458,9 @@ int main(int argc, char* argv[]){
 
     auto fs_hadron_syst_Kin_cut_wires                           = dfReco_wires_cut.Histo1D({"fs_hadron_syst_Kin_stage2", "final state hadron system true K;[GeV]", 100u, 0., 2.}, "PrimaryStateHadronicSystemTotalKinE");
     
-    /***
-     * STAGE: 3 _____________________________________________________________________________________________________________________________________________________________________________________________
-     */
+    // /***
+    //  * STAGE: 3 _____________________________________________________________________________________________________________________________________________________________________________________________
+    //  */
     // TRUE
     LOG("I", "Defining HIST STAGE 3");
     auto interacting_neutrino_true_E_charge_multi               = dfReco_wires_cut_1cmulti.Histo1D({"interacting_nu_stage3", "interacting neutrino true Energy;[GeV]", 100u, 0., 8.}, "IncomingNeutrino_energy");
@@ -470,85 +470,85 @@ int main(int argc, char* argv[]){
     auto fs_hadron_syst_Kin_charge_multi                        = dfReco_wires_cut_1cmulti.Histo1D({"fs_hadron_syst_Kin_stage3", "final state hadron system true K;[GeV]", 100u, 0., 2.}, "PrimaryStateHadronicSystemTotalKinE");
 
     // RECO
-    auto antimuon_reco_E_charge_multi                           = dfReco_wires_cut_1cmulti.Histo1D({"antimuon_reco_stage3", " #mu+ reco Energy;[GeV]", 100u, 0., 8.}, "Antimuon_reconstructed_P4_GeV");
+    auto antimuon_reco_E_charge_multi                           = dfReco_wires_cut_1cmulti.Histo1D({"antimuon_reco_stage3", " #mu+ reco Energy;[GeV]", 100u, 0., 8.}, "Antimuon_reconstructed_energy");
 
     /***
      * STAGE: 4 _____________________________________________________________________________________________________________________________________________________________________________________________
      */
     // TRUE
     LOG("I", "Defining HIST STAGE 4");
-    // auto interacting_neutrino_true_E_selection                  = selected_signal.Histo1D({"interacting_nu_stage4", "interacting neutrino true Energy;[GeV]", 100u, 0., 8.}, "IncomingNeutrino_energy");
+    auto interacting_neutrino_true_E_selection                  = selected_signal.Histo1D({"interacting_nu_stage4", "interacting neutrino true Energy;[GeV]", 100u, 0., 8.}, "IncomingNeutrino_energy");
     
-    // auto fs_hadron_syst_Kin_selection                           = selected_signal.Histo1D({"fs_hadron_syst_Kin_stage4", "final state hadron system true K;[GeV]", 100u, 0., 2.}, "PrimaryStateHadronicSystemTotalKinE");
+    auto fs_hadron_syst_Kin_selection                           = selected_signal.Histo1D({"fs_hadron_syst_Kin_stage4", "final state hadron system true K;[GeV]", 100u, 0., 2.}, "PrimaryStateHadronicSystemTotalKinE");
     
-    // auto antimuon_true_E_selection                              = selected_signal.Histo1D({"antimuon_stage4", "antimuon true Energy ;[GeV]", 100u, 0., 8.}, "FinalStateLepton_energy");
+    auto antimuon_true_E_selection                              = selected_signal.Histo1D({"antimuon_stage4", "antimuon true Energy ;[GeV]", 100u, 0., 8.}, "FinalStateLepton_energy");
 
     // RECO
-    // auto interacting_antimuon_reco_E_selection                  = selected_signal.Histo1D({"antimuon_reco_stage4", " #mu+ reco Energy;[GeV]", 100u, 0., 8.}, "Antimuon_reconstructed_P4_GeV");
+    auto interacting_antimuon_reco_E_selection                  = selected_signal.Histo1D({"antimuon_reco_stage4", " #mu+ reco Energy;[GeV]", 100u, 0., 8.}, "Antimuon_reconstructed_energy");
     
-    // auto interacting_neutrino_reco_E_selection                  = selected_signal.Histo1D({"interacting_nu_reco_stage4", "interacting neutrino from #mu+ reco Energy;[GeV]", 100u, 0., 8.}, "Neutrino_reconstructed_P4_GeV");
+    auto interacting_neutrino_reco_E_selection                  = selected_signal.Histo1D({"interacting_nu_reco_stage4", "interacting neutrino from #mu+ reco Energy;[GeV]", 100u, 0., 8.}, "Neutrino_reconstructed_energy_GeV");
     
-    // auto interacting_neutrino_reco_E_graphite_selection         = selected_signal
-    //                                                                     .Filter(TString::Format("InteractionVolume_short == \"%s\"", "C_Target").Data())
-    //                                                                     .Histo1D({"interacting_nu_reco_graphite_stage4", "interacting neutrino reco E (GRAPHITE); [GeV]", 100u, 0., 8.}, "Neutrino_reconstructed_P4_GeV");
+    auto interacting_neutrino_reco_E_graphite_selection         = selected_signal
+                                                                        .Filter(TString::Format("InteractionVolume_short == \"%s\"", "C_Target").Data())
+                                                                        .Histo1D({"interacting_nu_reco_graphite_stage4", "interacting neutrino reco E (GRAPHITE); [GeV]", 100u, 0., 8.}, "Neutrino_reconstructed_energy_GeV");
     
-    // auto interacting_neutrino_reco_E_plastic_selection           = selected_signal
-    //                                                                     .Filter(TString::Format("InteractionVolume_short == \"%s\"", "C3H6_Target").Data())
-    //                                                                     .Histo1D({"interacting_nu_reco_plastic_stage4", "interacting neutrino reco E (PLASTIC); [GeV]", 100u, 0., 8.}, "Neutrino_reconstructed_P4_GeV");
+    auto interacting_neutrino_reco_E_plastic_selection           = selected_signal
+                                                                        .Filter(TString::Format("InteractionVolume_short == \"%s\"", "C3H6_Target").Data())
+                                                                        .Histo1D({"interacting_nu_reco_plastic_stage4", "interacting neutrino reco E (PLASTIC); [GeV]", 100u, 0., 8.}, "Neutrino_reconstructed_energy_GeV");
     
-    // auto interacting_neutrino_reco_E_carbon_selection           = selected_signal
-    //                                                                     .Filter(TString::Format("InteractionTarget == \"%s\"", "C12").Data())
-    //                                                                     .Histo1D({"interacting_nu_reco_int_on_C12_stage4", "interacting neutrino reco E (interaction on Carbon); [GeV]", 100u, 0., 8.}, "Neutrino_reconstructed_P4_GeV");
+    auto interacting_neutrino_reco_E_carbon_selection           = selected_signal
+                                                                        .Filter(TString::Format("InteractionTarget == \"%s\"", "C12").Data())
+                                                                        .Histo1D({"interacting_nu_reco_int_on_C12_stage4", "interacting neutrino reco E (interaction on Carbon); [GeV]", 100u, 0., 8.}, "Neutrino_reconstructed_energy_GeV");
     
-    // auto interacting_neutrino_reco_E_proton_selection           = selected_signal
-    //                                                                     .Filter(TString::Format("InteractionTarget == \"%s\"", "proton").Data())
-    //                                                                     .Histo1D({"interacting_nu_reco_int_on_proton_stage4", "interacting neutrino reco E (interaction on proton); [GeV]", 100u, 0., 8.}, "Neutrino_reconstructed_P4_GeV");
+    auto interacting_neutrino_reco_E_proton_selection           = selected_signal
+                                                                        .Filter(TString::Format("InteractionTarget == \"%s\"", "proton").Data())
+                                                                        .Histo1D({"interacting_nu_reco_int_on_proton_stage4", "interacting neutrino reco E (interaction on proton); [GeV]", 100u, 0., 8.}, "Neutrino_reconstructed_energy_GeV");
 
-    // auto interacting_neutrino_reco_E_plastic_proton_selection   = selected_signal
-    //                                                                     .Filter(TString::Format("InteractionVolume_short == \"%s\"", "C3H6_Target").Data())
-    //                                                                     .Filter(TString::Format("InteractionTarget == \"%s\"", "proton").Data())
-    //                                                                     .Histo1D({"interacting_neutrino_reco_E_plastic_proton_selection", "interacting neutrino reco E (interaction on proton of plastic); [GeV]", 100u, 0., 8.}, "Neutrino_reconstructed_P4_GeV");
+    auto interacting_neutrino_reco_E_plastic_proton_selection   = selected_signal
+                                                                        .Filter(TString::Format("InteractionVolume_short == \"%s\"", "C3H6_Target").Data())
+                                                                        .Filter(TString::Format("InteractionTarget == \"%s\"", "proton").Data())
+                                                                        .Histo1D({"interacting_neutrino_reco_E_plastic_proton_selection", "interacting neutrino reco E (interaction on proton of plastic); [GeV]", 100u, 0., 8.}, "Neutrino_reconstructed_energy_GeV");
 
-    // auto interacting_neutrino_reco_E_plastic_carbon_selection   = selected_signal
-    //                                                                     .Filter(TString::Format("InteractionVolume_short == \"%s\"", "C_Target").Data())
-    //                                                                     .Filter(TString::Format("InteractionTarget == \"%s\"", "C12").Data())
-    //                                                                     .Histo1D({"interacting_neutrino_reco_E_plastic_carbon_selection", "interacting neutrino reco E (interaction on C12 of plastic); [GeV]", 100u, 0., 8.}, "Neutrino_reconstructed_P4_GeV");
+    auto interacting_neutrino_reco_E_plastic_carbon_selection   = selected_signal
+                                                                        .Filter(TString::Format("InteractionVolume_short == \"%s\"", "C_Target").Data())
+                                                                        .Filter(TString::Format("InteractionTarget == \"%s\"", "C12").Data())
+                                                                        .Histo1D({"interacting_neutrino_reco_E_plastic_carbon_selection", "interacting neutrino reco E (interaction on C12 of plastic); [GeV]", 100u, 0., 8.}, "Neutrino_reconstructed_energy_GeV");
+
+    TProfile* profiles[] = {
+        total_xsex_vs_neutrino_energy.GetPtr(),
+        ccqe_on_H_xsec_vs_neutrino_energy.GetPtr(),
+        ccqe_on_H_xsec_vs_hadronic_K_profile.GetPtr()
+    };
+
     std::cout << __LINE__ << "\n";
-    // TProfile* profiles[] = {
-    //     total_xsex_vs_neutrino_energy.GetPtr(),
-    //     // ccqe_on_H_xsec_vs_neutrino_energy.GetPtr(),
-    //     // ccqe_on_H_xsec_vs_hadronic_K_profile.GetPtr()
-    // };
-
-    // std::cout << __LINE__ << "\n";
-    // TGraph* graphs[] = {
-    //     ccqe_on_H_xsec_vs_hadronic_K.GetPtr()
-    // };
+    TGraph* graphs[] = {
+        ccqe_on_H_xsec_vs_hadronic_K.GetPtr()
+    };
 
     TH1D* histos[] = {
         // TRUE
-        // interacting_neutrino_true_E.GetPtr(),
+        interacting_neutrino_true_E.GetPtr(),
         interacting_neutrino_true_E_cut_wires.GetPtr(),
-        // interacting_neutrino_true_E_charge_multi.GetPtr(),
-        // // interacting_neutrino_true_E_selection.GetPtr(),
-        // antimuon_true_E.GetPtr(),
-        // antimuon_true_E_cut_wires.GetPtr(),
-        // antimuon_true_E_charge_multi.GetPtr(),
-        // // antimuon_true_E_selection.GetPtr(),
-        // fs_hadron_syst_Kin.GetPtr(),
-        // fs_hadron_syst_Kin_cut_wires.GetPtr(),
-        // fs_hadron_syst_Kin_charge_multi.GetPtr(),
-        // fs_hadron_syst_Kin_selection.GetPtr(),
+        interacting_neutrino_true_E_charge_multi.GetPtr(),
+        interacting_neutrino_true_E_selection.GetPtr(),
+        antimuon_true_E.GetPtr(),
+        antimuon_true_E_cut_wires.GetPtr(),
+        antimuon_true_E_charge_multi.GetPtr(),
+        antimuon_true_E_selection.GetPtr(),
+        fs_hadron_syst_Kin.GetPtr(),
+        fs_hadron_syst_Kin_cut_wires.GetPtr(),
+        fs_hadron_syst_Kin_charge_multi.GetPtr(),
+        fs_hadron_syst_Kin_selection.GetPtr(),
         // RECO
-        // antimuon_reco_E_charge_multi.GetPtr(),
-        // interacting_antimuon_reco_E_selection.GetPtr(),
-        // interacting_neutrino_reco_E_selection.GetPtr(),
-        // interacting_neutrino_reco_E_graphite_selection.GetPtr(),
-        // interacting_neutrino_reco_E_plastic_selection.GetPtr(),
-        // interacting_neutrino_reco_E_carbon_selection.GetPtr(),
-        // interacting_neutrino_reco_E_proton_selection.GetPtr(),
-        // interacting_neutrino_reco_E_plastic_proton_selection.GetPtr(),
-        // interacting_neutrino_reco_E_plastic_carbon_selection.GetPtr()
+        antimuon_reco_E_charge_multi.GetPtr(),
+        interacting_antimuon_reco_E_selection.GetPtr(),
+        interacting_neutrino_reco_E_selection.GetPtr(),
+        interacting_neutrino_reco_E_graphite_selection.GetPtr(),
+        interacting_neutrino_reco_E_plastic_selection.GetPtr(),
+        interacting_neutrino_reco_E_carbon_selection.GetPtr(),
+        interacting_neutrino_reco_E_proton_selection.GetPtr(),
+        interacting_neutrino_reco_E_plastic_proton_selection.GetPtr(),
+        interacting_neutrino_reco_E_plastic_carbon_selection.GetPtr()
     };
     
     LOG("I", "WRITING HISTOS ON FILE");
@@ -558,18 +558,17 @@ int main(int argc, char* argv[]){
         h->Write();
     }
     
-    // std::cout << __LINE__ << "\n";
-    // for (auto& p : profiles)
-    // {
-    //     report_file->cd();
-    //     p->Write();
-    // }
+    for (auto& p : profiles)
+    {
+        report_file->cd();
+        p->Write();
+    }
     
-    // for (auto& g : graphs)
-    // {
-    //     report_file->cd();
-    //     g->Write();
-    // }
+    for (auto& g : graphs)
+    {
+        report_file->cd();
+        g->Write();
+    }
 
     report_file->cd();
     report_file->Write();
