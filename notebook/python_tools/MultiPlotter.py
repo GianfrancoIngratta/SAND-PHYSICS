@@ -30,20 +30,29 @@ class MultiPlotter:
                   ylabel: str = None,
                   xlim: tuple = None,
                   ylim: tuple = None,
-                  ticks: np.ndarray = None):
+                  ticks: np.ndarray = None,
+                  **kwargs):
         """
         Plots a 1D histogram on the current axis.
 
         Parameters:
         - data (np.ndarray): Data to plot in the histogram.
         - bins (np.ndarray): Bins of the histogram.
+        - weights (np.ndarray): Weights for the histogram bins.
         - log_scale (bool): Whether to use a logarithmic scale for the y-axis.
         - label (str): Label of the histogram.
+        - color (str): Color of the histogram line.
+        - xlabel (str): Label for the x-axis.
+        - ylabel (str): Label for the y-axis.
+        - xlim (tuple): Limits for the x-axis.
+        - ylim (tuple): Limits for the y-axis.
+        - ticks (np.ndarray): Tick values for the x-axis.
+        - **kwargs: Additional keyword arguments to pass to matplotlib's hist function.
         """
         ax = self.axes[self.current_ax]
         if weights is None:
             weights = np.ones(len(data))
-        ax.hist(data, bins=bins, weights=weights, log=log_scale, histtype='step', label=label, color=color)
+        ax.hist(data, bins=bins, weights=weights, log=log_scale, histtype='step', label=label, color=color, **kwargs)
         self._apply_formatting(ax, xlabel, ylabel, xlim, ylim, ticks)
 
     def _apply_formatting(self, ax, xlabel=None, ylabel=None, xlim=None, ylim=None, ticks=None):

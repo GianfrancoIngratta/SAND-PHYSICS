@@ -131,8 +131,12 @@ class Converter:
         df_list = []
         
         for file_name in self.file_names:
-            tree = upr.open(file_name)[self.tree_name]
-            df = tree.arrays(columns, library='pd')
+            try:
+                tree = upr.open(file_name)[self.tree_name]
+                df = tree.arrays(columns, library='pd')
+            except KeyError:
+                print(f"\033[91m {self.tree_name} not found in {file_name}. Skipping file \033[0m")
+                continue
             
             if not isinstance(df, pd.DataFrame):
                 print(f"Result from file {file_name} is not a DataFrame. Here's the tuple returned:", df)

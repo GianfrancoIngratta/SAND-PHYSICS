@@ -6,6 +6,10 @@
 #include "TFile.h"
 
 TGeoManager* geo = nullptr;
+/***
+ * SCALE: mass ratio carbon_in_graphite / carbon_in_plastic
+*/
+const double scale_factor = 4.084;
 
 std::vector<std::string> columns_preselection = {
     /*
@@ -288,7 +292,7 @@ int main(int argc, char* argv[]){
     }
 
     index = atoi(argv[1]);
-    unsigned int files_per_jobs = 2u;
+    unsigned int files_per_jobs = 100u;
     unsigned int file_start = index * files_per_jobs;
     unsigned int file_stop = index * files_per_jobs + files_per_jobs;
 
@@ -314,8 +318,12 @@ int main(int argc, char* argv[]){
     auto fOutput_trj_signal = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_signal.trj.root",FOLDER_SELECTED_SIGNAL, file_start, file_stop);
     auto fOutput_trj_bkg = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_bkg.trj.root",FOLDER_SELECTED_SIGNAL, file_start, file_stop);
     auto fOutput_report = TString::Format("%sreports/events-in-SANDtracker.%d.to.%d.report.root", FOLDER_SELECTED_SIGNAL, file_start, file_stop);
+    auto fOutput_report_txt = TString::Format("%sreports/events-in-SANDtracker.%d.to.%d.report.txt", FOLDER_SELECTED_SIGNAL, file_start, file_stop);
+    auto fOutput_preunfold = TString::Format("%sreports/events-in-SANDtracker.%d.to.%d.preunfold.root", FOLDER_SELECTED_SIGNAL, file_start, file_stop);
     
     TFile* report_file = new TFile(fOutput_report.Data(), "RECREATE");
+    std::ofstream report_file_txt(fOutput_report_txt.Data());
+    
     report_file->cd();
     for (size_t i = 0; i < 6; i++)
     {
@@ -373,6 +381,7 @@ int main(int argc, char* argv[]){
     auto df_filtered = RDFUtils::Filter(dfReco, "isInFiducialVolume==1", true);
     
     Report(df_filtered, "FIDUCIAL VOLUME CUT");
+    Report(df_filtered, report_file_txt, "FIDUCIAL VOLUME CUT");
     // df_filtered.Snapshot("preselection", fOutput_preselection.Data(), columns_preselection);
 
     /***
@@ -383,6 +392,7 @@ int main(int argc, char* argv[]){
     auto dfReco_wires_cut = RDFUtils::Filter(df_filtered, "pass_nof_wires_cut", true);
     
     Report(dfReco_wires_cut, "MINIMUM NOF WIRES ON RECONSTRUCTED MU+");
+    Report(dfReco_wires_cut, report_file_txt, "MINIMUM NOF WIRES ON RECONSTRUCTED MU+");
     
     /***
      * STAGE: 1 FINAL STATE CHARGED PARTICLE _________________________________________________________________________________________________________________________________________________________________________
@@ -392,6 +402,7 @@ int main(int argc, char* argv[]){
     auto dfReco_wires_cut_1cmulti = RDFUtils::Filter(dfReco_wires_cut, "NofFinalStateChargedParticles==1", true);
     
     Report(dfReco_wires_cut_1cmulti, "CHARGE MULTIPLICITY");
+    Report(dfReco_wires_cut_1cmulti, report_file_txt, "CHARGE MULTIPLICITY");
 
     // dfReco_wires_cut_1cmulti.Snapshot("test", "test/test.root", output_columns_event_selection);
     // dfReco_wires_cut_1cmulti.Snapshot("test_trj", "test/test_trj.root", columns_branch_trj);
@@ -404,8 +415,15 @@ int main(int argc, char* argv[]){
     // LOG("i", fOutput_trj_signal.Data());
     
     auto selected_signal = RDFUtils::Filter(dfReco_wires_cut_1cmulti, "candidate_signal_event == 1", true);
-    
+    auto selected_signal_on_graphite = RDFUtils::Filter(selected_signal, TString::Format("InteractionVolume_short == \"%s\"", "C_Target").Data(), true);
+    auto selected_signal_on_plastic = RDFUtils::Filter(selected_signal, TString::Format("InteractionVolume_short == \"%s\"", "C3H6_Target").Data(), true);
     Report(selected_signal, "SIGNAL SELECTION");
+    Report(selected_signal_on_graphite, "SIGNAL SELECTION [ON GRAPHITE]");
+    Report(selected_signal_on_plastic, "SIGNAL SELECTION [ON PLASTIC]");
+
+    Report(selected_signal, report_file_txt, "SIGNAL SELECTION");
+    Report(selected_signal_on_graphite, report_file_txt, "SIGNAL SELECTION [ON GRAPHITE]");
+    Report(selected_signal_on_plastic, report_file_txt, "SIGNAL SELECTION [ON PLASTIC]");
     // selected_signal.Snapshot("selected_signal", fOutput_selected_signal.Data(), output_columns_event_selection);
     // selected_signal.Snapshot("selected_signal_traj", fOutput_trj_signal.Data(), columns_branch_trj);
     
@@ -483,18 +501,34 @@ int main(int argc, char* argv[]){
     
     auto antimuon_true_E_selection                              = selected_signal.Histo1D({"antimuon_stage4", "antimuon true Energy ;[GeV]", 100u, 0., 8.}, "FinalStateLepton_energy");
 
-    // RECO
+    /***
+     * STAGE: 4 _____________________________________________________________________________________________________________________________________________________________________________________________
+     */
+
     auto interacting_antimuon_reco_E_selection                  = selected_signal.Histo1D({"antimuon_reco_stage4", " #mu+ reco Energy;[GeV]", 100u, 0., 8.}, "Antimuon_reconstructed_energy");
     
     auto interacting_neutrino_reco_E_selection                  = selected_signal.Histo1D({"interacting_nu_reco_stage4", "interacting neutrino from #mu+ reco Energy;[GeV]", 100u, 0., 8.}, "Neutrino_reconstructed_energy_GeV");
     
-    auto interacting_neutrino_reco_E_graphite_selection         = selected_signal
-                                                                        .Filter(TString::Format("InteractionVolume_short == \"%s\"", "C_Target").Data())
-                                                                        .Histo1D({"interacting_nu_reco_graphite_stage4", "interacting neutrino reco E (GRAPHITE); [GeV]", 100u, 0., 8.}, "Neutrino_reconstructed_energy_GeV");
+    auto interacting_neutrino_reco_E_selected_signal_on_graphite = selected_signal_on_graphite.Histo1D({"interacting_nu_reco_graphite_stage5a", "interacting neutrino reco E (GRAPHITE); [GeV]", 100u, 0., 8.}, "Neutrino_reconstructed_energy_GeV");
     
-    auto interacting_neutrino_reco_E_plastic_selection           = selected_signal
-                                                                        .Filter(TString::Format("InteractionVolume_short == \"%s\"", "C3H6_Target").Data())
-                                                                        .Histo1D({"interacting_nu_reco_plastic_stage4", "interacting neutrino reco E (PLASTIC); [GeV]", 100u, 0., 8.}, "Neutrino_reconstructed_energy_GeV");
+    auto interacting_neutrino_reco_E_selected_signal_on_plastic = selected_signal_on_plastic.Histo1D({"interacting_nu_reco_plastic_stage5b", "interacting neutrino reco E (PLASTIC); [GeV]", 100u, 0., 8.}, "Neutrino_reconstructed_energy_GeV");
+    
+    /***
+     * ANALYSIS: SOLID HYDROGEN TECNIQUE
+     */
+
+    TH1D* interacting_neutrino_reco_E_selected_signal_on_H = interacting_neutrino_reco_E_selected_signal_on_plastic.GetPtr();
+    interacting_neutrino_reco_E_selected_signal_on_H->Sumw2();
+    interacting_neutrino_reco_E_selected_signal_on_H->Add(interacting_neutrino_reco_E_selected_signal_on_graphite.GetPtr(), - scale_factor);
+    interacting_neutrino_reco_E_selected_signal_on_H->SetName("interacting_neutrino_reco_E_selected_signal_on_H");
+    interacting_neutrino_reco_E_selected_signal_on_H->SetTitle("interacting_neutrino_reco_E_selected_signal_on_H");
+    // auto interacting_neutrino_reco_E_graphite_selection         = selected_signal
+    //                                                                     .Filter(TString::Format("InteractionVolume_short == \"%s\"", "C_Target").Data())
+    //                                                                     .Histo1D({"interacting_nu_reco_graphite_stage4", "interacting neutrino reco E (GRAPHITE); [GeV]", 100u, 0., 8.}, "Neutrino_reconstructed_energy_GeV");
+    
+    // auto interacting_neutrino_reco_E_plastic_selection           = selected_signal
+    //                                                                     .Filter(TString::Format("InteractionVolume_short == \"%s\"", "C3H6_Target").Data())
+    //                                                                     .Histo1D({"interacting_nu_reco_plastic_stage4", "interacting neutrino reco E (PLASTIC); [GeV]", 100u, 0., 8.}, "Neutrino_reconstructed_energy_GeV");
     
     auto interacting_neutrino_reco_E_carbon_selection           = selected_signal
                                                                         .Filter(TString::Format("InteractionTarget == \"%s\"", "C12").Data())
@@ -520,7 +554,6 @@ int main(int argc, char* argv[]){
         ccqe_on_H_xsec_vs_hadronic_K_profile.GetPtr()
     };
 
-    std::cout << __LINE__ << "\n";
     TGraph* graphs[] = {
         ccqe_on_H_xsec_vs_hadronic_K.GetPtr()
     };
@@ -543,12 +576,15 @@ int main(int argc, char* argv[]){
         antimuon_reco_E_charge_multi.GetPtr(),
         interacting_antimuon_reco_E_selection.GetPtr(),
         interacting_neutrino_reco_E_selection.GetPtr(),
-        interacting_neutrino_reco_E_graphite_selection.GetPtr(),
-        interacting_neutrino_reco_E_plastic_selection.GetPtr(),
+        // STAGE 4
         interacting_neutrino_reco_E_carbon_selection.GetPtr(),
         interacting_neutrino_reco_E_proton_selection.GetPtr(),
         interacting_neutrino_reco_E_plastic_proton_selection.GetPtr(),
-        interacting_neutrino_reco_E_plastic_carbon_selection.GetPtr()
+        interacting_neutrino_reco_E_plastic_carbon_selection.GetPtr(),
+        //  STAGE 5
+        interacting_neutrino_reco_E_selected_signal_on_graphite.GetPtr(),
+        interacting_neutrino_reco_E_selected_signal_on_plastic.GetPtr(),
+        interacting_neutrino_reco_E_selected_signal_on_H,
     };
     
     LOG("I", "WRITING HISTOS ON FILE");
@@ -572,6 +608,20 @@ int main(int argc, char* argv[]){
 
     report_file->cd();
     report_file->Write();
+
+    /***
+     * UNFOLD:
+     */
+    df_filtered.Snapshot("preunfold", fOutput_preunfold.Data(), {
+                                                                    "CCQEonHydrogen",
+                                                                    "NofFinalStateChargedParticles",
+                                                                    "pass_nof_wires_cut",
+                                                                    "candidate_signal_event", // 
+                                                                    "InteractionTarget",
+                                                                    "InteractionVolume_short",
+                                                                    "IncomingNeutrino_energy",
+                                                                    "Neutrino_reconstructed_energy_GeV",
+                                                                    });
     return 0;
 }
 
