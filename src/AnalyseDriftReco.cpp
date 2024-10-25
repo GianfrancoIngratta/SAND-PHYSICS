@@ -285,41 +285,60 @@ void Report(ROOT::RDF::RNode& input_df, const char* report_stage){
 
 //___________________________________________________________________
 int main(int argc, char* argv[]){
-    unsigned int index;
+    
+    // unsigned int production; // 0 to 42
+    unsigned int run_start; // 0 to 4300
+    
     if(argc != 2){
         LOG("W", "One input number needed to run the executable");
         throw "";
     }
 
-    index = atoi(argv[1]);
-    unsigned int files_per_jobs = 100u;
-    unsigned int file_start = index * files_per_jobs;
-    unsigned int file_stop = index * files_per_jobs + files_per_jobs;
+    // production = atoi(argv[1]);
+    run_start = atoi(argv[1]);
+    unsigned int run_per_production = 10u;
+    uint production = run_start / 100;
+    unsigned int file_start = run_start * run_per_production;
+    unsigned int file_stop = file_start + run_per_production;
 
-    LOG("I", TString::Format("Analyze production from file %d to file %d", file_start, file_stop).Data());
+    LOG("I", TString::Format("Analyze production %d from file %d to file %d", production, file_start, file_stop).Data());
     
     LOG("I", "Reading geometry");
     geo = TGeoManager::Import("/storage/gpfs_data/neutrino/users/gi/dunendggd/SAND_opt3_DRIFT1.root");
 
-    auto FOLDER_PRODUCTION = "/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/";
-    auto FOLDER_ECAL_CELLS = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/CompleteCells_neutron_signal/";
-    auto FOLDER_PRESELECTION = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/antinumu_CCQE_on_H_like/Preselection/";
-    auto FOLDER_SELECTED_SIGNAL = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/antinumu_CCQE_on_H_like/";
+    auto FOLDER_PRODUCTION = TString::Format("/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/production_%04d/", production);
+    // auto FOLDER_ECAL_CELLS = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/CompleteCells_neutron_signal/";
+    // auto FOLDER_PRESELECTION = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/antinumu_CCQE_on_H_like/Preselection/";
+    // auto FOLDER_SELECTED_SIGNAL = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/antinumu_CCQE_on_H_like/";
 
-    auto fInput_genie = TString::Format("%sevents-in-SANDtracker.*.gtrac.root", FOLDER_PRODUCTION);
-    auto fInput_edep = TString::Format("%sevents-in-SANDtracker.*.edep-sim.root", FOLDER_PRODUCTION);
-    auto fInput_digit = TString::Format("%sevents-in-SANDtracker.*.ecal-digit.root", FOLDER_PRODUCTION);
-    auto fInput_drift_reco = TString::Format("%sevents-in-SANDtracker.*.recostruction.NLLmethod.root", FOLDER_PRODUCTION);
+    /***
+     * INPUT:
+     * 
+    */
+    auto fInput_genie = TString::Format("%srun_*/events-in-SANDtracker.*.gtrac.root", FOLDER_PRODUCTION.Data());
+    auto fInput_edep = TString::Format("%srun_*/events-in-SANDtracker.*.edep-sim.root", FOLDER_PRODUCTION.Data());
+    auto fInput_digit = TString::Format("%srun_*/events-in-SANDtracker.*.ecal-digit.root", FOLDER_PRODUCTION.Data());
+    auto fInput_drift_reco = TString::Format("%srun_*/events-in-SANDtracker.*.recostruction.NLLmethod.root", FOLDER_PRODUCTION.Data());
+    /***
+     * OUTPUT:
+     * 
+    */
+    auto fOutput_preselection = TString::Format("%sevents-in-SANDtracker.%d.to.%d.preselection.root", FOLDER_PRODUCTION.Data(), file_start, file_stop-1);
+    auto fOutput_selected_signal = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_signal.root", FOLDER_PRODUCTION.Data(), file_start, file_stop-1);
+    auto fOutput_selected_bkg = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_bkg.root", FOLDER_PRODUCTION.Data(), file_start, file_stop-1);
+    auto fOutput_preunfold = TString::Format("%spreunfold/events-in-SANDtracker.%d.to.%d.preunfold.root", FOLDER_PRODUCTION.Data(), file_start, file_stop-1);
+    auto fOutput_report = TString::Format("%sevent_selection/events-in-SANDtracker.%d.to.%d.report.root", FOLDER_PRODUCTION.Data(), file_start, file_stop-1);
+    auto fOutput_report_txt = TString::Format("%sevent_selection/events-in-SANDtracker.%d.to.%d.report.txt", FOLDER_PRODUCTION.Data(), file_start, file_stop-1);
 
-    auto fOutput_cells = TString::Format("%sevents-in-SANDtracker.%d.to.%d.cells_neutron.root",FOLDER_ECAL_CELLS, file_start, file_stop);
-    auto fOutput_preselection = TString::Format("%sevents-in-SANDtracker.%d.to.%d.preselection.root", FOLDER_PRESELECTION, file_start, file_stop);
-    auto fOutput_selected_signal = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_signal.root", FOLDER_SELECTED_SIGNAL, file_start, file_stop);
-    auto fOutput_selected_bkg = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_bkg.root",FOLDER_SELECTED_SIGNAL, file_start, file_stop);
-    auto fOutput_trj_signal = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_signal.trj.root",FOLDER_SELECTED_SIGNAL, file_start, file_stop);
-    auto fOutput_trj_bkg = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_bkg.trj.root",FOLDER_SELECTED_SIGNAL, file_start, file_stop);
-    auto fOutput_report = TString::Format("%sreports/events-in-SANDtracker.%d.to.%d.report.root", FOLDER_SELECTED_SIGNAL, file_start, file_stop);
-    auto fOutput_report_txt = TString::Format("%sreports/events-in-SANDtracker.%d.to.%d.report.txt", FOLDER_SELECTED_SIGNAL, file_start, file_stop);
-    auto fOutput_preunfold = TString::Format("%sreports/events-in-SANDtracker.%d.to.%d.preunfold.root", FOLDER_SELECTED_SIGNAL, file_start, file_stop);
+    // auto fOutput_cells = TString::Format("%sevents-in-SANDtracker.%d.to.%d.cells_neutron.root",FOLDER_ECAL_CELLS, file_start, file_stop);
+    // auto fOutput_preselection = TString::Format("%sevents-in-SANDtracker.%d.to.%d.preselection.root", FOLDER_PRESELECTION, file_start, file_stop);
+    // auto fOutput_selected_signal = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_signal.root", FOLDER_SELECTED_SIGNAL, file_start, file_stop);
+    // auto fOutput_selected_bkg = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_bkg.root",FOLDER_SELECTED_SIGNAL, file_start, file_stop);
+    // auto fOutput_trj_signal = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_signal.trj.root",FOLDER_SELECTED_SIGNAL, file_start, file_stop);
+    // auto fOutput_trj_bkg = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_bkg.trj.root",FOLDER_SELECTED_SIGNAL, file_start, file_stop);
+    // auto fOutput_report = TString::Format("%sreports/events-in-SANDtracker.%d.to.%d.report.root", FOLDER_SELECTED_SIGNAL, file_start, file_stop);
+    // auto fOutput_report_txt = TString::Format("%sreports/events-in-SANDtracker.%d.to.%d.report.txt", FOLDER_SELECTED_SIGNAL, file_start, file_stop);
+    // auto fOutput_preunfold = TString::Format("%sreports/events-in-SANDtracker.%d.to.%d.preunfold.root", FOLDER_SELECTED_SIGNAL, file_start, file_stop);
     
     TFile* report_file = new TFile(fOutput_report.Data(), "RECREATE");
     std::ofstream report_file_txt(fOutput_report_txt.Data());
