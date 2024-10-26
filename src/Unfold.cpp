@@ -6,9 +6,13 @@
 
 int Unfold(){
     
-    auto folder_reports = TString::Format("/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/antinumu_CCQE_on_H_like/reports/");
-    auto index = 0u;
-    unsigned int files_per_jobs = 100u;
+    uint run_start = 101; // production_0001, run_1000 -> run_1999
+    uint production = run_start / 100;
+    auto FOLDER_PRODUCTION = TString::Format("/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/production_%04d/", production);
+    auto folder_reports = TString::Format("%spreunfold/", FOLDER_PRODUCTION);
+    
+    // auto index = 0u;
+    // unsigned int files_per_jobs = 100u;
     
     int CCQEonHydrogen;
     int NofFinalStateChargedParticles;
@@ -52,6 +56,7 @@ int Unfold(){
                     h_true->Fill(IncomingNeutrino_energy);
                 if (NofFinalStateChargedParticles==1 && pass_nof_wires_cut==1 && candidate_signal_event==1)
                 {
+                    // CCQE ON H [PLASTIC]
                     response.Fill(Neutrino_reconstructed_energy_GeV, IncomingNeutrino_energy);
                     h_reco->Fill(Neutrino_reconstructed_energy_GeV);
                     nof_true_selected++;
