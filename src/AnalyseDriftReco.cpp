@@ -294,7 +294,6 @@ int main(int argc, char* argv[]){
         throw "";
     }
 
-    // production = atoi(argv[1]);
     run_start = atoi(argv[1]);
     unsigned int run_per_production = 10u;
     uint production = run_start / 100;
@@ -307,10 +306,7 @@ int main(int argc, char* argv[]){
     geo = TGeoManager::Import("/storage/gpfs_data/neutrino/users/gi/dunendggd/SAND_opt3_DRIFT1.root");
 
     auto FOLDER_PRODUCTION = TString::Format("/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/production_%04d/", production);
-    // auto FOLDER_ECAL_CELLS = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/CompleteCells_neutron_signal/";
-    // auto FOLDER_PRESELECTION = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/antinumu_CCQE_on_H_like/Preselection/";
-    // auto FOLDER_SELECTED_SIGNAL = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/antinumu_CCQE_on_H_like/";
-
+    
     /***
      * INPUT:
      * 
@@ -323,23 +319,14 @@ int main(int argc, char* argv[]){
      * OUTPUT:
      * 
     */
-    auto fOutput_preselection = TString::Format("%sevents-in-SANDtracker.%d.to.%d.preselection.root", FOLDER_PRODUCTION.Data(), file_start, file_stop-1);
+    auto fOutput_ecal_prediction = TString::Format("%secal_prediction/events-in-SANDtracker.%d.to.%d.ecal_prediction.root", FOLDER_PRODUCTION.Data(), file_start, file_stop-1);
     auto fOutput_selected_signal = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_signal.root", FOLDER_PRODUCTION.Data(), file_start, file_stop-1);
     auto fOutput_selected_bkg = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_bkg.root", FOLDER_PRODUCTION.Data(), file_start, file_stop-1);
     auto fOutput_preunfold = TString::Format("%spreunfold/events-in-SANDtracker.%d.to.%d.preunfold.root", FOLDER_PRODUCTION.Data(), file_start, file_stop-1);
     auto fOutput_report = TString::Format("%sevent_selection/events-in-SANDtracker.%d.to.%d.report.root", FOLDER_PRODUCTION.Data(), file_start, file_stop-1);
     auto fOutput_report_txt = TString::Format("%sevent_selection/events-in-SANDtracker.%d.to.%d.report.txt", FOLDER_PRODUCTION.Data(), file_start, file_stop-1);
+    //
 
-    // auto fOutput_cells = TString::Format("%sevents-in-SANDtracker.%d.to.%d.cells_neutron.root",FOLDER_ECAL_CELLS, file_start, file_stop);
-    // auto fOutput_preselection = TString::Format("%sevents-in-SANDtracker.%d.to.%d.preselection.root", FOLDER_PRESELECTION, file_start, file_stop);
-    // auto fOutput_selected_signal = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_signal.root", FOLDER_SELECTED_SIGNAL, file_start, file_stop);
-    // auto fOutput_selected_bkg = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_bkg.root",FOLDER_SELECTED_SIGNAL, file_start, file_stop);
-    // auto fOutput_trj_signal = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_signal.trj.root",FOLDER_SELECTED_SIGNAL, file_start, file_stop);
-    // auto fOutput_trj_bkg = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_bkg.trj.root",FOLDER_SELECTED_SIGNAL, file_start, file_stop);
-    // auto fOutput_report = TString::Format("%sreports/events-in-SANDtracker.%d.to.%d.report.root", FOLDER_SELECTED_SIGNAL, file_start, file_stop);
-    // auto fOutput_report_txt = TString::Format("%sreports/events-in-SANDtracker.%d.to.%d.report.txt", FOLDER_SELECTED_SIGNAL, file_start, file_stop);
-    // auto fOutput_preunfold = TString::Format("%sreports/events-in-SANDtracker.%d.to.%d.preunfold.root", FOLDER_SELECTED_SIGNAL, file_start, file_stop);
-    
     TFile* report_file = new TFile(fOutput_report.Data(), "RECREATE");
     std::ofstream report_file_txt(fOutput_report_txt.Data());
     
@@ -397,18 +384,18 @@ int main(int argc, char* argv[]){
      */
     LOG("I", TString::Format("CUT: Filter events is FV volume of %f mm", GeoUtils::DRIFT::FIDUCIAL_CUT).Data());
     
-    auto df_filtered = RDFUtils::Filter(dfReco, "isInFiducialVolume==1", true);
+    auto df_fiducial_volume = RDFUtils::Filter(dfReco, "isInFiducialVolume==1", true);
     
-    Report(df_filtered, "FIDUCIAL VOLUME CUT");
-    Report(df_filtered, report_file_txt, "FIDUCIAL VOLUME CUT");
-    // df_filtered.Snapshot("preselection", fOutput_preselection.Data(), columns_preselection);
+    Report(df_fiducial_volume, "FIDUCIAL VOLUME CUT");
+    Report(df_fiducial_volume, report_file_txt, "FIDUCIAL VOLUME CUT");
+    // df_fiducial_volume.Snapshot("preselection", fOutput_ecal_prediction.Data(), columns_preselection);
 
     /***
      * STAGE: CUT 70 FIRED WIRES _________________________________________________________________________________________________________________________________________________________________________
     */
     LOG("I", "CUT: Filter events with at least 70 fired wires"); // 70% events
     
-    auto dfReco_wires_cut = RDFUtils::Filter(df_filtered, "pass_nof_wires_cut", true);
+    auto dfReco_wires_cut = RDFUtils::Filter(df_fiducial_volume, "pass_nof_wires_cut", true);
     
     Report(dfReco_wires_cut, "MINIMUM NOF WIRES ON RECONSTRUCTED MU+");
     Report(dfReco_wires_cut, report_file_txt, "MINIMUM NOF WIRES ON RECONSTRUCTED MU+");
@@ -469,20 +456,20 @@ int main(int argc, char* argv[]){
      */
     LOG("I", "Defining HIST STAGE 1");
     // XSEC
-    auto total_xsex_vs_neutrino_energy                          = df_filtered.Profile1D({"total_xsex_vs_neutrino_energy", "total_xsex_vs_neutrino_energy", 1000u, 0., 50.},"IncomingNeutrino_energy","EvtXSec");
+    auto total_xsex_vs_neutrino_energy                          = df_fiducial_volume.Profile1D({"total_xsex_vs_neutrino_energy", "total_xsex_vs_neutrino_energy", 1000u, 0., 50.},"IncomingNeutrino_energy","EvtXSec");
 
-    auto ccqe_on_H_xsec_vs_neutrino_energy                      = df_filtered.Filter("CCQEonHydrogen==1").Profile1D({"ccqe_on_H_xsec_vs_neutrino_energy", "ccqe_on_H_xsec_vs_neutrino_energy", 1000u, 0., 50.},"IncomingNeutrino_energy","EvtXSec");
+    auto ccqe_on_H_xsec_vs_neutrino_energy                      = df_fiducial_volume.Filter("CCQEonHydrogen==1").Profile1D({"ccqe_on_H_xsec_vs_neutrino_energy", "ccqe_on_H_xsec_vs_neutrino_energy", 1000u, 0., 50.},"IncomingNeutrino_energy","EvtXSec");
 
-    auto ccqe_on_H_xsec_vs_hadronic_K_profile                   = df_filtered.Filter("CCQEonHydrogen==1").Profile1D({"ccqe_on_H_xsec_vs_hadronic_K", "ccqe_on_H_xsec; final state hadronic kinetic E [GeV] ", 100u, 0., 20.},"FinalStateHadronicSystemTotalKinE","EvtXSec");
+    auto ccqe_on_H_xsec_vs_hadronic_K_profile                   = df_fiducial_volume.Filter("CCQEonHydrogen==1").Profile1D({"ccqe_on_H_xsec_vs_hadronic_K", "ccqe_on_H_xsec; final state hadronic kinetic E [GeV] ", 100u, 0., 20.},"FinalStateHadronicSystemTotalKinE","EvtXSec");
 
-    auto ccqe_on_H_xsec_vs_hadronic_K                           = df_filtered.Filter("CCQEonHydrogen==1").Graph("FinalStateHadronicSystemTotalKinE","EvtXSec");
+    auto ccqe_on_H_xsec_vs_hadronic_K                           = df_fiducial_volume.Filter("CCQEonHydrogen==1").Graph("FinalStateHadronicSystemTotalKinE","EvtXSec");
 
     // TRUE
-    auto interacting_neutrino_true_E                            = df_filtered.Histo1D({"interacting_nu_stage1", "interacting neutrino true Energy;[GeV]", 100u, 0., 8.}, "IncomingNeutrino_energy");
+    auto interacting_neutrino_true_E                            = df_fiducial_volume.Histo1D({"interacting_nu_stage1", "interacting neutrino true Energy;[GeV]", 100u, 0., 8.}, "IncomingNeutrino_energy");
 
-    auto antimuon_true_E                                        = df_filtered.Histo1D({"antimuon_stage1", "antimuon true Energy;[GeV]", 100u, 0., 8.}, "FinalStateLepton_energy");
+    auto antimuon_true_E                                        = df_fiducial_volume.Histo1D({"antimuon_stage1", "antimuon true Energy;[GeV]", 100u, 0., 8.}, "FinalStateLepton_energy");
 
-    auto fs_hadron_syst_Kin                                     = df_filtered.Histo1D({"fs_hadron_syst_Kin_stage1", "final state hadron system true K;[GeV]", 100u, 0., 2.}, "PrimaryStateHadronicSystemTotalKinE");
+    auto fs_hadron_syst_Kin                                     = df_fiducial_volume.Histo1D({"fs_hadron_syst_Kin_stage1", "final state hadron system true K;[GeV]", 100u, 0., 2.}, "PrimaryStateHadronicSystemTotalKinE");
     
     // /***
     //  * STAGE: 2 _____________________________________________________________________________________________________________________________________________________________________________________________
@@ -631,109 +618,39 @@ int main(int argc, char* argv[]){
     /***
      * UNFOLD:
      */
-    df_filtered.Snapshot("preunfold", fOutput_preunfold.Data(), {
+    df_fiducial_volume.Snapshot("preunfold", fOutput_preunfold.Data(), {   
+                                                                    /***
+                                                                        ANALYSIS:
+                                                                     */
+                                                                    "isInFiducialVolume",
                                                                     "CCQEonHydrogen",
                                                                     "NofFinalStateChargedParticles",
                                                                     "pass_nof_wires_cut",
-                                                                    "candidate_signal_event", // 
+                                                                    "candidate_signal_event",
                                                                     "InteractionTarget",
                                                                     "InteractionVolume_short",
                                                                     "IncomingNeutrino_energy",
                                                                     "Neutrino_reconstructed_energy_GeV",
+                                                                    /***
+                                                                        DEBUG:
+                                                                     */
+                                                                    "Interaction_vtxX",
+                                                                    "Interaction_vtxY",
+                                                                    "Interaction_vtxZ",
+                                                                    "InteractionVolume",
+                                                                    // true hadron system P4
+                                                                    "FinalStateHadronicSystemTotal4Momentum",
+                                                                    // true antimuon
+                                                                    "Antimuon_p_true",
+                                                                    // reco antimuon P4
+                                                                    "Antimuon_reconstructed_P4",
+                                                                    // prediceted neutron P4
+                                                                    "PredictedNeutron_P3_GeV",
+                                                                    // prediceted neutron P4
+                                                                    "PredictedNeutron_E_GeV",
                                                                     });
-                        
+
+    // df_fiducial_volume.Snapshot("ecal_prediction", fOutput_ecal_prediction.Data(), output_columns_event_selection);
+
     return 0;
 }
-
-
-    // // NEUTRINOS
-    // TCanvas* c_neutrino_E = new TCanvas("neutrino_true_E", "interacting neutrino true energy", 800, 600);
-    
-    // interacting_neutrino_true_E->SetLineColor(kRed);     
-    // interacting_neutrino_true_E_cut_wires->SetLineColor(kBlue);    
-    // interacting_neutrino_true_E_charge_multi->SetLineColor(kGreen);
-    // interacting_neutrino_true_E_selection->SetLineColor(kMagenta); 
-    
-    // interacting_neutrino_true_E->Scale(1./interacting_neutrino_true_E->Integral());     
-    // interacting_neutrino_true_E_cut_wires->Scale(1./interacting_neutrino_true_E_cut_wires->Integral());   
-    // interacting_neutrino_true_E_charge_multi->Scale(1./interacting_neutrino_true_E_charge_multi->Integral()); 
-    // interacting_neutrino_true_E_selection->Scale(1./interacting_neutrino_true_E_selection->Integral());
-
-    // interacting_neutrino_true_E->Draw("");
-    // interacting_neutrino_true_E_cut_wires->Draw("SAME");
-    // interacting_neutrino_true_E_charge_multi->Draw("SAME");
-    // interacting_neutrino_true_E_selection->Draw("SAME");
-
-    // TLegend* legend = new TLegend(0.7, 0.7, 0.9, 0.9); // Posizione della legenda
-    // legend->AddEntry(interacting_neutrino_true_E.GetPtr(), "[STAGE 1: FIDUCIAL VOLUME]", "l");
-    // legend->AddEntry(interacting_neutrino_true_E_cut_wires.GetPtr(), "[STAGE 2: CUT NOF WIRES]", "l");
-    // legend->AddEntry(interacting_neutrino_true_E_charge_multi.GetPtr(), "[STAGE 3: CHARGE MULTIPLICITY]", "l");
-    // legend->AddEntry(interacting_neutrino_true_E_selection.GetPtr(), "[STAGE 4: SIGNAL SELECTION]", "l");
-    // legend->Draw();
-    // c_neutrino_E->Update();
-    // report_file->cd();
-    // c_neutrino_E->Write();
-    // //
-
-    // // NEUTRINOS
-    // TCanvas* c_antimuon_E = new TCanvas("antimuon", "antimuon true energy", 800, 600);
-    
-    // antimuon_true_E->SetLineColor(kRed);   
-    // antimuon_true_E_cut_wires->SetLineColor(kBlue);    
-    // antimuon_true_E_charge_multi->SetLineColor(kGreen);   
-    // antimuon_true_E_selection->SetLineColor(kMagenta); 
-    
-    // antimuon_true_E->Scale(1./antimuon_true_E->Integral());   
-    // antimuon_true_E_cut_wires->Scale(1./antimuon_true_E_cut_wires->Integral());    
-    // antimuon_true_E_charge_multi->Scale(1./antimuon_true_E_charge_multi->Integral());   
-    // antimuon_true_E_selection->Scale(1./antimuon_true_E_selection->Integral()); 
-
-    // antimuon_true_E->Draw("");
-    // antimuon_true_E_cut_wires->Draw("SAME");
-    // antimuon_true_E_charge_multi->Draw("SAME");
-    // antimuon_true_E_selection->Draw("SAME");
-
-    // TLegend* legend2 = new TLegend(0.7, 0.7, 0.9, 0.9); 
-    // legend2->AddEntry(antimuon_true_E.GetPtr(), "[STAGE 1: FIDUCIAL VOLUME]", "l");
-    // legend2->AddEntry(antimuon_true_E_cut_wires.GetPtr(), "[STAGE 2: CUT NOF WIRES]", "l");
-    // legend2->AddEntry(antimuon_true_E_charge_multi.GetPtr(), "[STAGE 3: CHARGE MULTIPLICITY]", "l");
-    // legend2->AddEntry(antimuon_true_E_selection.GetPtr(), "[STAGE 4: SIGNAL SELECTION]", "l");
-    // legend2->Draw();
-    // c_antimuon_E->Update();
-    // report_file->cd();
-    // c_antimuon_E->Write();
-    // //
-
-    // // HADRONIC SYSTEM
-    // TCanvas* c_hadronic_E = new TCanvas("hadronic_system", "final state hadronic system true Kin E", 800, 600);
-
-    // fs_hadron_syst_Kin->SetLineColor(kRed);   
-    // fs_hadron_syst_Kin_cut_wires->SetLineColor(kBlue);    
-    // fs_hadron_syst_Kin_charge_multi->SetLineColor(kGreen);   
-    // fs_hadron_syst_Kin_selection->SetLineColor(kMagenta); 
-
-    // fs_hadron_syst_Kin->Scale(1.0 / fs_hadron_syst_Kin->Integral());
-    // fs_hadron_syst_Kin_cut_wires->Scale(1.0 / fs_hadron_syst_Kin_cut_wires->Integral());
-    // fs_hadron_syst_Kin_charge_multi->Scale(1.0 / fs_hadron_syst_Kin_charge_multi->Integral());
-    // fs_hadron_syst_Kin_selection->Scale(1.0 / fs_hadron_syst_Kin_selection->Integral());
-
-    // c_hadronic_E->SetLogy();
-
-    // fs_hadron_syst_Kin->Draw("");
-    // fs_hadron_syst_Kin_cut_wires->Draw("SAME");
-    // fs_hadron_syst_Kin_charge_multi->Draw("SAME");
-    // fs_hadron_syst_Kin_selection->Draw("SAME");
-
-    // // Creazione della legenda
-    // TLegend* legend3 = new TLegend(0.7, 0.7, 0.9, 0.9); 
-    // legend3->AddEntry(fs_hadron_syst_Kin.GetPtr(), "[STAGE 1: FIDUCIAL VOLUME]", "l");
-    // legend3->AddEntry(fs_hadron_syst_Kin_cut_wires.GetPtr(), "[STAGE 2: CUT NOF WIRES]", "l");
-    // legend3->AddEntry(fs_hadron_syst_Kin_charge_multi.GetPtr(), "[STAGE 3: CHARGE MULTIPLICITY]", "l");
-    // legend3->AddEntry(fs_hadron_syst_Kin_selection.GetPtr(), "[STAGE 4: SIGNAL SELECTION]", "l");
-    // legend3->Draw();
-
-    // // Aggiorna il canvas e scrivi nel file
-    // c_hadronic_E->Update();
-    // report_file->cd();
-    // c_hadronic_E->Write();
-    //

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NOF_PRODUCTIONS=50
+NOF_PRODUCTIONS=59
 
 PRODUCTION_START=$1
 PRODUCTION_STOP=$2
@@ -30,7 +30,7 @@ for (( PRODUCTION=PRODUCTION_START; PRODUCTION<=PRODUCTION_STOP; PRODUCTION++ ))
     total_files_report_root=$((total_files_report_root + count_files_report_root))
     total_files_report_preunfold=$((total_files_report_preunfold +count_files_preunfold))
 
-    # ls ${FOLDER_EVENT_PREUNFOLD}/*root >> ${LIST_OF_PREUNFOLD_FILES}
+    ls ${FOLDER_EVENT_PREUNFOLD}/*root >> ${LIST_OF_PREUNFOLD_FILES}
     ls ${FOLDER_EVENT_SELECTION}/*root >> ${LIST_OF_PREUNFOLD_SELECTED_EVENTS}
 
     echo "production_${PRODUCTION_FORMATTED} | report txt files : ${count_files_report_root} |files preunfold ${count_files_preunfold}"

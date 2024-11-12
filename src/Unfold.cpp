@@ -63,7 +63,6 @@ int Unfold(){
                 }else{
                     response.Miss(IncomingNeutrino_energy);
                     nof_true_nof_excluded++;
-
                 }
             }
             total++;
