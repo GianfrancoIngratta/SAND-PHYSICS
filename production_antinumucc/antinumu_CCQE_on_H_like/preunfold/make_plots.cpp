@@ -365,7 +365,6 @@ int make_plots(){
     total_in_fv++;
 
     double antimuon_true_energy = sqrt(Antimuon_p_true->Mag() * Antimuon_p_true->Mag() +  105.658 * 105.658);
-
     
     switch (eventType)
     {

@@ -3213,9 +3213,10 @@ ROOT::RDF::RNode RDFUtils::RECO::AddColumnsFromDriftReco(ROOT::RDF::RNode& df){
             /*
                 PREDICTED NEUTRON
             */
+            .Define("Mean_Neutrino_direction",                       [](){TVector3 nu_versor = {0., -0.10069651, 0.99491719}; return nu_versor;})
             .Define("Antimuon_reconstructed_P4_GeV",                 "Antimuon_reconstructed_P4 * 1e-3")
             .Define("Antimuon_reconstructed_energy",                 "Antimuon_reconstructed_P4_GeV.T()")
-            .Define("Neutrino_reconstructed_P4_GeV",                 RDFUtils::GENIE::GetNup4FromMu,            {"PROTON_MASS_GeV","NEUTRON_MASS_GeV", "MUON_MASS_GeV", "Antimuon_reconstructed_P4_GeV","NuDirection"})
+            .Define("Neutrino_reconstructed_P4_GeV",                 RDFUtils::GENIE::GetNup4FromMu,            {"PROTON_MASS_GeV","NEUTRON_MASS_GeV", "MUON_MASS_GeV", "Antimuon_reconstructed_P4_GeV", "Mean_Neutrino_direction"})
             .Define("Neutrino_reconstructed_energy_GeV",             "Neutrino_reconstructed_P4_GeV.T()")
             .Define("PredictedNeutron_P3_GeV",                       "Neutrino_reconstructed_P4_GeV.Vect() - Antimuon_reconstructed_P4_GeV.Vect()")
             .Define("PredictedNeutron_E_GeV",                        "sqrt(PredictedNeutron_P3_GeV.Mag() * PredictedNeutron_P3_GeV.Mag() + NEUTRON_MASS_GeV * NEUTRON_MASS_GeV)")
