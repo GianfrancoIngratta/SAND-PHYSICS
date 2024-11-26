@@ -5,12 +5,21 @@ NOF_PRODUCTIONS=59
 PRODUCTION_START=$1
 PRODUCTION_STOP=$2
 
-FOLDER_PRODUCTIONS="/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc"
+FOLDER_PRODUCTIONS="/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc_01"
 echo "FOLDER_PRODUCTIONS : ${FOLDER_PRODUCTIONS}"
 
 timestamp=$(date +"%Y%m%d_%H%M%S")
-LIST_OF_PREUNFOLD_FILES="/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/antinumu_CCQE_on_H_like/preunfold/list_of_files_production.${PRODUCTION_START}.to.${PRODUCTION_STOP}.txt"
-LIST_OF_PREUNFOLD_SELECTED_EVENTS="/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/antinumu_CCQE_on_H_like/events_selection/list_of_files_production.${PRODUCTION_START}.to.${PRODUCTION_STOP}.txt"
+
+OUTPUT_DIR="/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc_01/"
+MERGE_RECAP="${OUTPUT_DIR}merge_recap.txt"
+
+LIST_OF_PREUNFOLD_FILES="${OUTPUT_DIR}list_of_files_preufold.${PRODUCTION_START}.to.${PRODUCTION_STOP}.txt"
+LIST_OF_PREUNFOLD_SELECTED_EVENTS="${OUTPUT_DIR}list_of_files_event_selection.${PRODUCTION_START}.to.${PRODUCTION_STOP}.txt"
+
+echo -e "****** TIME STAMP : $(date +"%A, %d %B %Y, %H:%M:%S")" >> ${MERGE_RECAP}
+echo -e "FOLDER_PRODUCTIONS=${FOLDER_PRODUCTIONS}" >> ${MERGE_RECAP}
+echo -e "LIST_OF_PREUNFOLD_FILES=${LIST_OF_PREUNFOLD_FILES}" >> ${MERGE_RECAP}
+echo -e "LIST_OF_PREUNFOLD_SELECTED_EVENTS=${LIST_OF_PREUNFOLD_SELECTED_EVENTS}" >> ${MERGE_RECAP}
 
 total_productions=0
 total_files_report_root=0
@@ -37,7 +46,6 @@ for (( PRODUCTION=PRODUCTION_START; PRODUCTION<=PRODUCTION_STOP; PRODUCTION++ ))
 done
 
 # success_processed=$((total_files_report_preunfold * 1000))
-
 echo "__________________________________________________________________________________"
 echo "TOTAL | productions ${total_productions} | report.root files : ${total_files_report_root} | preunfold.root files ${total_files_report_preunfold} "
 

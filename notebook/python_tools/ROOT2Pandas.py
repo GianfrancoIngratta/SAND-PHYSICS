@@ -135,7 +135,7 @@ class Converter:
                 tree = upr.open(file_name)[self.tree_name]
                 df = tree.arrays(columns, library='pd')
             except KeyError:
-                print(f"\033[91m {self.tree_name} not found in {file_name}. Skipping file \033[0m")
+                print(f"\033[91m {self.tree_name} not found in {file_name} or wrong columns provided. Skipping file \033[0m")
                 continue
             
             if not isinstance(df, pd.DataFrame):

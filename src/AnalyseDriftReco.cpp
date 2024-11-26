@@ -305,7 +305,7 @@ int main(int argc, char* argv[]){
     LOG("I", "Reading geometry");
     geo = TGeoManager::Import("/storage/gpfs_data/neutrino/users/gi/dunendggd/SAND_opt3_DRIFT1.root");
 
-    auto FOLDER_PRODUCTION = TString::Format("/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/production_%04d/", production);
+    auto FOLDER_PRODUCTION = TString::Format("/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc_01/production_%04d/", production);
     
     /***
      * INPUT:
@@ -618,37 +618,37 @@ int main(int argc, char* argv[]){
     /***
      * UNFOLD:
      */
-    // df_fiducial_volume.Snapshot("preunfold", fOutput_preunfold.Data(), {   
-    //                                                                 /***
-    //                                                                     ANALYSIS:
-    //                                                                  */
-    //                                                                 "isInFiducialVolume",
-    //                                                                 "CCQEonHydrogen",
-    //                                                                 "NofFinalStateChargedParticles",
-    //                                                                 "pass_nof_wires_cut",
-    //                                                                 "candidate_signal_event",
-    //                                                                 "InteractionTarget",
-    //                                                                 "InteractionVolume_short",
-    //                                                                 "IncomingNeutrino_energy",
-    //                                                                 "Neutrino_reconstructed_energy_GeV",
-    //                                                                 /***
-    //                                                                     DEBUG:
-    //                                                                  */
-    //                                                                 "Interaction_vtxX",
-    //                                                                 "Interaction_vtxY",
-    //                                                                 "Interaction_vtxZ",
-    //                                                                 "InteractionVolume",
-    //                                                                 // true hadron system P4
-    //                                                                 "FinalStateHadronicSystemTotal4Momentum",
-    //                                                                 // true antimuon
-    //                                                                 "Antimuon_p_true",
-    //                                                                 // reco antimuon P4
-    //                                                                 "Antimuon_reconstructed_P4",
-    //                                                                 // prediceted neutron P4
-    //                                                                 "PredictedNeutron_P3_GeV",
-    //                                                                 // prediceted neutron P4
-    //                                                                 "PredictedNeutron_E_GeV",
-    //                                                                 });
+    df_fiducial_volume.Snapshot("preunfold", fOutput_preunfold.Data(), {   
+                                                                    /***
+                                                                        ANALYSIS:
+                                                                     */
+                                                                    "isInFiducialVolume",
+                                                                    "CCQEonHydrogen",
+                                                                    "NofFinalStateChargedParticles",
+                                                                    "pass_nof_wires_cut",
+                                                                    "candidate_signal_event",
+                                                                    "InteractionTarget",
+                                                                    "InteractionVolume_short",
+                                                                    "IncomingNeutrino_energy",
+                                                                    "Neutrino_reconstructed_energy_GeV",
+                                                                    /***
+                                                                        DEBUG:
+                                                                     */
+                                                                    "Interaction_vtxX",
+                                                                    "Interaction_vtxY",
+                                                                    "Interaction_vtxZ",
+                                                                    "InteractionVolume",
+                                                                    // true hadron system P4
+                                                                    "FinalStateHadronicSystemTotal4Momentum",
+                                                                    // true antimuon
+                                                                    "Antimuon_p_true",
+                                                                    // reco antimuon P4
+                                                                    "Antimuon_reconstructed_P4",
+                                                                    // prediceted neutron P4
+                                                                    "PredictedNeutron_P3_GeV",
+                                                                    // prediceted neutron P4
+                                                                    "PredictedNeutron_E_GeV",
+                                                                    });
 
     df_fiducial_volume.Snapshot("ecal_prediction", fOutput_ecal_prediction.Data(), output_columns_event_selection);
 
