@@ -37,6 +37,8 @@ enum SELECTION{
     TRUE_NEGATIVE_PLASTIC_C  = 7,
     TRUE_NEGATIVE_PLASTIC_H  = 8,
     TRUE_NEGATIVE_OTHERS  = 9,
+    // 
+    SELECTED_POSITIVE_PLASTIC = 10,
     SELECTION_NONE
 };
 
@@ -54,6 +56,7 @@ std::string getSelectionAsString(int selection) {
         case TRUE_NEGATIVE_PLASTIC_H: return "TRUE_NEGATIVE_PLASTIC_H";
         case TRUE_NEGATIVE_OTHERS: return "TRUE_NEGATIVE_OTHERS";
         case SELECTION_NONE: return "SELECTION_NONE";
+        case SELECTED_POSITIVE_PLASTIC: return "SELECTED_POSITIVE_PLASTIC";
         default: return "unknown";
     }
 }
@@ -97,7 +100,8 @@ enum REACTION {
     CCQE_ON_H = 0,
     CC_ON_CARBON = 1,
     CCRES_ON_H = 2,
-    REACTION_NONE = 3
+    REACTION_ANY = 3,
+    REACTION_NONE = 4
 };
 
 std::string getReactionAsString(int reaction)
@@ -145,69 +149,6 @@ TH1D* calculate_bin_ratio(TH1D* hist1, TH1D* hist2) {
     }
 
     return ratio_hist;
-}
-
-
-void plot_histograms(TH1D* histos[], int num_stages, double max_y_norm = 0.2) {
-
-    TLegend* legend = new TLegend(0.7, 0.7, 0.9, 0.9);  // Posizione della legenda (x1, y1, x2, y2)
-    legend->AddEntry(histos[FIDUCIAL_VOLUME], "FIDUCIAL_VOLUME", "l");
-    legend->AddEntry(histos[WIRES_CUT], "WIRES_CUT", "l");
-    legend->AddEntry(histos[CHARGE_MULTIPLICITY], "CHARGE_MULTIPLICITY", "l");
-    legend->AddEntry(histos[ECAL_COINCIDENCE], "ECAL_COINCIDENCE", "l");
-
-    TCanvas* canvas = new TCanvas("canvas", "", 1300, 700);
-    canvas->Divide(2);
-    canvas->cd(1);
-    
-    TH1D* ratio_hist[3];
-
-    for (int i = 0; i < num_stages; i++) {
-        histos[i]->SetLineColor(colors[i % colors.size()]); 
-        histos[i]->SetLineWidth(2);
-        if (i == 0) {
-            histos[i]->Draw("E HIST");
-            histos[i]->SetTitle("test");
-        } else {
-            histos[i]->Draw("E HIST SAME");
-            ratio_hist[i-1] = calculate_bin_ratio(histos[i-1], histos[i]);
-            ratio_hist[i-1] -> SetLineColor(colors[i % colors.size()]);
-            ratio_hist[i-1] -> SetMarkerStyle(kFullDiamond);
-        }
-    }
-
-    legend->Draw();
-
-    canvas->cd(2);
-    TH1D* clone = nullptr;
-    for (int i = 0; i < num_stages; i++) {
-        clone = reinterpret_cast<TH1D*>(histos[i]->Clone(TString::Format("clone_%d",i).Data()));
-        clone->Scale(1.0 / histos[i]->Integral());
-        clone->SetMaximum(max_y_norm);
-        clone->SetLineColor(colors[i % colors.size()]);  // Ciclo sui colori se ci sono più stadi
-        clone->SetLineWidth(2);
-        if (i == 0) {
-            clone->Draw("E HIST");
-        } else {
-            clone->Draw("E HIST SAME");
-        }
-    }
-
-    legend->Draw();
-
-    // Aggiorna il canvas
-    canvas->Update();
-
-    TCanvas* canvas_eff = new TCanvas("canvas_eff", "", 900, 700);
-    for (size_t i = 0; i < 3; i++)
-    {
-        if(i==0){
-            ratio_hist[i] -> Draw("E");
-        }else{
-            ratio_hist[i] -> Draw("E SAME");
-        }
-    }
-    
 }
 
 void plot_histograms2(TH2D* h2, std::string canvas_name){
@@ -345,9 +286,9 @@ TH1D* antineutrino_reco_energy_CCQEonHLIKE[TARGET_NONE] = {
 };
 
 TH1D* antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[REACTION_NONE] = {
-    new TH1D("antineutrino_reco_energy_SELECTED_PLASTIC_H", "", 12u, 0., 6.),
-    new TH1D("antineutrino_reco_energy_SELECTED_PLASTIC_C", "", 12u, 0., 6.),
-    new TH1D("antineutrino_reco_energy_SELECTED_PLASTIC_OTHER", "", 12u, 0., 6.),
+    new TH1D("antineutrino_reco_energy_SELECTED_PLASTIC_H", "", 48u, 0., 6.),
+    new TH1D("antineutrino_reco_energy_SELECTED_PLASTIC_C", "", 48u, 0., 6.),
+    new TH1D("antineutrino_reco_energy_SELECTED_PLASTIC_OTHER", "", 48u, 0., 6.),
 };
 
 void EnableSumw2(TH1D* histograms[], size_t size) {
@@ -373,53 +314,6 @@ bool IsInsideSpot(const double vtxX, const double vtxY, const double vtxZ, doubl
     return ((spot_center - vtx).Mag() < radius_m);
 }
 
-void Fill_Final_Histos(SELECTION selection, double reco_nu_E){
-    switch (selection)
-    {
-        case SELECTED_TRUE_POSITIVE:
-            antineutrino_reco_energy_CCQEonHLIKE[PLASTIC] -> Fill(reco_nu_E);
-            antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[CCQE_ON_H] -> Fill(reco_nu_E);
-            break;
-
-        case FALSE_NEGATIVE:
-            break;
-
-        // FALSE POSITIVES
-        case SELECTED_FALSE_POSITIVE_GRAPHITE:
-            antineutrino_reco_energy_CCQEonHLIKE[GRAPHITE] -> Fill(reco_nu_E);
-            break;
-
-        case SELECTED_FALSE_POSITIVE_PLASTIC_C:
-            antineutrino_reco_energy_CCQEonHLIKE[PLASTIC] -> Fill(reco_nu_E);
-            antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[CC_ON_CARBON] -> Fill(reco_nu_E);
-            break;
-
-        case SELECTED_FALSE_POSITIVE_PLASTIC_H:
-            antineutrino_reco_energy_CCQEonHLIKE[PLASTIC] -> Fill(reco_nu_E);
-            antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[CCRES_ON_H] -> Fill(reco_nu_E);
-            break;
-
-        case SELECTED_FALSE_POSITIVE_OTHER:
-            break;
-
-        // TRUE NEGATIVES
-        case TRUE_NEGATIVE_GRAPHITE:
-            break;
-
-        case TRUE_NEGATIVE_PLASTIC_C:
-            break;
-
-        case TRUE_NEGATIVE_PLASTIC_H:
-            break;
-
-        case TRUE_NEGATIVE_OTHERS:
-            break;
-
-        case SELECTION_NONE:
-            break;
-    }
-}
-
 /***
  CLASS: Hist Manager
  */
@@ -435,10 +329,10 @@ h_bins Get_h_bins(PARTICLE p)
 {
     if(p == ANTIMUON)
     {
-        return {48, 0., 6000.};
+        return {24, 0., 6000.};
     }else if(p == NEUTRINO)
     {
-        return {48, 0., 6.};
+        return {24, 0., 6.};
     }else if(p == NEUTRON){
         return {40, 0., 1.};
     }else
@@ -603,6 +497,66 @@ Hist_Manager antinu_hist(NEUTRINO);
 Hist_Manager neutron_hist(NEUTRON);
 
 
+void Fill_Final_Histos(SELECTION selection, double true_nu_E, double reco_nu_E){
+    switch (selection)
+    {
+        case SELECTED_TRUE_POSITIVE:
+            
+            antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_POSITIVE_PLASTIC, REACTION_ANY, 0, true_nu_E);
+            antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_POSITIVE_PLASTIC, REACTION_ANY, 1, reco_nu_E);
+            antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_TRUE_POSITIVE, CCQE_ON_H, 0, true_nu_E);
+            antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_TRUE_POSITIVE, CCQE_ON_H, 1, reco_nu_E);
+            
+            break;
+
+        case FALSE_NEGATIVE:
+            break;
+
+        // FALSE POSITIVES
+        case SELECTED_FALSE_POSITIVE_GRAPHITE:
+            antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_GRAPHITE, CC_ON_CARBON, 0, true_nu_E);
+            antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_GRAPHITE, CC_ON_CARBON, 1, reco_nu_E);
+
+            break;
+
+        case SELECTED_FALSE_POSITIVE_PLASTIC_C:
+            antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_POSITIVE_PLASTIC, REACTION_ANY, 0, true_nu_E);
+            antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_POSITIVE_PLASTIC, REACTION_ANY, 1, reco_nu_E);
+            antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_PLASTIC_C, CC_ON_CARBON, 0, true_nu_E);
+            antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_PLASTIC_C, CC_ON_CARBON, 1, reco_nu_E);
+
+            break;
+
+        case SELECTED_FALSE_POSITIVE_PLASTIC_H:
+            antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_POSITIVE_PLASTIC, REACTION_ANY, 0, true_nu_E);
+            antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_POSITIVE_PLASTIC, REACTION_ANY, 1, reco_nu_E);
+            antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_PLASTIC_H, CCRES_ON_H, 0, true_nu_E);
+            antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_PLASTIC_H, CCRES_ON_H, 1, reco_nu_E);
+
+            break;
+
+        case SELECTED_FALSE_POSITIVE_OTHER:
+            break;
+
+        // TRUE NEGATIVES
+        case TRUE_NEGATIVE_GRAPHITE:
+            break;
+
+        case TRUE_NEGATIVE_PLASTIC_C:
+            break;
+
+        case TRUE_NEGATIVE_PLASTIC_H:
+            break;
+
+        case TRUE_NEGATIVE_OTHERS:
+            break;
+
+        case SELECTION_NONE:
+            break;
+    }
+}
+
+
 int efficiency_plots(){
 
     auto DATA_PREUNFOLD = TString::Format("/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc_01/data_preunfold/");
@@ -673,7 +627,7 @@ int efficiency_plots(){
         
         SELECTION selection = DetermineSelection(is_event_selected, is_signal, is_in_graphite, is_in_plastic, is_on_C, is_on_H);
 
-        // Fill_Final_Histos(selection, Neutrino_reconstructed_energy_GeV);
+        Fill_Final_Histos(selection, IncomingNeutrino_energy, Neutrino_reconstructed_energy_GeV);
         
         if(!is_signal){
             continue;
@@ -747,23 +701,14 @@ int efficiency_plots(){
     gStyle->SetOptStat(0);
     gStyle->SetOptTitle(0);
 
-
+    /**
+     * NOTE: compare true spectra of antinu, mu+ and neutron from signal at each stage of the analysis
+     */
     // positive_mu_hist.CompareStages();
     // antinu_hist.CompareStages();
-    neutron_hist.CompareStages();
+    // neutron_hist.CompareStages();
 
-    // check
-    // TCanvas *c1 = new TCanvas("c1", "", 900, 700);
-    // neutron_hist.GetHistogram(ECAL_COINCIDENCE, SELECTION_NONE, CCQE_ON_H, 0) -> Draw("HIST");
-    // neutron_true_kin_energy[ECAL_COINCIDENCE] -> Draw("E1 SAME");
-    /**
-    @true: compare true quantitie for different
-     */
 
-    // plot_histograms(antineutrino_true_energy, STAGE_NONE, 0.16);
-    // plot_histograms(antimu_true_energy, STAGE_NONE, 0.16);
-    // plot_histograms(neutron_true_kin_energy, STAGE_NONE, 0.35);
-    
     /**
     @reco: compare reconstructed quantities for each stage
      */
@@ -781,49 +726,6 @@ int efficiency_plots(){
     
     //________________________________________________________________________________________
 
-    // TCanvas *c1 = new TCanvas("c1", "TRatioPlot Normalized", 900, 700);
-
-    // // Clona gli istogrammi originali per non modificarli
-    // TH1D* hTrue = (TH1D*)antineutrino_true_energy[FIDUCIAL_VOLUME]->Clone("hTrue");
-    // TH1D* hReco = (TH1D*)antineutrino_reco_energy_CCQEonHLIKE[PLASTIC]->Clone("hReco");
-
-    // // Normalizza gli istogrammi
-    // if (hTrue->Integral() != 0) hTrue->Scale(1. / hTrue->Integral());
-    // if (hReco->Integral() != 0) hReco->Scale(1. / hReco->Integral());
-
-    // // Configura gli istogrammi normalizzati
-    // hTrue->SetTitle(";E_{#nu} [GeV]; counts / tot counts");
-    // hTrue->SetLineColor(kRed);
-    // hTrue->SetLineStyle(1);
-    // hTrue->SetLineWidth(2);
-    // hTrue->SetMaximum(0.25);
-
-    // hReco->SetLineColor(kBlack);
-    // hReco->SetMarkerStyle(20);
-    // hReco->SetMarkerSize(0.8);
-    // hReco->SetMaximum(0.25);
-
-    // // Crea il TRatioPlot con gli istogrammi normalizzati
-    // TRatioPlot *rp = new TRatioPlot(hTrue, hReco);
-
-    // // Configura le opzioni di disegno per il TRatioPlot
-    // rp->SetH1DrawOpt("E HIST"); // Disegna il primo istogramma con linea continua
-    // rp->SetH2DrawOpt("E1");   // Disegna il secondo istogramma con barre di errore
-
-    // // Disegna il TRatioPlot
-    // rp->Draw();
-    // rp->GetLowerRefYaxis()->SetTitle("True / Reco");
-    // rp->GetLowerRefGraph()->SetMinimum(0.0);
-    // rp->GetLowerRefGraph()->SetMaximum(1.5);
-
-    // rp->GetUpperPad()->cd();
-    // TLegend *legend = new TLegend(0.6, 0.6, 0.9, 0.9);
-    // legend->AddEntry("hTrue", "E_{ #bar{#nu}_{#mu}}^{True} True CCQE on H", "l");
-    // legend->AddEntry("hReco", "E_{ #bar{#nu}_{#mu}}^{Reco} Selected CCQE-like Plastic", "le");
-    // legend->Draw();
-
-    // // Aggiorna il canvas
-    // c1->Update();
 
     //________________________________________________________________________________________
 
@@ -831,109 +733,90 @@ int efficiency_plots(){
 
     // int colors[REACTION_NONE] = {kRed, kBlue, kGreen};
 
-    // antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[CCQE_ON_H]->SetFillColor(kBlue);
-    // antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[CCQE_ON_H]->SetFillColor(kBlue);
+    auto h1 = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_TRUE_POSITIVE, CCQE_ON_H, 1);
+    h1->SetFillColor(kBlue);
 
-    // antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[CC_ON_CARBON]->SetFillColor(kRed);
-    // antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[CC_ON_CARBON]->SetFillColor(kRed);
+    auto h2 = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_PLASTIC_C, CC_ON_CARBON, 1);
+    h2->SetFillColor(kRed);
 
-    // antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[CCRES_ON_H]->SetFillColor(kGreen);
-    // antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[CCRES_ON_H]->SetFillColor(kGreen);
+    auto h3 = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_PLASTIC_H, CCRES_ON_H, 1);
+    h3->SetFillColor(kGreen);
 
-    // stack->Add(antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[CCQE_ON_H]);
-    // stack->Add(antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[CC_ON_CARBON]);
-    // stack->Add(antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[CCRES_ON_H]);
+    // stack->Add(h1);
+    // stack->Add(h2);
+    // stack->Add(h3);
     
     // TCanvas* canvas = new TCanvas("canvas", "Stack Plot", 900, 700);
     
-    // stack->Draw("HIST");
-    // antineutrino_reco_energy_CCQEonHLIKE[PLASTIC]->SetLineColor(kBlack);
-    // antineutrino_reco_energy_CCQEonHLIKE[PLASTIC]->SetMarkerStyle(20);
-    // antineutrino_reco_energy_CCQEonHLIKE[PLASTIC]->SetMarkerSize(0.8);
-    // antineutrino_reco_energy_CCQEonHLIKE[PLASTIC]->SetMaximum(0.25);
-    // antineutrino_reco_energy_CCQEonHLIKE[PLASTIC]->Draw("E1 SAME");
+    // stack->Draw("E HIST");
+    // auto hm = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_POSITIVE_PLASTIC, REACTION_ANY, 1);
+    // hm->SetLineColor(kBlack);
+    // hm->SetMarkerStyle(20);
+    // hm->SetMarkerSize(0.8);
+    // hm->SetMaximum(0.25);
+    // hm->Draw("E1 SAME");
 
     // // Add legend
     // TLegend* legend = new TLegend(0.7, 0.7, 0.9, 0.9);
-    // legend->AddEntry(antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[0], "CCQE on H (signal)", "f");
-    // legend->AddEntry(antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[1], "CC on Carbon (bkg)", "f");
-    // legend->AddEntry(antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[2], "CCRES on H (bkg)", "f");
+    // legend->AddEntry(h1, "CCQE on H (signal)", "f");
+    // legend->AddEntry(h2, "CC on Carbon (bkg)", "f");
+    // legend->AddEntry(h3, "CCRES on H (bkg)", "f");
     // legend->Draw();
 
     // // Update canvas
     // canvas->Update();
 
-    //________________________________________________________________________________________
-
-    // TCanvas* canvas = new TCanvas("canvas", "", 900, 700);
-
-    // antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[CC_ON_CARBON]->Draw("E HIST");
-    // antineutrino_reco_energy_CCQEonHLIKE[GRAPHITE]->Draw("E1 SAME");
-
-    // TLegend* legend = new TLegend(0.7, 0.7, 0.9, 0.9);
-    // legend->AddEntry(antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[1], "CC on Carbon Plastic", "f");
-    // legend->AddEntry(antineutrino_reco_energy_CCQEonHLIKE[GRAPHITE], "CC on Carbon Graphite (control sample)", "f");
-    // legend->Draw();
-
-    // canvas->Draw();
-    // TCanvas* canvas = new TCanvas("canvas", "", 900, 700);
-
-    // antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[CC_ON_CARBON]->Draw("E HIST");
-    // antineutrino_reco_energy_CCQEonHLIKE[GRAPHITE]->Draw("E1 SAME");
-
-    // TLegend* legend = new TLegend(0.7, 0.7, 0.9, 0.9);
-    // legend->AddEntry(antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[1], "CC on Carbon Plastic", "f");
-    // legend->AddEntry(antineutrino_reco_energy_CCQEonHLIKE[GRAPHITE], "CC on Carbon Graphite (control sample)", "f");
-    // legend->Draw();
-
-    // canvas->Draw();
-
     //_________________________________________________________________________________________
 
-    // TCanvas* canvas = new TCanvas("canvas", "", 900, 700);
+    TCanvas* canvas = new TCanvas("c", "", 900, 700);
 
-    // // Define pads
-    // TPad* pad1 = new TPad("pad1", "Main Plot", 0.0, 0.3, 1.0, 1.0); // Top pad
-    // TPad* pad2 = new TPad("pad2", "Ratio Plot", 0.0, 0.0, 1.0, 0.3); // Bottom pad
-    // pad1->SetBottomMargin(0.02); // Reduce bottom margin for top pad
-    // pad2->SetTopMargin(0.02);   // Reduce top margin for bottom pad
-    // pad2->SetBottomMargin(0.3); // Increase bottom margin for labels
-    // pad1->Draw();
-    // pad2->Draw();
+    // Define pads
+    TPad* pad1 = new TPad("pad1", "Main Plot", 0.0, 0.3, 1.0, 1.0); // Top pad
+    TPad* pad2 = new TPad("pad2", "Ratio Plot", 0.0, 0.0, 1.0, 0.3); // Bottom pad
+    pad1->SetBottomMargin(0.02); // Reduce bottom margin for top pad
+    pad2->SetTopMargin(0.02);   // Reduce top margin for bottom pad
+    pad2->SetBottomMargin(0.3); // Increase bottom margin for labels
+    pad1->Draw();
+    pad2->Draw();
 
-    // // Draw the main plot
-    // pad1->cd();
-    // // antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[CC_ON_CARBON]->SetLineColor(kRed);
-    // antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[CC_ON_CARBON]->SetFillColor(kRed);
-    // antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[CC_ON_CARBON]->Draw("E HIST");
-    // antineutrino_reco_energy_CCQEonHLIKE[GRAPHITE]->SetLineColor(kBlue);
-    // antineutrino_reco_energy_CCQEonHLIKE[GRAPHITE]->Draw("E1 SAME");
+    // Draw the main plot
+    pad1->cd();
+    auto h2_ = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_GRAPHITE, CC_ON_CARBON, 1);
+    h2_->SetLineColor(kBlue);
+    
+    h2->Draw("E HIST");
+    h2_->Draw("E1 SAME");
 
-    // // Add legend
-    // TLegend* legend = new TLegend(0.6, 0.6, 0.9, 0.9);
-    // legend->AddEntry(antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[CC_ON_CARBON], "CC on Carbon Plastic (signal-like)", "f");
-    // legend->AddEntry(antineutrino_reco_energy_CCQEonHLIKE[GRAPHITE], "CC on Carbon Graphite (signal-like)", "l");
-    // legend->Draw();
+    // Add legend
+    TLegend* legend = new TLegend(0.6, 0.6, 0.9, 0.9);
+    legend->AddEntry(h2, "CC on Carbon Plastic (signal-like)", "f");
+    legend->AddEntry(h2_, "CC on Carbon Graphite (signal-like)", "l");
+    legend->Draw();
 
-    // // Calculate the ratio
-    // pad2->cd();
-    // TH1D* ratio = (TH1D*)antineutrino_reco_energy_CCQEonHLIKE_PLASTIC[CC_ON_CARBON]->Clone("ratio");
-    // ratio->Divide(antineutrino_reco_energy_CCQEonHLIKE[GRAPHITE]);
-    // ratio->SetTitle(""); // Remove title for ratio plot
-    // ratio->GetYaxis()->SetTitle("Bin Content Ratio");
-    // ratio->GetXaxis()->SetTitle("Energy (GeV)");
-    // ratio->GetYaxis()->SetNdivisions(505);
-    // ratio->GetYaxis()->SetTitleSize(0.1);
-    // ratio->GetYaxis()->SetTitleOffset(0.4);
-    // ratio->GetYaxis()->SetLabelSize(0.08);
-    // ratio->GetXaxis()->SetTitleSize(0.1);
-    // ratio->GetXaxis()->SetTitleOffset(0.8);
-    // ratio->GetXaxis()->SetLabelSize(0.08);
-    // ratio->SetLineColor(kBlack);
-    // ratio->Draw("E1");
+    // Calculate the ratio
+    pad2->cd();
+    h2->Sumw2();
+    h2_->Sumw2();
+    h2_ -> SetLineColor(kBlack);
+    h2_ -> SetLineWidth(2);
+    h2_ -> SetMarkerStyle(20);
+    TH1D* ratio = (TH1D*)h2->Clone("ratio");
+    ratio->Divide(h2_);
+    ratio->SetTitle(""); // Remove title for ratio plot
+    ratio->GetYaxis()->SetTitle("Bin Content Ratio");
+    ratio->GetXaxis()->SetTitle("Energy (GeV)");
+    ratio->GetYaxis()->SetNdivisions(505);
+    ratio->GetYaxis()->SetTitleSize(0.1);
+    ratio->GetYaxis()->SetTitleOffset(0.4);
+    ratio->GetYaxis()->SetLabelSize(0.08);
+    ratio->GetXaxis()->SetTitleSize(0.1);
+    ratio->GetXaxis()->SetTitleOffset(0.8);
+    ratio->GetXaxis()->SetLabelSize(0.08);
+    ratio->SetLineColor(kBlack);
+    ratio->Draw("E1");
 
-    // // Update the canvas
-    // canvas->Update();
+    // Update the canvas
+    canvas->Update();
     //_________________________________________________________________________________________
 
     // TCanvas* canvas = new TCanvas("canvas", "", 900, 700);
