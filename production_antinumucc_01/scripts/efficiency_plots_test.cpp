@@ -446,8 +446,8 @@ std::vector<int> are_cells_compatibles(const std::vector<double>& space_residual
             isCompatible[i] = 0;
         }else{
             bool space_pass = (fabs(space_residuals[i]) <= 150);
-            float expected_sigma = 0.05 / sqrt(reco_energy[i]);
-            bool time_pass = fabs(time_residuals[i] - expected_sigma * 3);
+            float expected_sigma = 0.05 / sqrt(reco_energy[i]*1e-3);
+            bool time_pass = (fabs(time_residuals[i])) < 3*expected_sigma;
             if(space_pass && time_pass){
                 isCompatible[i] = 1;
             }else{
@@ -492,6 +492,7 @@ int efficiency_plots_test(){
     auto PRODUCTION_FOLDER = TString::Format("/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc_01/production_0016/preunfold/");
     auto DATA_PREUNFOLD = TString::Format("/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc_01/data_preunfold/");
     auto PRODUCTION = TString::Format("%smerged_output_analysis.0016.to.0016.root", DATA_PREUNFOLD.Data());
+    auto FLUX = TString::Format("%sfluxes_merged.root", DATA_PREUNFOLD.Data());
     
     // single file to run tests
     // auto PRODUCTION = TString::Format("%sevents-in-SANDtracker.16000.to.16009.output_analysis.root", PRODUCTION_FOLDER.Data());
@@ -499,6 +500,14 @@ int efficiency_plots_test(){
     std::cout << "Using file : " << PRODUCTION << "\n";
     
     TFile *file = TFile::Open(PRODUCTION.Data());
+    TFile *fFlux = TFile::Open(FLUX.Data());
+
+    TTree* flux = (TTree*)fFlux->Get("flux");
+    if(!flux){
+        return -1;
+    }
+    TH1F* hFlux = new TH1F("hFlux", "Distribuzione di E;E (GeV);Conteggi", 24, 0, 6);
+    flux->Draw("E >> hFlux");
 
     /***
      * LEAVES:
@@ -530,7 +539,6 @@ int efficiency_plots_test(){
     std::vector<int>* Fired_Cells_mod = nullptr;
     std::vector<int>* isCellComplete = nullptr;
     std::vector<int>* IsCompatible = nullptr;
-    std::vector<int>* IsCompatible2 = nullptr;
     std::vector<int>* Fired_Cells_adc1 = nullptr;
     std::vector<int>* Fired_Cells_adc2 = nullptr;
     std::vector<int>* Fired_Cells_tdc1 = nullptr;
@@ -574,7 +582,6 @@ int efficiency_plots_test(){
     tree->SetBranchAddress("isCellComplete", &isCellComplete);
     tree->SetBranchAddress("IsEarliestCell_neutron", &IsEarliestCell_neutron);
     tree->SetBranchAddress("IsCompatible", &IsCompatible);
-    tree->SetBranchAddress("IsCompatible2", &IsCompatible2);
     tree->SetBranchAddress("Fired_Cells_adc1", &Fired_Cells_adc1);
     tree->SetBranchAddress("Fired_Cells_adc2", &Fired_Cells_adc2);
     tree->SetBranchAddress("Fired_Cells_tdc1", &Fired_Cells_tdc1);
@@ -801,6 +808,7 @@ int efficiency_plots_test(){
             continue;
         }
         neutrons_w_compatible_cells_in_ECAL_vs_neutrino_E_ -> Fill(1, IncomingNeutrino_energy);
+        
         positive_mu_hist.Fill(ECAL_COINCIDENCE, SELECTION_NONE, CCQE_ON_H, 0, antimuon_true_energy);
         positive_mu_hist.Fill(ECAL_COINCIDENCE, SELECTION_NONE, CCQE_ON_H, 1, antimuon_reco_energy);
 
@@ -825,15 +833,6 @@ int efficiency_plots_test(){
     positive_mu_hist.CompareStages("muon_spectra");
     antinu_hist.CompareStages("neutrino_spectra");
     neutron_hist.CompareStages("neutron_spectra");
-
-
-    /**
-    @reco: compare reconstructed quantities for each stage
-     */
-    // plot_reco(antimu_true_energy[WIRES_CUT], antimu_reco_energy[WIRES_CUT], 
-    //         "antimuon energy CCQE on H [WIRES CUT]", "antimuon_energy_CCQEonH_wires_cut.png");
-    // plot_reco(antimu_true_energy[ECAL_COINCIDENCE], antimu_reco_energy[ECAL_COINCIDENCE], 
-    //         "antimuon energy CCQE on H [ECAL COINCIDENCE]", "antimuon_energy_CCQEonH_ecal_coincidence.png");
 
     /**
     @relations: plot true relations
@@ -994,6 +993,7 @@ int efficiency_plots_test(){
     h_true_signal->Draw("E HIST");
     h_selected_true_positive->Draw("E HIST SAME");
     h_plastic->Draw("E1 SAME");
+    hFlux -> Draw("H SAME");
     legendsub->Draw("SAME");
 
     pad2->cd();
@@ -1020,6 +1020,43 @@ int efficiency_plots_test(){
 
     // Aggiorna il canvas
     canvas_sub->Update();
+
+    /***
+        EVENTRATE:
+    */
+    TCanvas* canvas_rate = new TCanvas("canvas_rate", "", 900, 700);
+    TH1D* reco_signal_rate = (TH1D*)h_plastic->Clone("reco_signal_rate");
+    reco_signal_rate->Sumw2();
+    reco_signal_rate->Divide(ratio2);
+    
+    TPad* pad1rate = new TPad("pad1", "Main Plot", 0.0, 0.3, 1.0, 1.0); // Top pad
+    TPad* pad2rate = new TPad("pad2", "Ratio Plot", 0.0, 0.0, 1.0, 0.3); // Bottom pad
+
+    TLegend* legend_rate = new TLegend(0.6, 0.6, 0.9, 0.9);
+    legend_rate->AddEntry(h_true_signal, "#Phi_{#bar{#nu}_{#mu}} #sigma_{S} (CCQE on H)", "l");
+    legend_rate->AddEntry(reco_signal_rate, "reconstructed rate", "lp");
+
+    pad1rate->SetBottomMargin(0.02); // Reduce bottom margin for top pad
+    pad2rate->SetTopMargin(0.02);   // Reduce top margin for bottom pad
+    pad2rate->SetBottomMargin(0.3); // Increase bottom margn for labels
+
+    canvas_rate->cd();
+    pad1rate->Draw();
+    pad2rate->Draw();
+
+    pad1rate->cd();
+    h_true_signal->Draw("E HIST");
+    reco_signal_rate->Draw("E1 SAME");
+    legend_rate->Draw("SAME");
+
+    pad2rate->cd();
+    TH1D* ratio_rate_true_reco = (TH1D*)reco_signal_rate->Clone("ratio_rate_true_reco");
+    ratio_rate_true_reco->Sumw2();
+    ratio_rate_true_reco->Divide(h_true_signal);
+
+    ratio_rate_true_reco->Draw("E1");
+    canvas_rate->Update();
+
 
     /***
      * EFFICIENCIES: ECAL reconstruction efficiency on neutron as function of K neutron
@@ -1066,34 +1103,71 @@ int efficiency_plots_test(){
     /***
         CELLS:
     */
-    TCanvas* c = new TCanvas("","",900,700);
+    // TCanvas* c = new TCanvas("","",900,700);
 
-    // h_nof_cells_fired -> Draw("HIST");
-    h_nof_cells_fired_neutron -> SetLineColor(kRed);
-    h_nof_cells_fired_antimu -> SetLineColor(kBlack);
-    h_nof_cells_fired_neutron -> Draw("HIST");
-    h_nof_cells_fired_antimu -> Draw("HIST SAME");
-    std::cout << "total : " << h_nof_cells_fired_neutron->Integral() << "\n";
+    // // h_nof_cells_fired -> Draw("HIST");
+    // h_nof_cells_fired_neutron -> SetLineColor(kRed);
+    // h_nof_cells_fired_antimu -> SetLineColor(kBlack);
+    // h_nof_cells_fired_neutron -> Draw("HIST");
+    // h_nof_cells_fired_antimu -> Draw("HIST SAME");
+    // std::cout << "total : " << h_nof_cells_fired_neutron->Integral() << "\n";
 
 
-    // 
-    TCanvas* c2 = new TCanvas("c2","",900,700);
-    adc_count_antimu -> Draw("HIST");
-    adc_count_neutron -> SetLineColor(kRed);
-    adc_count_neutron -> Draw("HIST SAME");
+    // // 
+    // TCanvas* c2 = new TCanvas("c2","",900,700);
+    // adc_count_antimu -> Draw("HIST");
+    // adc_count_neutron -> SetLineColor(kRed);
+    // adc_count_neutron -> Draw("HIST SAME");
 
-    //
-    TCanvas* c3 = new TCanvas("c3","",900,700);
-    adc1_vs_adc2_incomplete->Draw("col z");
+    // //
+    // TCanvas* c3 = new TCanvas("c3","",900,700);
+    // adc1_vs_adc2_incomplete->Draw("col z");
 
-    // nod events with 0 complete cells
-    std::cout << "nof of events with zero complete cells fired by neutrons : " << nof_events_w_zero_complete_cells << "\n";
+    // // nod events with 0 complete cells
+    // std::cout << "nof of events with zero complete cells fired by neutrons : " << nof_events_w_zero_complete_cells << "\n";
 
-    // 
-    TCanvas* c4 = new TCanvas("c4","",900,700);
-    cell_reco_energy_neutron -> Draw("HIST");
-    cell_reco_energy_antimu -> Draw("HIST SAME");
+    // // 
+    // TCanvas* c4 = new TCanvas("c4","",900,700);
+    // cell_reco_energy_neutron -> Draw("HIST");
+    // cell_reco_energy_antimu -> Draw("HIST SAME");
+
+    /***
+    XSEC:
+     */
+    // TCanvas* cx = new TCanvas("c3","",900,700);
+    // h_true_signal->Draw("HIST");
+    // hFlux->Draw("HIST SAME");
+
+    // TPad* pad1x = new TPad("pad1", "Main Plot", 0.0, 0.3, 1.0, 1.0); // Top pad
+    // TPad* pad2x = new TPad("pad2", "Ratio Plot", 0.0, 0.0, 1.0, 0.3); // Bottom pad
     
+    // pad1x->cd();
+    // h_true_signal->Draw("HIST");
+    // hFlux -> Draw("HIST SAME");
+
+    // pad2x->cd();
+    // TH1D* ratiox = (TH1D*)h_true_signal->Clone("ratio");
+    // hFlux->Sumw2();
+    // ratiox->Divide(hFlux);
+    
+    // ratiox->SetTitle(""); // Remove title for ratio plot
+    // ratiox->GetYaxis()->SetTitle("Bin Content Ratio");
+    // ratiox->GetXaxis()->SetTitle("Energy (GeV)");
+    // ratiox->GetYaxis()->SetNdivisions(505);
+    // ratiox->GetYaxis()->SetTitleSize(0.1);
+    // ratiox->GetYaxis()->SetTitleOffset(0.4);
+    // ratiox->GetYaxis()->SetLabelSize(0.08);
+    // ratiox->GetYaxis()->SetRangeUser(0, 0.3);
+    // ratiox->GetXaxis()->SetTitleSize(0.1);
+    // ratiox->GetXaxis()->SetTitleOffset(0.8);
+    // ratiox->GetXaxis()->SetLabelSize(0.08);
+    // ratiox->SetLineColor(kBlack);
+    // ratiox->Draw("E1");
+
+    // cx->Update();
+    
+    // TCanvas* cx2 = new TCanvas("c3","",900,700);
+    // ratiox->Draw("E");
 
     return 0;
 }

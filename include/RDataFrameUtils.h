@@ -651,6 +651,11 @@ ROOT::VecOps::RVec<int> IsCompatible(const ROOT::VecOps::RVec<double>& space_res
                                      const ROOT::VecOps::RVec<double>& time_residuals,
                                      const ROOT::VecOps::RVec<int>& are_tdc_cell_consistent);
 
+ROOT::VecOps::RVec<int> IsCompatible2(const ROOT::VecOps::RVec<double>& space_residuals,
+                                      const ROOT::VecOps::RVec<double>& time_residuals,
+                                      const ROOT::VecOps::RVec<double>& reco_energy,
+                                      const ROOT::VecOps::RVec<int>& are_tdc_cell_consistent);
+
 ROOT::VecOps::RVec<int> IsCandidateCell(const ROOT::VecOps::RVec<int>& isSpaceCompatible,
                                         const ROOT::VecOps::RVec<double>& t_hit_reco);
 

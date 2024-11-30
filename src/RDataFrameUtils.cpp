@@ -2892,6 +2892,57 @@ ROOT::VecOps::RVec<int> RDFUtils::DIGIT::IsCompatible(const ROOT::VecOps::RVec<d
     return isCompatible;
 }
 
+ROOT::VecOps::RVec<int> RDFUtils::DIGIT::IsCompatible2(const ROOT::VecOps::RVec<double>& space_residuals,
+                                                      const ROOT::VecOps::RVec<double>& time_residuals,
+                                                      const ROOT::VecOps::RVec<double>& reco_energy,
+                                                      const ROOT::VecOps::RVec<int>& are_tdc_cell_consistent){
+    /*
+      Input: time/space residuals between the expected and the reconstructed hit in the cell
+      and look for those cell compatible in the space and in the time
+    */
+    ROOT::VecOps::RVec<int> isCompatible(space_residuals.size());
+    
+    for (size_t i = 0; i < space_residuals.size(); i++){
+        if((space_residuals[i] == RDFUtils::DEFAULT_NO_DATA)){
+            isCompatible[i] = 0;
+        }else{
+            bool space_pass = (fabs(space_residuals[i]) <= 150);
+            float expected_sigma = 0.05 / sqrt(reco_energy[i]);
+            bool time_pass = fabs(time_residuals[i] - expected_sigma * 3);
+            if(space_pass && time_pass){
+                isCompatible[i] = 1;
+            }else{
+                isCompatible[i] = 0;
+            }
+        }
+    }
+    return isCompatible;
+}
+
+// ROOT::VecOps::RVec<int> RDFUtils::DIGIT::IsCompatible(const ROOT::VecOps::RVec<double>& space_residuals,
+//                                                       const ROOT::VecOps::RVec<double>& time_residuals,
+//                                                       const ROOT::VecOps::RVec<int>& are_tdc_cell_consistent){
+//     /*
+//       Input: time/space residuals between the expected and the reconstructed hit in the cell
+//       and look for those cell compatible in the space and in the time
+//     */
+//     ROOT::VecOps::RVec<int> isCompatible(space_residuals.size());
+    
+//     for (size_t i = 0; i < space_residuals.size(); i++){
+//         if((space_residuals[i] == RDFUtils::DEFAULT_NO_DATA)){
+//             isCompatible[i] = 0;
+//         }else{
+//             // 10 cm precision in the determination of neutron position and 1 ns in time
+//             if((fabs(space_residuals[i]) <= 150) && (fabs(time_residuals[i]) <= 1) && (are_tdc_cell_consistent[i] == 1)){
+//                 isCompatible[i] = 1;
+//             }else{
+//                 isCompatible[i] = 0;
+//             }
+//         }
+//     }
+//     return isCompatible;
+// }
+
 ROOT::VecOps::RVec<int> RDFUtils::DIGIT::IsCandidateCell(const ROOT::VecOps::RVec<int>& isCompatible,
                                                          const ROOT::VecOps::RVec<double>& variable) {
     /**
@@ -3238,9 +3289,12 @@ ROOT::RDF::RNode RDFUtils::RECO::AddColumnsFromDriftReco(ROOT::RDF::RNode& df){
             .Define("Residuals_HitTime_",                           RDFUtils::DIGIT::TimeResiduals,             {"Expected_HitTime_", "Reconstructed_HitTime"})
             .Define("Residuals_HitSpace_",                          RDFUtils::DIGIT::SpaceResiduals,            {"ExpectedNeutron_HitPosition_", "Reconstructed_HitPosition"})
             .Define("IsCompatible",                                 RDFUtils::DIGIT::IsCompatible,              {"Residuals_HitSpace_", "Residuals_HitTime_", "AreTDCsConsistent"})
+            .Define("IsCompatible2",                                RDFUtils::DIGIT::IsCompatible2,             {"Residuals_HitSpace_", "Residuals_HitTime_", "Reconstructed_Energy", "AreTDCsConsistent"})
             .Define("earliest_compatible_cell",                     RDFUtils::FindMinimum3,                     {"Reconstructed_HitTime","IsCompatible"})
             .Define("nof_compatible_cells",                         [](const ROOT::VecOps::RVec<int>& compatibles){return static_cast<int>(compatibles[compatibles==1].size());}, {"IsCompatible"})
+            .Define("nof_compatible_cells2",                        [](const ROOT::VecOps::RVec<int>& compatibles){return static_cast<int>(compatibles[compatibles==1].size());}, {"IsCompatible2"})
             .Define("candidate_signal_event",                       RDFUtils::RECO::isCandidateSignal,          {"NofFinalStateChargedParticles","nof_compatible_cells"})
+            .Define("candidate_signal_event2",                      RDFUtils::RECO::isCandidateSignal,          {"NofFinalStateChargedParticles","nof_compatible_cells2"})
             .Define("reconstructed_neutron_KinE_MeV",               RDFUtils::slice_w_condition,                {"Reconstructed_neutronKin_MeV","Reconstructed_HitTime", "earliest_compatible_cell"})
             .Define("reconstructed_neutron_E",                      "reconstructed_neutron_KinE_MeV + NEUTRON_MASS_MeV")
             .Define("reconstructed_neutrino_Energy",                "reconstructed_neutron_E + Antimuon_reconstructed_P4[3]")

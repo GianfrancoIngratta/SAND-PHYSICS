@@ -42,7 +42,7 @@ std::vector<std::string> columns_preselection = {
     "PredictedNeutron_E_GeV",
 };
 
-std::vector<std::string> output_columns_event_selection = {
+std::vector<std::string> output_columns_tAnalysis = {
     /*
         EVENT INFO
     */
@@ -70,7 +70,6 @@ std::vector<std::string> output_columns_event_selection = {
     /*
         PREDICTED NEUTRON
     */
-    "Neutrino_reconstructed_P4_GeV",
     "PredictedNeutron_P3_GeV",
     "PredictedNeutron_E_GeV",
     "PredictedNeutron_Beta",
@@ -123,16 +122,20 @@ std::vector<std::string> output_columns_event_selection = {
     /*
         CELLS WITH COINCIDENCES
     */
-   "Residuals_HitTime_",
-   "Residuals_HitSpace_",
-   "IsCompatible",
-   "earliest_compatible_cell",
-   "nof_compatible_cells",
-   /*
-        RECONSTRUCTED NEUTRON AND NEUTRINO ENERGY
-   */
+    "Residuals_HitTime_",
+    "Residuals_HitSpace_",
+    "IsCompatible",
+    "IsCompatible2",
+    "earliest_compatible_cell",
+    "nof_compatible_cells",
+    "nof_compatible_cells2",
+    "candidate_signal_event",
+    "candidate_signal_event2",
+    /*
+         RECONSTRUCTED NEUTRON AND NEUTRINO ENERGY
+    */
     "reconstructed_neutron_KinE_MeV",
-    // "reconstructed_neutrino_Energy",
+    "Neutrino_reconstructed_P4_GeV"
 };
 
 std::vector<std::string> columns_neutron_cells = {
@@ -319,9 +322,9 @@ int main(int argc, char* argv[]){
      * OUTPUT:
      * 
     */
-    auto fOutput_ecal_prediction = TString::Format("%secal_prediction/events-in-SANDtracker.%d.to.%d.ecal_prediction.root", FOLDER_PRODUCTION.Data(), file_start, file_stop-1);
     auto fOutput_selected_signal = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_signal.root", FOLDER_PRODUCTION.Data(), file_start, file_stop-1);
     auto fOutput_selected_bkg = TString::Format("%sevents-in-SANDtracker.%d.to.%d.selected_bkg.root", FOLDER_PRODUCTION.Data(), file_start, file_stop-1);
+    auto fOutput_output_analysis = TString::Format("%spreunfold/events-in-SANDtracker.%d.to.%d.output_analysis.root", FOLDER_PRODUCTION.Data(), file_start, file_stop-1);
     auto fOutput_preunfold = TString::Format("%spreunfold/events-in-SANDtracker.%d.to.%d.preunfold.root", FOLDER_PRODUCTION.Data(), file_start, file_stop-1);
     auto fOutput_report = TString::Format("%sevent_selection/events-in-SANDtracker.%d.to.%d.report.root", FOLDER_PRODUCTION.Data(), file_start, file_stop-1);
     auto fOutput_report_txt = TString::Format("%sevent_selection/events-in-SANDtracker.%d.to.%d.report.txt", FOLDER_PRODUCTION.Data(), file_start, file_stop-1);
@@ -410,7 +413,7 @@ int main(int argc, char* argv[]){
     Report(dfReco_wires_cut_1cmulti, "CHARGE MULTIPLICITY");
     Report(dfReco_wires_cut_1cmulti, report_file_txt, "CHARGE MULTIPLICITY");
 
-    // dfReco_wires_cut_1cmulti.Snapshot("test", "test/test.root", output_columns_event_selection);
+    // dfReco_wires_cut_1cmulti.Snapshot("test", "test/test.root", output_columns_tAnalysis);
     // dfReco_wires_cut_1cmulti.Snapshot("test_trj", "test/test_trj.root", columns_branch_trj);
 
     /***
@@ -430,7 +433,7 @@ int main(int argc, char* argv[]){
     Report(selected_signal, report_file_txt, "SIGNAL SELECTION");
     Report(selected_signal_on_graphite, report_file_txt, "SIGNAL SELECTION [ON GRAPHITE]");
     Report(selected_signal_on_plastic, report_file_txt, "SIGNAL SELECTION [ON PLASTIC]");
-    // selected_signal.Snapshot("selected_signal", fOutput_selected_signal.Data(), output_columns_event_selection);
+    // selected_signal.Snapshot("selected_signal", fOutput_selected_signal.Data(), output_columns_tAnalysis);
     // selected_signal.Snapshot("selected_signal_traj", fOutput_trj_signal.Data(), columns_branch_trj);
     
     // // EXCLUDED FROM SELECTION ___________________________________________________________________________________
@@ -438,7 +441,7 @@ int main(int argc, char* argv[]){
     // LOG("i", fOutput_selected_bkg.Data());
     // LOG("i", fOutput_trj_bkg.Data());
     // auto selected_bkg = dfReco_wires_cut_1cmulti.Filter("candidate_signal_event == 0");
-    // selected_bkg.Snapshot("selected_bkg", fOutput_selected_bkg.Data(), output_columns_event_selection);
+    // selected_bkg.Snapshot("selected_bkg", fOutput_selected_bkg.Data(), output_columns_tAnalysis);
     // selected_bkg.Snapshot("selected_bkg_traj", fOutput_trj_bkg.Data(), columns_branch_trj);
     
     // // NEUTRON CELLS (MC TRUTH) _______________________________________________________________________
@@ -629,6 +632,7 @@ int main(int argc, char* argv[]){
                                                                     "candidate_signal_event",
                                                                     "InteractionTarget",
                                                                     "InteractionVolume_short",
+                                                                    "IncomingNeutrinoP4",
                                                                     "IncomingNeutrino_energy",
                                                                     "Neutrino_reconstructed_energy_GeV",
                                                                     /***
@@ -650,7 +654,7 @@ int main(int argc, char* argv[]){
                                                                     "PredictedNeutron_E_GeV",
                                                                     });
 
-    df_fiducial_volume.Snapshot("ecal_prediction", fOutput_ecal_prediction.Data(), output_columns_event_selection);
+    df_fiducial_volume.Snapshot("tAnalysis", fOutput_output_analysis.Data(), output_columns_tAnalysis);
 
     return 0;
 }
