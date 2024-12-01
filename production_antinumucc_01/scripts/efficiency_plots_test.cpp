@@ -432,9 +432,12 @@ void Fill_Final_Histos(SELECTION selection,
     }
 }
 
-std::vector<int> are_cells_compatibles(const std::vector<double>& space_residuals,
-                               const std::vector<double>& time_residuals,
-                               const std::vector<double>& reco_energy){
+std::vector<int> are_cells_compatibles(const std::vector<double>& tof,
+                                     const std::vector<double>& space_residuals,
+                                      const std::vector<double>& time_residuals,
+                                      const std::vector<double>& reco_energy
+                                    //   const std::vector<int>& is_complete
+                                      ){
     /*
       Input: time/space residuals between the expected and the reconstructed hit in the cell
       and look for those cell compatible in the space and in the time
@@ -448,7 +451,7 @@ std::vector<int> are_cells_compatibles(const std::vector<double>& space_residual
             bool space_pass = (fabs(space_residuals[i]) <= 150);
             float expected_sigma = 0.05 / sqrt(reco_energy[i]*1e-3);
             bool time_pass = (fabs(time_residuals[i])) < 3*expected_sigma;
-            if(space_pass && time_pass){
+            if(space_pass && time_pass && tof[i]>15.){
                 isCompatible[i] = 1;
             }else{
                 isCompatible[i] = 0;
@@ -456,6 +459,29 @@ std::vector<int> are_cells_compatibles(const std::vector<double>& space_residual
         }
     }
     return isCompatible;
+}
+
+bool has_compatible_cell(double best_time_residual,
+                               double best_space_residual,
+                               int is_cell_complete,
+                               double reco_deposited_energy){
+    
+    float expected_time_res = 0.06 / sqrt(reco_deposited_energy * 1e-3); // ns
+    float expected_space_res = 10; // mm
+    
+    bool time_pass = (fabs(best_time_residual) <= 3. * expected_time_res);
+    bool space_pass = (fabs(best_space_residual) <= expected_space_res);
+    
+    if(is_cell_complete){
+        // if(time_pass | space_pass){
+        if(time_pass && space_pass){
+            return true;
+        }else{
+            return false;
+        }
+    }else{
+        return false;
+    }
 }
 
 /***
@@ -486,6 +512,70 @@ TH1D* cell_reco_energy_antimu = new TH1D("cell_reco_energy_antimu", ";reco energ
 TH1D* nof_events_w_zero_complete_cells = new TH1D("nof_events_w_zero_complete_cells", "", 2, 0, 1);
 
 TH2D* adc1_vs_adc2_incomplete = new TH2D("adc1_vs_adc2_incomplete", "", 20, 0, 200, 20, 0, 200);
+
+TH2D* best_time_residual_vs_any_space_residual = new TH2D("best_time_vs_any_space", "", 100, 0, 450, 100, -4, 4);
+TH2D* any_time_residual_vs_best_space_residual = new TH2D("any_time_vs_best_space", "", 100, 0, 450, 100, -4, 4);
+
+TH2D* res_time_vs_res_space_3cells = new TH2D("res_time_vs_res_space_3cells", "", 100, 0, 450, 100, -4, 4);
+TH2D* res_time_vs_res_space_3cells_ = new TH2D("res_time_vs_res_space_3cells_", "", 100, 0, 450, 100, -4, 4);
+
+TH1D* best_time_residuals = new TH1D("best_time_residuals", "", 300, -4, 4);
+TH1D* best_space_residuals = new TH1D("best_space_residuals", "", 300, 0, 450);
+
+std::vector<double> GetBestTime(std::vector<int> mod_id,
+                                std::vector<int> is_complete,
+                                std::vector<double> time_residuals, 
+                                std::vector<double> space_residuals,
+                                std::vector<double> reco_energy_deposited,
+                                bool& complete,
+                                float& energy_deposited){
+    double min_residual = 999999;
+    double space_residual = -1.;
+    double time_residual = -1.;
+    
+    for(size_t i=0; i< time_residuals.size(); i++){
+        
+        // if(mod_id[i] < 30) continue;
+        if(!is_complete[i]) continue;
+
+        float this_residual = fabs(time_residuals[i]);
+        
+        if(this_residual < min_residual){
+            min_residual = this_residual;
+            space_residual = space_residuals[i];
+            time_residual = time_residuals[i];
+            complete = true;
+            energy_deposited = reco_energy_deposited[i];
+        }
+    }
+    
+    return {time_residual, space_residual};
+}
+
+std::vector<double> GetBestSpace(std::vector<int> mod_id,
+                                 std::vector<int> is_complete,
+                                 std::vector<double> time_residuals, 
+                                 std::vector<double> space_residuals){
+    double min_residual = 999999;
+    double space_residual = -1.;
+    double time_residual = -1.;
+    
+    for(size_t i=0; i< space_residuals.size(); i++){
+
+        if(mod_id[i] < 30) continue;
+        if(!is_complete[i]) continue;
+        
+        float this_residual = fabs(space_residuals[i]);
+        
+        if(this_residual < min_residual){
+            min_residual = this_residual;
+            space_residual = space_residuals[i];
+            time_residual = time_residuals[i];
+        }
+    }
+    
+    return {time_residual, space_residual};
+}
 
 int efficiency_plots_test(){
 
@@ -632,13 +722,42 @@ int efficiency_plots_test(){
         /**
             SELECTION:
          */
-        std::vector<int> is_cell_compatible = are_cells_compatibles(*Residuals_HitSpace_, *Residuals_HitTime_, *Reconstructed_Energy); 
+
+        bool is_complete = false;
+        float reco_energy_deposit = 0;
+        
+        std::vector<double> bests_time = GetBestTime(*Fired_Cells_mod, 
+                                                     *isCellComplete, 
+                                                     *Residuals_HitTime_, 
+                                                     *Residuals_HitSpace_,
+                                                     *Reconstructed_Energy,
+                                                     is_complete,
+                                                     reco_energy_deposit);
+
+        std::vector<double> bests_space = GetBestSpace(*Fired_Cells_mod, 
+                                                       *isCellComplete, 
+                                                       *Residuals_HitTime_, 
+                                                       *Residuals_HitSpace_
+                                                       );
+        
+        double best_residual_time = bests_time[0];
+        double best_residual_space = bests_space[0];
+        bool event_has_compatible_cell = has_compatible_cell(best_residual_time, 
+                                                             best_residual_space, 
+                                                             is_complete,
+                                                             reco_energy_deposit);
+
+        int nof_cells_fired_by_neutron = std::accumulate(is_cell_fired_by_neutron->begin(),
+                                                         is_cell_fired_by_neutron->end(),
+                                                         0.);
+        std::vector<int> is_cell_compatible = are_cells_compatibles(*Reconstructed_HitTime, *Residuals_HitSpace_, *Residuals_HitTime_, *Reconstructed_Energy); 
         bool is_signal = (CCQEonHydrogen == 1);
         bool pass_nof_wires_cut = (nof_fired_wires > 69);
         int nof_event_compatible_cells = std::accumulate(is_cell_compatible.begin(), is_cell_compatible.end(), 0.0);
         bool event_has_compatible_cells = (nof_event_compatible_cells > 0);
         bool event_has_charge_multi_1 = (NofFinalStateChargedParticles == 1); 
         bool is_event_selected = (pass_nof_wires_cut && event_has_charge_multi_1 && event_has_compatible_cells);
+        // bool is_event_selected = (pass_nof_wires_cut && event_has_charge_multi_1 && event_has_compatible_cell);
         bool is_in_graphite = (*InteractionVolume_short == "C_Target");
         bool is_in_plastic = (*InteractionVolume_short == "C3H6_Target");
         bool is_on_H = (*InteractionTarget == "proton");
@@ -652,10 +771,31 @@ int efficiency_plots_test(){
         positive_mu_hist.Fill(FIDUCIAL_VOLUME, SELECTION_NONE, REACTION_NONE, 0, antimuon_true_energy);
 
         Fill_Final_Histos(selection, IncomingNeutrino_energy, Neutrino_reconstructed_energy_GeV);
+
+        if(is_on_C)
+        {
+            for(size_t j = 0; j < is_cell_fired_by_neutron->size(); j++)
+            {
+                if(isCellComplete->at(j))
+                {
+                    res_time_vs_res_space_3cells_ -> Fill(Residuals_HitSpace_->at(j), Residuals_HitTime_->at(j));
+                }
+            }
+        }
         
         if(!is_signal){
             continue;
         }
+
+        std::vector<double> event_cell_best_time = GetBestTime(*Fired_Cells_mod, *isCellComplete, *Residuals_HitTime_, *Residuals_HitSpace_, *Reconstructed_Energy,
+                                                     is_complete,reco_energy_deposit);
+        std::vector<double> event_cell_best_space = GetBestSpace(*Fired_Cells_mod, *isCellComplete, *Residuals_HitTime_, *Residuals_HitSpace_);
+        
+        best_time_residual_vs_any_space_residual -> Fill(event_cell_best_time[1], event_cell_best_time[0]);
+        any_time_residual_vs_best_space_residual -> Fill(event_cell_best_space[1], event_cell_best_space[0]);
+
+        best_time_residuals -> Fill(event_cell_best_time[0]);
+        best_space_residuals -> Fill(event_cell_best_space[0]);
 
         int nof_tot_fired_cells = Fired_Cells_mod->size();
         int nof_tot_fired_cells_neutron = std::accumulate(is_cell_fired_by_neutron->begin(), is_cell_fired_by_neutron->end(), 0.0);
@@ -680,6 +820,10 @@ int efficiency_plots_test(){
                 if(isCellComplete->at(j))
                 {
                     found_neutron_complete = true;
+                    if(1)
+                    {
+                        res_time_vs_res_space_3cells -> Fill(Residuals_HitSpace_->at(j), Residuals_HitTime_->at(j));
+                    }
                 }
                 adc_count_neutron -> Fill(Fired_Cells_adc1->at(j));
                 adc_count_neutron -> Fill(Fired_Cells_adc2->at(j));
@@ -1127,9 +1271,9 @@ int efficiency_plots_test(){
     // std::cout << "nof of events with zero complete cells fired by neutrons : " << nof_events_w_zero_complete_cells << "\n";
 
     // // 
-    // TCanvas* c4 = new TCanvas("c4","",900,700);
-    // cell_reco_energy_neutron -> Draw("HIST");
-    // cell_reco_energy_antimu -> Draw("HIST SAME");
+    TCanvas* c4 = new TCanvas("c4","",900,700);
+    cell_reco_energy_neutron -> Draw("HIST");
+    cell_reco_energy_antimu -> Draw("HIST SAME");
 
     /***
     XSEC:
@@ -1168,6 +1312,30 @@ int efficiency_plots_test(){
     
     // TCanvas* cx2 = new TCanvas("c3","",900,700);
     // ratiox->Draw("E");
+
+
+    /***
+    PLOT:
+     */
+    // TCanvas* canvas_residulas = new TCanvas("cr1","",900,700);
+    // best_time_residual_vs_any_space_residual -> Draw("col z");
+    
+    // TCanvas* canvas_residulas_2 = new TCanvas("cr2","",900,700);
+    // any_time_residual_vs_best_space_residual -> Draw("col z");
+
+    // TCanvas* canvas_proj1 = new TCanvas("cp1","",900,700);
+    // best_time_residuals -> Draw("HIST");
+
+    // TCanvas* canvas_proj2 = new TCanvas("cp2","",900,700);
+    // best_space_residuals -> Draw("HIST");
+
+    TCanvas* canvas_3cells = new TCanvas("canvas_3cells","",900,700);
+    res_time_vs_res_space_3cells->Draw("col z");
+
+    TCanvas* canvas_3cells_c = new TCanvas("canvas_3cells_","",900,700);
+    res_time_vs_res_space_3cells_->Draw("col z");
+
+    
 
     return 0;
 }
