@@ -5,12 +5,12 @@
 #include <TLegend.h>
 
 struct CellData {
-    std::vector<int>* is_cell_fired_by_neutron = nullptr;
-    std::vector<int>* is_cell_fired_by_antimu = nullptr;
     std::vector<int>* Fired_Cells_mod = nullptr;
+    std::vector<int>* Fired_Cells_id = nullptr;
+    std::vector<double>* Fired_Cells_x = nullptr;
+    std::vector<double>* Fired_Cells_y = nullptr;
+    std::vector<double>* Fired_Cells_z = nullptr;
     std::vector<int>* isCellComplete = nullptr;
-    std::vector<int>* IsEarliestCell_neutron = nullptr;
-    std::vector<int>* IsCompatible = nullptr;
     std::vector<int>* Fired_Cells_adc1 = nullptr;
     std::vector<int>* Fired_Cells_adc2 = nullptr;
     std::vector<int>* Fired_Cells_tdc1 = nullptr;
@@ -19,17 +19,83 @@ struct CellData {
     std::vector<double>* Fired_Cell_true_Hit_y = nullptr;
     std::vector<double>* Fired_Cell_true_Hit_z = nullptr;
     std::vector<double>* Fired_Cell_true_Hit_t = nullptr;
+    std::vector<double>* Fired_Cell_true_Hit_e = nullptr;
+    std::vector<int>* Fired_by_primary_antimu = nullptr;
+    std::vector<int>* Fired_by_primary_neutron = nullptr;
+    std::vector<int>* IsEarliestCell_neutron = nullptr;
     std::vector<double>* Reconstructed_HitPosition_x = nullptr;
     std::vector<double>* Reconstructed_HitPosition_y = nullptr;
     std::vector<double>* Reconstructed_HitPosition_z = nullptr;
     std::vector<double>* Reconstructed_HitTime = nullptr;
     std::vector<double>* Reconstructed_Energy = nullptr;
+    std::vector<double>* ExpectedNeutron_HitPosition_x_ = nullptr;
+    std::vector<double>* ExpectedNeutron_HitPosition_y_ = nullptr;
+    std::vector<double>* ExpectedNeutron_HitPosition_z_ = nullptr;
+    std::vector<double>* Expected_HitTime_ = nullptr;
     std::vector<double>* True_FlightLength = nullptr;
     std::vector<double>* Reconstructed_FlightLength = nullptr;
     std::vector<double>* Residuals_HitTime_ = nullptr;
     std::vector<double>* Residuals_HitSpace_ = nullptr;
 };
 
+
+/***
+STRUCT: Cell Manager
+*/
+
+enum CELL_TYPE{
+    COMPLETE_CELLS_SIGNAL_NEUTRONS = 0,
+    COMPLETE_CELLS_SIGNAL_MUONS = 1,
+    COMPLETE_CELLS_BKG_NEUTRONS = 2,
+    CELLS_NONE,
+};
+
+struct cell {
+    int mod, id;
+    bool is_complete, is_fired_by_antimu, is_fired_by_neutron;
+    double adc1, adc2, tdc1, tdc2;
+    double x, y, z;
+    double true_x, true_y, true_z, true_t, true_e;
+    double reco_x, reco_y, reco_z, reco_t, reco_e;
+    double pred_x, pred_y, pred_z, pred_t;
+    double true_flight, reco_flight, hit_time_res, hit_space_res;
+    CELL_TYPE ctype;
+
+    // Costruttore di default
+    cell()
+        : mod(-999), id(-999),
+          is_complete(false), is_fired_by_antimu(false), is_fired_by_neutron(false),
+          adc1(-999.), adc2(-999.), tdc1(-999.), tdc2(-999.),
+          x(-999.), y(-999.), z(-999.),
+          true_x(-999.), true_y(-999.), true_z(-999.), true_t(-999.), true_e(-999.),
+          reco_x(-999.), reco_y(-999.), reco_z(-999.), reco_t(-999.), reco_e(-999.),
+          pred_x(-999.), pred_y(-999.), pred_z(-999.), pred_t(-999.),
+          true_flight(-999.), reco_flight(-999.), hit_time_res(-999.), hit_space_res(-999.),
+          ctype(CELLS_NONE) {};
+};
+
+CELL_TYPE DetermineCellType(bool is_signal,
+                            const cell& c){
+    if(is_signal)
+    {
+        if(c.is_fired_by_neutron)
+        {
+            return COMPLETE_CELLS_SIGNAL_NEUTRONS;
+        }else
+        {
+            return COMPLETE_CELLS_SIGNAL_MUONS;
+        }
+    }else
+    {
+        if(c.is_fired_by_neutron)
+        {
+            return COMPLETE_CELLS_BKG_NEUTRONS;
+        }
+        
+    }
+
+    return CELLS_NONE;                             
+}
 
 /***
  * LEAVES: leaves of the output files
@@ -443,60 +509,6 @@ Hist_Manager neutron_hist(NEUTRON);
 Hist_Manager Q2(PARTICLE_NONE);
 
 
-/***
-STRUCT: Cell Manager
-*/
-
-enum CELL_TYPE{
-    COMPLETE_CELLS_SIGNAL_NEUTRONS = 0,
-    COMPLETE_CELLS_SIGNAL_MUONS = 1,
-    COMPLETE_CELLS_BKG_NEUTRONS = 2,
-    CELLS_NONE,
-};
-
-CELL_TYPE DetermineCellType(bool is_signal,
-                            bool is_fired_by_neutron,
-                            bool is_fired_by_muon){
-    if(is_signal)
-    {
-        if(is_fired_by_neutron)
-        {
-            return COMPLETE_CELLS_SIGNAL_NEUTRONS;
-        }else
-        {
-            return COMPLETE_CELLS_SIGNAL_MUONS;
-        }
-    }else
-    {
-        if(is_fired_by_neutron)
-        {
-            return COMPLETE_CELLS_BKG_NEUTRONS;
-        }
-        
-    }
-
-    return CELLS_NONE;                             
-}
-
-struct cell {
-    bool is_complete;
-    CELL_TYPE cell_type;
-    double tdc1, tdc2, adc1, adc2;
-    double x, y, z;
-    double true_hit_x, true_hit_y, true_hit_z, true_hit_t;
-    double reco_hit_x, reco_hit_y, reco_hit_z, reco_hit_t;
-    double predicted_hit_x, predicted_hit_y, predicted_hit_z, predicted_hit_t;
-
-    // Costruttore di default
-    cell() 
-        : is_complete(false), cell_type(CELLS_NONE),
-          tdc1(-999.), tdc2(-999.), adc1(-999.), adc2(-999.),
-          x(-999.), y(-999.), z(-999.),
-          true_hit_x(-999.), true_hit_y(-999.), true_hit_z(-999.), true_hit_t(-999.),
-          reco_hit_x(-999.), reco_hit_y(-999.), reco_hit_z(-999.), reco_hit_t(-999.),
-          predicted_hit_x(-999.), predicted_hit_y(-999.), predicted_hit_z(-999.), predicted_hit_t(-999.) {}
-};
-
 class Cells_Manager {
 private:
     
@@ -505,13 +517,16 @@ private:
     std::vector<cell> fired_by_signal_neutrons;
     std::vector<cell> fired_by_bkg_neutrons;
     std::vector<cell> fired_by_signal_muons;
+    std::vector<cell> compatible_cells;
+    
+    double best_time_residual;
+    double best_space_residual; 
 
 public:
 
-    void add_cell(const cell& c, CELL_TYPE type) {
-        complete_cells.push_back(c);
+    void add_cell(const cell& c) {
 
-        switch (type) {
+        switch (c.ctype) {
             case COMPLETE_CELLS_SIGNAL_NEUTRONS:
             
                 complete_cells.push_back(c);
@@ -559,11 +574,50 @@ public:
         fired_by_signal_muons.clear();
     }
 
-    void init_event_cells(
+    void init_event_cells(const CellData& cell_data, bool is_signal_event) 
+    {
+        size_t n_cells = cell_data.isCellComplete->size();
+        for (size_t i = 0; i < n_cells; ++i) 
+        {
+            cell this_cell;
+            this_cell.mod = cell_data.Fired_Cells_mod->at(i);
+            this_cell.id = cell_data.Fired_Cells_id->at(i);
+            this_cell.is_complete = cell_data.isCellComplete->at(i);
+            this_cell.is_fired_by_antimu = cell_data.Fired_by_primary_antimu->at(i);
+            this_cell.is_fired_by_neutron = cell_data.Fired_by_primary_neutron->at(i);
+            this_cell.tdc1 = cell_data.Fired_Cells_tdc1->at(i);
+            this_cell.tdc2 = cell_data.Fired_Cells_tdc2->at(i);
+            this_cell.adc1 = cell_data.Fired_Cells_adc1->at(i);
+            this_cell.adc2 = cell_data.Fired_Cells_adc2->at(i);
+            this_cell.x = cell_data.Fired_Cells_x->at(i);
+            this_cell.y = cell_data.Fired_Cells_y->at(i);
+            this_cell.z = cell_data.Fired_Cells_z->at(i);
+            this_cell.true_x = cell_data.Fired_Cell_true_Hit_x->at(i);
+            this_cell.true_y = cell_data.Fired_Cell_true_Hit_y->at(i);
+            this_cell.true_z = cell_data.Fired_Cell_true_Hit_z->at(i);
+            this_cell.true_t = cell_data.Fired_Cell_true_Hit_t->at(i);
+            this_cell.true_e = cell_data.Fired_Cell_true_Hit_e->at(i);
+            this_cell.reco_x = cell_data.Reconstructed_HitPosition_x->at(i);
+            this_cell.reco_y = cell_data.Reconstructed_HitPosition_y->at(i);
+            this_cell.reco_z = cell_data.Reconstructed_HitPosition_z->at(i);
+            this_cell.reco_t = cell_data.Reconstructed_HitTime->at(i);
+            this_cell.reco_e = cell_data.Reconstructed_Energy->at(i);
+            this_cell.pred_x = cell_data.ExpectedNeutron_HitPosition_x_->at(i);
+            this_cell.pred_y = cell_data.ExpectedNeutron_HitPosition_y_->at(i);
+            this_cell.pred_z = cell_data.ExpectedNeutron_HitPosition_z_->at(i);
+            this_cell.pred_t = cell_data.Expected_HitTime_->at(i);
+            this_cell.true_flight = cell_data.True_FlightLength->at(i);
+            this_cell.reco_flight = cell_data.Reconstructed_FlightLength->at(i);
+            this_cell.hit_time_res = cell_data.Residuals_HitTime_->at(i);
+            this_cell.hit_space_res = cell_data.Residuals_HitSpace_->at(i);
 
-    ) {
+            this_cell.ctype = DetermineCellType(is_signal_event, this_cell);
 
+            add_cell(this_cell);
+        }
     }
+
+
 
 };
 
@@ -631,7 +685,9 @@ void Fill_Final_Histos(SELECTION selection,
     }
 }
 
-std::vector<int> are_cells_compatibles(const std::vector<double>& tof,
+std::vector<int> are_cells_compatibles(
+                                    const std::vector<double>& flight_length,
+                                    const std::vector<double>& tof,
                                      const std::vector<double>& space_residuals,
                                       const std::vector<double>& time_residuals,
                                       const std::vector<double>& reco_energy
@@ -650,7 +706,9 @@ std::vector<int> are_cells_compatibles(const std::vector<double>& tof,
             bool space_pass = (fabs(space_residuals[i]) <= 150);
             float expected_sigma = 0.05 / sqrt(reco_energy[i]*1e-3);
             bool time_pass = (fabs(time_residuals[i])) < 3*expected_sigma;
-            if(space_pass && time_pass && tof[i]>15.){
+            // if(space_pass && time_pass && tof[i]>15.)
+            if(space_pass && time_pass && flight_length[i]>500.)
+            {
                 isCompatible[i] = 1;
             }else{
                 isCompatible[i] = 0;
@@ -815,42 +873,15 @@ int efficiency_plots_test(){
     tree->SetBranchAddress("FinalStateHadronicSystemTotal4Momentum", &FinalStateHadronicSystemTotal4Momentum);
     tree->SetBranchAddress("Antimuon_p_true", &Antimuon_p_true); // MeV
     tree->SetBranchAddress("Antimuon_reconstructed_P4", &Antimuon_reconstructed_P4); // MeV
-    // ECAL
-    // tree->SetBranchAddress("Fired_by_primary_antimu", &is_cell_fired_by_antimu);
-    // tree->SetBranchAddress("Fired_by_primary_neutron", &is_cell_fired_by_neutron);
-    // tree->SetBranchAddress("Fired_Cells_mod", &Fired_Cells_mod);
-    // tree->SetBranchAddress("isCellComplete", &isCellComplete);
-    // tree->SetBranchAddress("IsEarliestCell_neutron", &IsEarliestCell_neutron);
-    // tree->SetBranchAddress("IsCompatible", &IsCompatible);
-    // tree->SetBranchAddress("Fired_Cells_adc1", &Fired_Cells_adc1);
-    // tree->SetBranchAddress("Fired_Cells_adc2", &Fired_Cells_adc2);
-    // tree->SetBranchAddress("Fired_Cells_tdc1", &Fired_Cells_tdc1);
-    // tree->SetBranchAddress("Fired_Cells_tdc2", &Fired_Cells_tdc2);
-    // // true hits
-    // tree->SetBranchAddress("Fired_Cell_true_Hit_x", &Fired_Cell_true_Hit_x);
-    // tree->SetBranchAddress("Fired_Cell_true_Hit_y", &Fired_Cell_true_Hit_y);
-    // tree->SetBranchAddress("Fired_Cell_true_Hit_z", &Fired_Cell_true_Hit_z);
-    // tree->SetBranchAddress("Fired_Cell_true_Hit_t", &Fired_Cell_true_Hit_t);
-    // // reco hits
-    // tree->SetBranchAddress("Reconstructed_HitPosition_x", &Reconstructed_HitPosition_x);
-    // tree->SetBranchAddress("Reconstructed_HitPosition_y", &Reconstructed_HitPosition_y);
-    // tree->SetBranchAddress("Reconstructed_HitPosition_z", &Reconstructed_HitPosition_z);
-    // tree->SetBranchAddress("Reconstructed_HitTime", &Reconstructed_HitTime);
-    // tree->SetBranchAddress("Reconstructed_Energy", &Reconstructed_Energy);
-    // // residuals
-    // tree->SetBranchAddress("True_FlightLength", &True_FlightLength);
-    // tree->SetBranchAddress("Reconstructed_FlightLength", &Reconstructed_FlightLength);
-    // tree->SetBranchAddress("Residuals_HitTime_", &Residuals_HitTime_);
-    // tree->SetBranchAddress("Residuals_HitSpace_", &Residuals_HitSpace_);
 
     CellData cell_data;
 
-    tree->SetBranchAddress("Fired_by_primary_antimu", &cell_data.is_cell_fired_by_antimu);
-    tree->SetBranchAddress("Fired_by_primary_neutron", &cell_data.is_cell_fired_by_neutron);
     tree->SetBranchAddress("Fired_Cells_mod", &cell_data.Fired_Cells_mod);
+    tree->SetBranchAddress("Fired_Cells_id", &cell_data.Fired_Cells_id);
+    tree->SetBranchAddress("Fired_Cells_x", &cell_data.Fired_Cells_x);
+    tree->SetBranchAddress("Fired_Cells_y", &cell_data.Fired_Cells_y);
+    tree->SetBranchAddress("Fired_Cells_z", &cell_data.Fired_Cells_z);
     tree->SetBranchAddress("isCellComplete", &cell_data.isCellComplete);
-    tree->SetBranchAddress("IsEarliestCell_neutron", &cell_data.IsEarliestCell_neutron);
-    tree->SetBranchAddress("IsCompatible", &cell_data.IsCompatible);
     tree->SetBranchAddress("Fired_Cells_adc1", &cell_data.Fired_Cells_adc1);
     tree->SetBranchAddress("Fired_Cells_adc2", &cell_data.Fired_Cells_adc2);
     tree->SetBranchAddress("Fired_Cells_tdc1", &cell_data.Fired_Cells_tdc1);
@@ -859,16 +890,23 @@ int efficiency_plots_test(){
     tree->SetBranchAddress("Fired_Cell_true_Hit_y", &cell_data.Fired_Cell_true_Hit_y);
     tree->SetBranchAddress("Fired_Cell_true_Hit_z", &cell_data.Fired_Cell_true_Hit_z);
     tree->SetBranchAddress("Fired_Cell_true_Hit_t", &cell_data.Fired_Cell_true_Hit_t);
+    tree->SetBranchAddress("Fired_Cell_true_Hit_e", &cell_data.Fired_Cell_true_Hit_e);
+    tree->SetBranchAddress("Fired_by_primary_antimu", &cell_data.Fired_by_primary_antimu);
+    tree->SetBranchAddress("Fired_by_primary_neutron", &cell_data.Fired_by_primary_neutron);
+    tree->SetBranchAddress("IsEarliestCell_neutron", &cell_data.IsEarliestCell_neutron);
     tree->SetBranchAddress("Reconstructed_HitPosition_x", &cell_data.Reconstructed_HitPosition_x);
     tree->SetBranchAddress("Reconstructed_HitPosition_y", &cell_data.Reconstructed_HitPosition_y);
     tree->SetBranchAddress("Reconstructed_HitPosition_z", &cell_data.Reconstructed_HitPosition_z);
     tree->SetBranchAddress("Reconstructed_HitTime", &cell_data.Reconstructed_HitTime);
     tree->SetBranchAddress("Reconstructed_Energy", &cell_data.Reconstructed_Energy);
+    tree->SetBranchAddress("ExpectedNeutron_HitPosition_x_", &cell_data.ExpectedNeutron_HitPosition_x_);
+    tree->SetBranchAddress("ExpectedNeutron_HitPosition_y_", &cell_data.ExpectedNeutron_HitPosition_y_);
+    tree->SetBranchAddress("ExpectedNeutron_HitPosition_z_", &cell_data.ExpectedNeutron_HitPosition_z_);
+    tree->SetBranchAddress("Expected_HitTime_", &cell_data.Expected_HitTime_);
     tree->SetBranchAddress("True_FlightLength", &cell_data.True_FlightLength);
     tree->SetBranchAddress("Reconstructed_FlightLength", &cell_data.Reconstructed_FlightLength);
     tree->SetBranchAddress("Residuals_HitTime_", &cell_data.Residuals_HitTime_);
     tree->SetBranchAddress("Residuals_HitSpace_", &cell_data.Residuals_HitSpace_);
-
 
     auto nof_entries = tree->GetEntries();
 
@@ -905,34 +943,38 @@ int efficiency_plots_test(){
             SELECTION:
         */
 
-        bool is_complete = false;
-        float reco_energy_deposit = 0;
+        // bool is_complete = false;
+        // float reco_energy_deposit = 0;
         
-        std::vector<double> bests_time = GetBestTime(*cell_data.Fired_Cells_mod, 
-                                                     *cell_data.isCellComplete, 
-                                                     *cell_data.Residuals_HitTime_, 
-                                                     *cell_data.Residuals_HitSpace_,
-                                                     *cell_data.Reconstructed_Energy,
-                                                     is_complete,
-                                                     reco_energy_deposit);
+        // std::vector<double> bests_time = GetBestTime(*cell_data.Fired_Cells_mod, 
+        //                                              *cell_data.isCellComplete, 
+        //                                              *cell_data.Residuals_HitTime_, 
+        //                                              *cell_data.Residuals_HitSpace_,
+        //                                              *cell_data.Reconstructed_Energy,
+        //                                              is_complete,
+        //                                              reco_energy_deposit);
 
-        std::vector<double> bests_space = GetBestSpace(*cell_data.Fired_Cells_mod, 
-                                                       *cell_data.isCellComplete, 
-                                                       *cell_data.Residuals_HitTime_, 
-                                                       *cell_data.Residuals_HitSpace_
-                                                       );
+        // std::vector<double> bests_space = GetBestSpace(*cell_data.Fired_Cells_mod, 
+        //                                                *cell_data.isCellComplete, 
+        //                                                *cell_data.Residuals_HitTime_, 
+        //                                                *cell_data.Residuals_HitSpace_
+        //                                                );
         
-        double best_residual_time = bests_time[0];
-        double best_residual_space = bests_space[0];
-        bool event_has_compatible_cell = has_compatible_cell(best_residual_time, 
-                                                             best_residual_space, 
-                                                             is_complete,
-                                                             reco_energy_deposit);
+        // double best_residual_time = bests_time[0];
+        // double best_residual_space = bests_space[0];
+        // bool event_has_compatible_cell = has_compatible_cell(best_residual_time, 
+        //                                                      best_residual_space, 
+        //                                                      is_complete,
+        //                                                      reco_energy_deposit);
 
-        int nof_cells_fired_by_neutron = std::accumulate(cell_data.is_cell_fired_by_neutron->begin(),
-                                                         cell_data.is_cell_fired_by_neutron->end(),
-                                                         0.);
-        std::vector<int> is_cell_compatible = are_cells_compatibles(*cell_data.Reconstructed_HitTime, *cell_data.Residuals_HitSpace_, *cell_data.Residuals_HitTime_, *cell_data.Reconstructed_Energy); 
+        // int nof_cells_fired_by_neutron = std::accumulate(cell_data.Fired_by_primary_neutron->begin(),
+        //                                                  cell_data.Fired_by_primary_antimu->end(),
+        //                                                  0.);
+        std::vector<int> is_cell_compatible = are_cells_compatibles(*cell_data.Reconstructed_FlightLength,
+                                                                    *cell_data.Reconstructed_HitTime, 
+                                                                    *cell_data.Residuals_HitSpace_, 
+                                                                    *cell_data.Residuals_HitTime_, 
+                                                                    *cell_data.Reconstructed_Energy); 
         bool pass_nof_wires_cut = (nof_fired_wires > 69);
         int nof_event_compatible_cells = std::accumulate(is_cell_compatible.begin(), is_cell_compatible.end(), 0.0);
         bool event_has_compatible_cells = (nof_event_compatible_cells > 0);
@@ -949,81 +991,81 @@ int efficiency_plots_test(){
 
         Fill_Final_Histos(selection, IncomingNeutrino_energy, Neutrino_reconstructed_energy_GeV);
 
-        if(is_on_C)
-        {
-            for(size_t j = 0; j < cell_data.is_cell_fired_by_neutron->size(); j++)
-            {
-                if(cell_data.isCellComplete->at(j))
-                {
-                    res_time_vs_res_space_3cells_ -> Fill(cell_data.Residuals_HitSpace_->at(j), cell_data.Residuals_HitTime_->at(j));
-                }
-            }
-        }
+        // if(is_on_C)
+        // {
+        //     for(size_t j = 0; j < cell_data.Fired_by_primary_neutron->size(); j++)
+        //     {
+        //         if(cell_data.isCellComplete->at(j))
+        //         {
+        //             res_time_vs_res_space_3cells_ -> Fill(cell_data.Residuals_HitSpace_->at(j), cell_data.Residuals_HitTime_->at(j));
+        //         }
+        //     }
+        // }
         
         if(!is_signal){
             continue;
         }
 
-        std::vector<double> event_cell_best_time = GetBestTime(*cell_data.Fired_Cells_mod, *cell_data.isCellComplete, *cell_data.Residuals_HitTime_, *cell_data.Residuals_HitSpace_, *cell_data.Reconstructed_Energy,
-                                                     is_complete,reco_energy_deposit);
-        std::vector<double> event_cell_best_space = GetBestSpace(*cell_data.Fired_Cells_mod, *cell_data.isCellComplete, *cell_data.Residuals_HitTime_, *cell_data.Residuals_HitSpace_);
+        // std::vector<double> event_cell_best_time = GetBestTime(*cell_data.Fired_Cells_mod, *cell_data.isCellComplete, *cell_data.Residuals_HitTime_, *cell_data.Residuals_HitSpace_, *cell_data.Reconstructed_Energy,
+        //                                              is_complete,reco_energy_deposit);
+        // std::vector<double> event_cell_best_space = GetBestSpace(*cell_data.Fired_Cells_mod, *cell_data.isCellComplete, *cell_data.Residuals_HitTime_, *cell_data.Residuals_HitSpace_);
         
-        best_time_residual_vs_any_space_residual -> Fill(event_cell_best_time[1], event_cell_best_time[0]);
-        any_time_residual_vs_best_space_residual -> Fill(event_cell_best_space[1], event_cell_best_space[0]);
+        // best_time_residual_vs_any_space_residual -> Fill(event_cell_best_time[1], event_cell_best_time[0]);
+        // any_time_residual_vs_best_space_residual -> Fill(event_cell_best_space[1], event_cell_best_space[0]);
 
-        best_time_residuals -> Fill(event_cell_best_time[0]);
-        best_space_residuals -> Fill(event_cell_best_space[0]);
+        // best_time_residuals -> Fill(event_cell_best_time[0]);
+        // best_space_residuals -> Fill(event_cell_best_space[0]);
 
-        int nof_tot_fired_cells = cell_data.Fired_Cells_mod->size();
-        int nof_tot_fired_cells_neutron = std::accumulate(cell_data.is_cell_fired_by_neutron->begin(), cell_data.is_cell_fired_by_neutron->end(), 0.0);
-        int nof_tot_fired_cells_antimu = std::accumulate(cell_data.is_cell_fired_by_antimu->begin(), cell_data.is_cell_fired_by_antimu->end(), 0.0);
+        // int nof_tot_fired_cells = cell_data.Fired_Cells_mod->size();
+        // int nof_tot_fired_cells_neutron = std::accumulate(cell_data.Fired_by_primary_neutron->begin(), cell_data.Fired_by_primary_neutron->end(), 0.0);
+        // int nof_tot_fired_cells_antimu = std::accumulate(cell_data.Fired_by_primary_antimu->begin(), cell_data.Fired_by_primary_antimu->end(), 0.0);
 
-        int counter_ev_w_zero_complete_cells = 0;
+        // int counter_ev_w_zero_complete_cells = 0;
 
-        h_nof_cells_fired -> Fill(nof_tot_fired_cells);
-        h_nof_cells_fired_neutron -> Fill(nof_tot_fired_cells_neutron);
-        h_nof_cells_fired_antimu -> Fill(nof_tot_fired_cells_antimu);
+        // h_nof_cells_fired -> Fill(nof_tot_fired_cells);
+        // h_nof_cells_fired_neutron -> Fill(nof_tot_fired_cells_neutron);
+        // h_nof_cells_fired_antimu -> Fill(nof_tot_fired_cells_antimu);
 
         // std::cout << "CCQE on H event, tot nof cells : " << nof_tot_fired_cells
         //           << ", fired by neutron " << nof_tot_fired_cells_neutron
         //           << ", fired by antimu " << nof_tot_fired_cells_antimu
         //           << "\n";
         
-        bool found_neutron_complete = false;
-        for(size_t j = 0; j < cell_data.is_cell_fired_by_neutron->size(); j++)
-        {
-            if(cell_data.is_cell_fired_by_neutron->at(j))
-            {
-                if(cell_data.isCellComplete->at(j))
-                {
-                    found_neutron_complete = true;
-                    if(1)
-                    {
-                        res_time_vs_res_space_3cells -> Fill(cell_data.Residuals_HitSpace_->at(j), cell_data.Residuals_HitTime_->at(j));
-                    }
-                }
-                adc_count_neutron -> Fill(cell_data.Fired_Cells_adc1->at(j));
-                adc_count_neutron -> Fill(cell_data.Fired_Cells_adc2->at(j));
-                cell_reco_energy_neutron -> Fill(cell_data.Reconstructed_Energy->at(j));
-            }else{
-                adc_count_antimu -> Fill(cell_data.Fired_Cells_adc1->at(j));
-                adc_count_antimu -> Fill(cell_data.Fired_Cells_adc2->at(j));
-                cell_reco_energy_antimu -> Fill(cell_data.Reconstructed_Energy->at(j));
-            }
-            if(!(cell_data.isCellComplete->at(j)))
-            {
-                adc1_vs_adc2_incomplete -> Fill(cell_data.Fired_Cells_adc1->at(j), cell_data.Fired_Cells_adc2->at(j));
-            }
+        // bool found_neutron_complete = false;
+        // for(size_t j = 0; j < cell_data.Fired_by_primary_neutron->size(); j++)
+        // {
+        //     if(cell_data.Fired_by_primary_neutron->at(j))
+        //     {
+        //         if(cell_data.isCellComplete->at(j))
+        //         {
+        //             found_neutron_complete = true;
+        //             if(1)
+        //             {
+        //                 res_time_vs_res_space_3cells -> Fill(cell_data.Residuals_HitSpace_->at(j), cell_data.Residuals_HitTime_->at(j));
+        //             }
+        //         }
+        //         adc_count_neutron -> Fill(cell_data.Fired_Cells_adc1->at(j));
+        //         adc_count_neutron -> Fill(cell_data.Fired_Cells_adc2->at(j));
+        //         cell_reco_energy_neutron -> Fill(cell_data.Reconstructed_Energy->at(j));
+        //     }else{
+        //         adc_count_antimu -> Fill(cell_data.Fired_Cells_adc1->at(j));
+        //         adc_count_antimu -> Fill(cell_data.Fired_Cells_adc2->at(j));
+        //         cell_reco_energy_antimu -> Fill(cell_data.Reconstructed_Energy->at(j));
+        //     }
+        //     if(!(cell_data.isCellComplete->at(j)))
+        //     {
+        //         adc1_vs_adc2_incomplete -> Fill(cell_data.Fired_Cells_adc1->at(j), cell_data.Fired_Cells_adc2->at(j));
+        //     }
 
-        }
+        // }
 
-        if(!found_neutron_complete) nof_events_w_zero_complete_cells++;
+        // if(!found_neutron_complete) nof_events_w_zero_complete_cells++;
 
-        // FILL EFFICIENCIES __________________________________________________________________________________
+        // // FILL EFFICIENCIES __________________________________________________________________________________
         
-        int nof_cell_fired_by_neutron = 0;
-        int nof_complete_cell_fired_by_neutron = 0;
-        int nof_compatible_cells_fired_by_neutron = 0;
+        // int nof_cell_fired_by_neutron = 0;
+        // int nof_complete_cell_fired_by_neutron = 0;
+        // int nof_compatible_cells_fired_by_neutron = 0;
         
         // for(size_t j = 0; j < is_cell_fired_by_neutron->size(); j++)
         // {
@@ -1111,9 +1153,9 @@ int efficiency_plots_test(){
         // // true_nu_E_vs_true_n_kin_E[CHARGE_MULTIPLICITY] -> Fill(IncomingNeutrino_energy, hadron_syst_kin_energy);
         // // true_nu_E_vs_true_mu_E[CHARGE_MULTIPLICITY] -> Fill(IncomingNeutrino_energy, antimuon_true_energy);
         // // true_mu_E_vs_true_n_kin_E[CHARGE_MULTIPLICITY] -> Fill(antimuon_true_energy, hadron_syst_kin_energy);
-        for(size_t j = 0; j < cell_data.is_cell_fired_by_neutron->size(); j++)
+        for(size_t j = 0; j < cell_data.Fired_by_primary_neutron->size(); j++)
         {
-            if(!(cell_data.is_cell_fired_by_neutron->at(j))) continue;
+            if(!(cell_data.Fired_by_primary_neutron->at(j))) continue;
             if(!(cell_data.isCellComplete->at(j))) continue;
             // double reco_cell_space_res = sqrt(pow((Fired_Cell_true_Hit_x->at(j) - Reconstructed_HitPosition_x->at(j)), 2) 
             //                                 + pow((Fired_Cell_true_Hit_y->at(j) - Reconstructed_HitPosition_y->at(j)), 2) 
@@ -1448,9 +1490,9 @@ int efficiency_plots_test(){
     // std::cout << "nof of events with zero complete cells fired by neutrons : " << nof_events_w_zero_complete_cells << "\n";
 
     // // 
-    TCanvas* c4 = new TCanvas("c4","",900,700);
-    cell_reco_energy_neutron -> Draw("HIST");
-    cell_reco_energy_antimu -> Draw("HIST SAME");
+    // TCanvas* c4 = new TCanvas("c4","",900,700);
+    // cell_reco_energy_neutron -> Draw("HIST");
+    // cell_reco_energy_antimu -> Draw("HIST SAME");
 
     /***
     XSEC:
@@ -1506,13 +1548,40 @@ int efficiency_plots_test(){
     // TCanvas* canvas_proj2 = new TCanvas("cp2","",900,700);
     // best_space_residuals -> Draw("HIST");
 
-    TCanvas* canvas_3cells = new TCanvas("canvas_3cells","",900,700);
-    res_time_vs_res_space_3cells->Draw("col z");
+    // TCanvas* canvas_3cells = new TCanvas("canvas_3cells","",900,700);
+    // res_time_vs_res_space_3cells->Draw("col z");
 
-    TCanvas* canvas_3cells_c = new TCanvas("canvas_3cells_","",900,700);
-    res_time_vs_res_space_3cells_->Draw("col z");
+    // TCanvas* canvas_3cells_c = new TCanvas("canvas_3cells_","",900,700);
+    // res_time_vs_res_space_3cells_->Draw("col z");
 
+    /***
+    RECAP: final recap on number of events
+    */
+
+    int total_ccqe_on_H = antinu_hist.GetHistogram(FIDUCIAL_VOLUME, SELECTION_NONE, CCQE_ON_H, 0)->GetEntries();
+    int total_ccqe_on_H_selected = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_TRUE_POSITIVE, CCQE_ON_H, 1)->GetEntries();
     
+    int total_cc_on_Carbon_plastic = 0;
+    int total_cc_on_Carbon_plastic_selected = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_PLASTIC_C, CC_ON_CARBON, 1)->GetEntries();
+    int total_cc_on_Carbon_graphite = 0;
+    int total_cc_on_Carbon_graphite_selected = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_GRAPHITE, CC_ON_CARBON, 1)->GetEntries();
+
+    int total_ccres_on_h = 0;
+    int total_ccres_on_h_selected = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_PLASTIC_H, CCRES_ON_H, 1)->GetEntries();
+
+    std::cout << 
+            "count CCQE on H : " << total_ccqe_on_H << 
+                   ", selected " << total_ccqe_on_H_selected << "\n"
+            
+            "count CC on Carbon plastic : " << total_cc_on_Carbon_plastic <<
+                              ", selected " << total_cc_on_Carbon_plastic_selected << "\n"
+            
+            "count CCRES on H plastic: " << total_ccres_on_h << 
+                           ", selected " << total_ccres_on_h_selected << "\n"
+            
+            "count CC on Carbon graphite : " << total_cc_on_Carbon_graphite <<  
+                               ", selected " << total_cc_on_Carbon_graphite_selected << "\n";
+            
 
     return 0;
 }
