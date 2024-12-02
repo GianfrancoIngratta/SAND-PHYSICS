@@ -338,15 +338,15 @@ h_bins Get_h_bins(PARTICLE p)
 {
     if(p == ANTIMUON)
     {
-        return {24, 0., 6000.};
+        return {12, 0., 6000.};
     }else if(p == NEUTRINO)
     {
-        return {24, 0., 6.};
+        return {12, 0., 6.};
     }else if(p == NEUTRON){
-        return {40, 0., 1.};
+        return {20, 0., 1.};
     }else
     {
-        return {24, 0., 6.};
+        return {12, 0., 6.};
     }
 };
 
@@ -622,8 +622,71 @@ public:
 };
 
 
+TH1D* flight_length_neutron_signal = new TH1D("flight_length_neutron_signal", ";reconstructed flight length [mm];count", 300, 0, 4000);
+TH1D* flight_length_neutron_bkg = new TH1D("flight_length_neutron_bkg", ";reconstructed flight length [mm];count", 300, 0, 4000);
+TH2D* flight_length_neutron_signal_vs_res_time = new TH2D("fl_neutron_signal_vs_res", ";reconstructed flight length [mm];predicted time - reco time [ns]", 300, 0, 4000, 100, -4, 4 );
+TH2D* flight_length_neutron_bkg_vs_res_time = new TH2D("fl_neutron_signal_vs_res", ";reconstructed flight length [mm];predicted time - reco time [ns]", 300, 0, 4000, 100, -4, 4 );
+
+
+TH2D* flight_length_neutron_signal_vs_res_space = new TH2D("fl_neutron_signal_vs_res", ";reconstructed flight length [mm];space_residuals [mm]", 300, 0, 4000, 250, 0, 1000 );
+TH2D* flight_length_neutron_bkg_vs_res_space = new TH2D("fl_neutron_signal_vs_res", ";reconstructed flight length [mm];space_residuals [mm]", 300, 0, 4000, 250, 0, 1000);
+
+void LoopOverCells1D(const CellData& cell_data, TH1D* hist) {
+    for (size_t i = 0; i < cell_data.Fired_Cells_mod->size(); i++) {
+        if (cell_data.isCellComplete->at(i) && cell_data.Fired_by_primary_neutron->at(i) == 1) 
+        {
+            // if(cell_data.IsEarliestCell_neutron -> at(i))
+            if(1)
+            {
+                hist->Fill(cell_data.Reconstructed_FlightLength -> at(i));
+            }
+        }
+    }
+}
+
+void LoopOverCells2D(const CellData& cell_data, TH2D* hist1, TH2* hist2) {
+    for (size_t i = 0; i < cell_data.Fired_Cells_mod->size(); i++) {
+        if (cell_data.isCellComplete->at(i) && cell_data.Fired_by_primary_neutron->at(i) == 1) 
+        {
+            // if(cell_data.IsEarliestCell_neutron -> at(i))
+            if(fabs(cell_data.Residuals_HitSpace_ -> at(i)) < 150.)
+            {
+                hist1->Fill(cell_data.Reconstructed_FlightLength -> at(i), cell_data.Residuals_HitTime_ -> at(i));
+            }else if(fabs(cell_data.Residuals_HitTime_ -> at(i) / cell_data.Reconstructed_HitTime-> at(i)) < 0.05)
+            {
+                hist2->Fill(cell_data.Reconstructed_FlightLength -> at(i), cell_data.Residuals_HitSpace_ -> at(i));
+            }
+        }
+    }
+}
+
+// void LoopOverCells2D(const CellData& cell_data, TH2D* hist1, TH2* hist2) {
+//     for (size_t i = 0; i < cell_data.Fired_Cells_mod->size(); i++) {
+//         if (cell_data.isCellComplete->at(i) && cell_data.Fired_by_primary_neutron->at(i) == 1) 
+//         {
+//             // if(cell_data.IsEarliestCell_neutron -> at(i))
+//             if(fabs(cell_data.Residuals_HitSpace_ -> at(i)) < 150. && cell_data.IsEarliestCell_neutron -> at(i))
+//             {
+//                 hist1->Fill(cell_data.Reconstructed_FlightLength -> at(i), cell_data.Residuals_HitTime_ -> at(i));
+//             }else if(fabs(cell_data.Residuals_HitTime_ -> at(i)) < 1. && cell_data.IsEarliestCell_neutron -> at(i))
+//             {
+//                 hist2->Fill(cell_data.Reconstructed_FlightLength -> at(i), cell_data.Residuals_HitSpace_ -> at(i));
+//             }
+//         }
+//     }
+// }
+
+// struct counter
+// {
+//     int ccqe_on_H = 0;
+//     int ccqe_on_H_selected = 0;
+//     int cc_on_C_graphite = 0;
+//     int cc_on_C_plastic = 0;
+//     int ccres_on_H = 0;
+// }
+
 void Fill_Final_Histos(SELECTION selection, 
-                      double true_nu_E, double reco_nu_E
+                      double true_nu_E, double reco_nu_E, const CellData& cell_data
                     //   double true_mu_E, double reco_mu_E,
                     //   double true_n_K, double reco_n_K,
                       ){
@@ -635,16 +698,26 @@ void Fill_Final_Histos(SELECTION selection,
             antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_POSITIVE_PLASTIC, REACTION_ANY, 1, reco_nu_E);
             antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_TRUE_POSITIVE, CCQE_ON_H, 0, true_nu_E);
             antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_TRUE_POSITIVE, CCQE_ON_H, 1, reco_nu_E);
+
+            LoopOverCells1D(cell_data, flight_length_neutron_signal);
+            LoopOverCells2D(cell_data, flight_length_neutron_signal_vs_res_time, flight_length_neutron_signal_vs_res_space);
             
             break;
 
         case FALSE_NEGATIVE:
+
+            LoopOverCells1D(cell_data, flight_length_neutron_signal);
+            LoopOverCells2D(cell_data, flight_length_neutron_signal_vs_res_time, flight_length_neutron_signal_vs_res_space);
+
             break;
 
         // FALSE POSITIVES
         case SELECTED_FALSE_POSITIVE_GRAPHITE:
             antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_GRAPHITE, CC_ON_CARBON, 0, true_nu_E);
             antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_GRAPHITE, CC_ON_CARBON, 1, reco_nu_E);
+
+            LoopOverCells1D(cell_data, flight_length_neutron_bkg);
+            LoopOverCells2D(cell_data, flight_length_neutron_bkg_vs_res_time, flight_length_neutron_bkg_vs_res_space);
 
             break;
 
@@ -653,6 +726,9 @@ void Fill_Final_Histos(SELECTION selection,
             antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_POSITIVE_PLASTIC, REACTION_ANY, 1, reco_nu_E);
             antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_PLASTIC_C, CC_ON_CARBON, 0, true_nu_E);
             antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_PLASTIC_C, CC_ON_CARBON, 1, reco_nu_E);
+            
+            LoopOverCells1D(cell_data, flight_length_neutron_bkg);
+            LoopOverCells2D(cell_data, flight_length_neutron_bkg_vs_res_time, flight_length_neutron_bkg_vs_res_space);
 
             break;
 
@@ -669,9 +745,17 @@ void Fill_Final_Histos(SELECTION selection,
 
         // TRUE NEGATIVES
         case TRUE_NEGATIVE_GRAPHITE:
+
+            LoopOverCells1D(cell_data, flight_length_neutron_bkg);
+            LoopOverCells2D(cell_data, flight_length_neutron_bkg_vs_res_time, flight_length_neutron_bkg_vs_res_space);
+
             break;
 
         case TRUE_NEGATIVE_PLASTIC_C:
+            
+            LoopOverCells1D(cell_data, flight_length_neutron_bkg);
+            LoopOverCells2D(cell_data, flight_length_neutron_bkg_vs_res_time, flight_length_neutron_bkg_vs_res_space);
+
             break;
 
         case TRUE_NEGATIVE_PLASTIC_H:
@@ -690,8 +774,8 @@ std::vector<int> are_cells_compatibles(
                                     const std::vector<double>& tof,
                                      const std::vector<double>& space_residuals,
                                       const std::vector<double>& time_residuals,
-                                      const std::vector<double>& reco_energy
-                                    //   const std::vector<int>& is_complete
+                                      const std::vector<double>& reco_energy,
+                                      const std::vector<int>& is_earliest
                                       ){
     /*
       Input: time/space residuals between the expected and the reconstructed hit in the cell
@@ -700,14 +784,17 @@ std::vector<int> are_cells_compatibles(
     std::vector<int> isCompatible(space_residuals.size());
     
     for (size_t i = 0; i < space_residuals.size(); i++){
+        // if(!is_earliest[i]) continue;    
         if((space_residuals[i] == -999.)){
             isCompatible[i] = 0;
         }else{
+            float expected_sigma_time = 0.05 / sqrt(reco_energy[i]*1e-3);
+            float expected_sigma_space = 10. / sqrt(reco_energy[i]*1e-3);
             bool space_pass = (fabs(space_residuals[i]) <= 150);
-            float expected_sigma = 0.05 / sqrt(reco_energy[i]*1e-3);
-            bool time_pass = (fabs(time_residuals[i])) < 3*expected_sigma;
-            // if(space_pass && time_pass && tof[i]>15.)
-            if(space_pass && time_pass && flight_length[i]>500.)
+            bool time_pass = (fabs(time_residuals[i]) <= 1);
+            // bool time_pass = (fabs(time_residuals[i])) < 2*expected_sigma_time;
+            // bool space_pass = (fabs(space_residuals[i])) < 2*expected_sigma_space;
+            if(space_pass && time_pass)
             {
                 isCompatible[i] = 1;
             }else{
@@ -778,6 +865,8 @@ TH2D* res_time_vs_res_space_3cells_ = new TH2D("res_time_vs_res_space_3cells_", 
 
 TH1D* best_time_residuals = new TH1D("best_time_residuals", "", 300, -4, 4);
 TH1D* best_space_residuals = new TH1D("best_space_residuals", "", 300, 0, 450);
+
+// FLIGHT LENGTH
 
 std::vector<double> GetBestTime(std::vector<int> mod_id,
                                 std::vector<int> is_complete,
@@ -853,7 +942,7 @@ int efficiency_plots_test(){
     if(!flux){
         return -1;
     }
-    TH1F* hFlux = new TH1F("hFlux", "Distribuzione di E;E (GeV);Conteggi", 24, 0, 6);
+    TH1F* hFlux = new TH1F("hFlux", "Distribuzione di E;E (GeV);Conteggi", 12, 0., 6.);
     flux->Draw("E >> hFlux");
 
     TTree* tree = (TTree*)file->Get("tAnalysis");
@@ -939,42 +1028,17 @@ int efficiency_plots_test(){
         double antimuon_reco_energy = Antimuon_reconstructed_P4->T();
         double Neutrino_reconstructed_energy_GeV = Neutrino_reconstructed_P4_GeV->T();
         double neutron_kin_energy_reco = PredictedNeutron_E_GeV -  0.939565;
+
         /**
             SELECTION:
         */
 
-        // bool is_complete = false;
-        // float reco_energy_deposit = 0;
-        
-        // std::vector<double> bests_time = GetBestTime(*cell_data.Fired_Cells_mod, 
-        //                                              *cell_data.isCellComplete, 
-        //                                              *cell_data.Residuals_HitTime_, 
-        //                                              *cell_data.Residuals_HitSpace_,
-        //                                              *cell_data.Reconstructed_Energy,
-        //                                              is_complete,
-        //                                              reco_energy_deposit);
-
-        // std::vector<double> bests_space = GetBestSpace(*cell_data.Fired_Cells_mod, 
-        //                                                *cell_data.isCellComplete, 
-        //                                                *cell_data.Residuals_HitTime_, 
-        //                                                *cell_data.Residuals_HitSpace_
-        //                                                );
-        
-        // double best_residual_time = bests_time[0];
-        // double best_residual_space = bests_space[0];
-        // bool event_has_compatible_cell = has_compatible_cell(best_residual_time, 
-        //                                                      best_residual_space, 
-        //                                                      is_complete,
-        //                                                      reco_energy_deposit);
-
-        // int nof_cells_fired_by_neutron = std::accumulate(cell_data.Fired_by_primary_neutron->begin(),
-        //                                                  cell_data.Fired_by_primary_antimu->end(),
-        //                                                  0.);
         std::vector<int> is_cell_compatible = are_cells_compatibles(*cell_data.Reconstructed_FlightLength,
                                                                     *cell_data.Reconstructed_HitTime, 
                                                                     *cell_data.Residuals_HitSpace_, 
                                                                     *cell_data.Residuals_HitTime_, 
-                                                                    *cell_data.Reconstructed_Energy); 
+                                                                    *cell_data.Reconstructed_Energy,
+                                                                    *cell_data.IsEarliestCell_neutron); 
         bool pass_nof_wires_cut = (nof_fired_wires > 69);
         int nof_event_compatible_cells = std::accumulate(is_cell_compatible.begin(), is_cell_compatible.end(), 0.0);
         bool event_has_compatible_cells = (nof_event_compatible_cells > 0);
@@ -989,123 +1053,11 @@ int efficiency_plots_test(){
         antinu_hist.Fill(FIDUCIAL_VOLUME, SELECTION_NONE, REACTION_NONE, 0, IncomingNeutrino_energy);
         positive_mu_hist.Fill(FIDUCIAL_VOLUME, SELECTION_NONE, REACTION_NONE, 0, antimuon_true_energy);
 
-        Fill_Final_Histos(selection, IncomingNeutrino_energy, Neutrino_reconstructed_energy_GeV);
-
-        // if(is_on_C)
-        // {
-        //     for(size_t j = 0; j < cell_data.Fired_by_primary_neutron->size(); j++)
-        //     {
-        //         if(cell_data.isCellComplete->at(j))
-        //         {
-        //             res_time_vs_res_space_3cells_ -> Fill(cell_data.Residuals_HitSpace_->at(j), cell_data.Residuals_HitTime_->at(j));
-        //         }
-        //     }
-        // }
+        Fill_Final_Histos(selection, IncomingNeutrino_energy, Neutrino_reconstructed_energy_GeV, cell_data);
         
         if(!is_signal){
             continue;
         }
-
-        // std::vector<double> event_cell_best_time = GetBestTime(*cell_data.Fired_Cells_mod, *cell_data.isCellComplete, *cell_data.Residuals_HitTime_, *cell_data.Residuals_HitSpace_, *cell_data.Reconstructed_Energy,
-        //                                              is_complete,reco_energy_deposit);
-        // std::vector<double> event_cell_best_space = GetBestSpace(*cell_data.Fired_Cells_mod, *cell_data.isCellComplete, *cell_data.Residuals_HitTime_, *cell_data.Residuals_HitSpace_);
-        
-        // best_time_residual_vs_any_space_residual -> Fill(event_cell_best_time[1], event_cell_best_time[0]);
-        // any_time_residual_vs_best_space_residual -> Fill(event_cell_best_space[1], event_cell_best_space[0]);
-
-        // best_time_residuals -> Fill(event_cell_best_time[0]);
-        // best_space_residuals -> Fill(event_cell_best_space[0]);
-
-        // int nof_tot_fired_cells = cell_data.Fired_Cells_mod->size();
-        // int nof_tot_fired_cells_neutron = std::accumulate(cell_data.Fired_by_primary_neutron->begin(), cell_data.Fired_by_primary_neutron->end(), 0.0);
-        // int nof_tot_fired_cells_antimu = std::accumulate(cell_data.Fired_by_primary_antimu->begin(), cell_data.Fired_by_primary_antimu->end(), 0.0);
-
-        // int counter_ev_w_zero_complete_cells = 0;
-
-        // h_nof_cells_fired -> Fill(nof_tot_fired_cells);
-        // h_nof_cells_fired_neutron -> Fill(nof_tot_fired_cells_neutron);
-        // h_nof_cells_fired_antimu -> Fill(nof_tot_fired_cells_antimu);
-
-        // std::cout << "CCQE on H event, tot nof cells : " << nof_tot_fired_cells
-        //           << ", fired by neutron " << nof_tot_fired_cells_neutron
-        //           << ", fired by antimu " << nof_tot_fired_cells_antimu
-        //           << "\n";
-        
-        // bool found_neutron_complete = false;
-        // for(size_t j = 0; j < cell_data.Fired_by_primary_neutron->size(); j++)
-        // {
-        //     if(cell_data.Fired_by_primary_neutron->at(j))
-        //     {
-        //         if(cell_data.isCellComplete->at(j))
-        //         {
-        //             found_neutron_complete = true;
-        //             if(1)
-        //             {
-        //                 res_time_vs_res_space_3cells -> Fill(cell_data.Residuals_HitSpace_->at(j), cell_data.Residuals_HitTime_->at(j));
-        //             }
-        //         }
-        //         adc_count_neutron -> Fill(cell_data.Fired_Cells_adc1->at(j));
-        //         adc_count_neutron -> Fill(cell_data.Fired_Cells_adc2->at(j));
-        //         cell_reco_energy_neutron -> Fill(cell_data.Reconstructed_Energy->at(j));
-        //     }else{
-        //         adc_count_antimu -> Fill(cell_data.Fired_Cells_adc1->at(j));
-        //         adc_count_antimu -> Fill(cell_data.Fired_Cells_adc2->at(j));
-        //         cell_reco_energy_antimu -> Fill(cell_data.Reconstructed_Energy->at(j));
-        //     }
-        //     if(!(cell_data.isCellComplete->at(j)))
-        //     {
-        //         adc1_vs_adc2_incomplete -> Fill(cell_data.Fired_Cells_adc1->at(j), cell_data.Fired_Cells_adc2->at(j));
-        //     }
-
-        // }
-
-        // if(!found_neutron_complete) nof_events_w_zero_complete_cells++;
-
-        // // FILL EFFICIENCIES __________________________________________________________________________________
-        
-        // int nof_cell_fired_by_neutron = 0;
-        // int nof_complete_cell_fired_by_neutron = 0;
-        // int nof_compatible_cells_fired_by_neutron = 0;
-        
-        // for(size_t j = 0; j < is_cell_fired_by_neutron->size(); j++)
-        // {
-        //     if(!(is_cell_fired_by_neutron->at(j))) continue;
-            
-        //     nof_cell_fired_by_neutron++;
-            
-        //     if(!(isCellComplete->at(j))) continue;
-
-        //     nof_complete_cell_fired_by_neutron++;
-
-        //     if(!(IsCompatible->at(j))) continue;
-
-        //     nof_compatible_cells_fired_by_neutron++;
-        // }
-
-        // if(nof_cell_fired_by_neutron > 0)
-        // {
-        //     neutrons_w_hit_in_ECAL -> Fill(1, hadron_syst_kin_energy);
-        //     neutrons_w_hit_in_ECAL_vs_neutrino_E -> Fill(1, IncomingNeutrino_energy);
-        // }else{
-        //     neutrons_w_hit_in_ECAL -> Fill(0, hadron_syst_kin_energy);
-        //     neutrons_w_hit_in_ECAL_vs_neutrino_E -> Fill(0, IncomingNeutrino_energy);
-        // }
-
-        // if(nof_complete_cell_fired_by_neutron > 0)
-        // {
-        //     neutrons_w_complete_cells_in_ECAL -> Fill(1, hadron_syst_kin_energy);
-        // }else{
-        //     neutrons_w_complete_cells_in_ECAL -> Fill(0, hadron_syst_kin_energy);
-        // }
-        
-        // if(nof_compatible_cells_fired_by_neutron > 0)
-        // {
-        //     neutrons_w_compatible_cells_in_ECAL -> Fill(1, hadron_syst_kin_energy);
-        //     neutrons_w_compatible_cells_in_ECAL_vs_neutrino_E -> Fill(1, Neutrino_reconstructed_energy_GeV);
-        // }else{
-        //     neutrons_w_compatible_cells_in_ECAL -> Fill(0, hadron_syst_kin_energy);
-        //     neutrons_w_compatible_cells_in_ECAL_vs_neutrino_E -> Fill(0, Neutrino_reconstructed_energy_GeV);
-        // }
         //__________________________________________________________________________________
 
         positive_mu_hist.Fill(FIDUCIAL_VOLUME, SELECTION_NONE, CCQE_ON_H, 0, antimuon_true_energy);
@@ -1153,18 +1105,6 @@ int efficiency_plots_test(){
         // // true_nu_E_vs_true_n_kin_E[CHARGE_MULTIPLICITY] -> Fill(IncomingNeutrino_energy, hadron_syst_kin_energy);
         // // true_nu_E_vs_true_mu_E[CHARGE_MULTIPLICITY] -> Fill(IncomingNeutrino_energy, antimuon_true_energy);
         // // true_mu_E_vs_true_n_kin_E[CHARGE_MULTIPLICITY] -> Fill(antimuon_true_energy, hadron_syst_kin_energy);
-        for(size_t j = 0; j < cell_data.Fired_by_primary_neutron->size(); j++)
-        {
-            if(!(cell_data.Fired_by_primary_neutron->at(j))) continue;
-            if(!(cell_data.isCellComplete->at(j))) continue;
-            // double reco_cell_space_res = sqrt(pow((Fired_Cell_true_Hit_x->at(j) - Reconstructed_HitPosition_x->at(j)), 2) 
-            //                                 + pow((Fired_Cell_true_Hit_y->at(j) - Reconstructed_HitPosition_y->at(j)), 2) 
-            //                                 + pow((Fired_Cell_true_Hit_z->at(j) - Reconstructed_HitPosition_z->at(j)), 2));
-            // double reco_cell_space_res = sqrt(pow((Reconstructed_HitPosition_x->at(j) - ExpectedNeutron_HitPosition_x_->at(j)), 2) 
-            //                                 + pow((Reconstructed_HitPosition_y->at(j) - ExpectedNeutron_HitPosition_y_->at(j)), 2) 
-            //                                 + pow((Reconstructed_HitPosition_z->at(j) - ExpectedNeutron_HitPosition_z_->at(j)), 2));
-            neutron_space_time_residulas -> Fill(cell_data.Residuals_HitSpace_->at(j), cell_data.Residuals_HitTime_->at(j));
-        }
 
         if(!event_has_compatible_cells){
             neutrons_w_compatible_cells_in_ECAL_vs_neutrino_E_ -> Fill(0, IncomingNeutrino_energy);
@@ -1205,47 +1145,110 @@ int efficiency_plots_test(){
     // plot_histograms2(true_mu_E_vs_true_n_kin_E[FIDUCIAL_VOLUME], "c3"); // mu vs n
     
     //________________________________________________________________________________________
+    // rate in plastic
+    TH1D* ccqe_on_H_true = antinu_hist.GetHistogram(FIDUCIAL_VOLUME, SELECTION_NONE, CCQE_ON_H, 0);
+    TH1D* selected_plastic_reco = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_POSITIVE_PLASTIC, REACTION_ANY, 1);
+    TH1D* ccqe_on_H_selected_plastic_true = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_TRUE_POSITIVE, CCQE_ON_H, 0);
+    TH1D* ccqe_on_H_selected_plastic_reco = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_TRUE_POSITIVE, CCQE_ON_H, 1);
+    TH1D* ccres_in_H_selected_plastic_reco = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_PLASTIC_H, CCRES_ON_H, 1);
+    TH1D* cc_on_C_selected_plastic_reco = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_PLASTIC_C, CC_ON_CARBON, 1);
+    TH1D* selected_graphite_reco = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_GRAPHITE, CC_ON_CARBON, 1);
+    TH1D* selected_plastic_carbon_subtracted = (TH1D*)selected_plastic_reco -> Clone("selected_plastic_carbon_subtracted");
 
+    THStack* total_rate_plastic = new THStack("stack", "Stacked Histogram; Reco Energy (GeV); Counts");
+    total_rate_plastic -> Add(ccqe_on_H_selected_plastic_reco);
+    total_rate_plastic -> Add(cc_on_C_selected_plastic_reco);
+    total_rate_plastic -> Add(ccres_in_H_selected_plastic_reco);
+
+    // to calculated errors on TH1D ratios
+    ccqe_on_H_true -> Sumw2();
+    selected_plastic_reco -> Sumw2();
+    ccqe_on_H_selected_plastic_true -> Sumw2();
+    ccqe_on_H_selected_plastic_reco -> Sumw2();
+    ccres_in_H_selected_plastic_reco -> Sumw2();
+    cc_on_C_selected_plastic_reco -> Sumw2();
+    selected_graphite_reco -> Sumw2();
+    selected_plastic_carbon_subtracted -> Sumw2();
+
+    // SCALE
+    selected_graphite_reco -> Scale(scale_factor);
+    selected_plastic_carbon_subtracted -> Add(selected_graphite_reco, -1.);
+    selected_plastic_carbon_subtracted->Add(ccres_in_H_selected_plastic_reco, -1.);
+
+    // EFFICIENCY
+    TH1D* total_selection_efficiency = (TH1D*)ccqe_on_H_selected_plastic_true->Clone("ratio");
+    total_selection_efficiency->Divide(ccqe_on_H_true);
+    
+    TH1D* effect_efficiency_and_detector_and_subtraction = (TH1D*)selected_plastic_carbon_subtracted->Clone("ratio");
+    effect_efficiency_and_detector_and_subtraction->Divide(ccqe_on_H_true);
+     
+    // RECONSTRUCTED RATE
+    TH1D* final_rate_reco = (TH1D*)selected_plastic_carbon_subtracted->Clone("final_rate_reco");
+    final_rate_reco -> Divide(total_selection_efficiency);
+
+    // NORMALIZED
+    TH1D* ccqe_on_H_true_norm = (TH1D*)ccqe_on_H_true->Clone("ccqe_on_H_true_norm");
+    TH1D* ccqe_on_H_selected_plastic_true_norm = (TH1D*)ccqe_on_H_selected_plastic_true->Clone("ccqe_on_H_selected_plastic_true_norm");
+    TH1D* selected_plastic_carbon_subtracted_norm = (TH1D*)selected_plastic_carbon_subtracted->Clone("selected_plastic_carbon_subtracted_norm");
+    TH1D* final_rate_reco_norm = (TH1D*)final_rate_reco->Clone("final_rate_reco_norm");
+    TH1D* flux_norm = (TH1D*)hFlux->Clone("flux_norm");
+    ccqe_on_H_true_norm->Scale(1. / ccqe_on_H_true->Integral());
+    ccqe_on_H_selected_plastic_true_norm->Scale(1. / ccqe_on_H_selected_plastic_true->Integral());
+    selected_plastic_carbon_subtracted_norm->Scale(1. / selected_plastic_carbon_subtracted->Integral());
+    final_rate_reco_norm -> Scale(1. / final_rate_reco->Integral());
+    flux_norm -> Scale(1. / flux_norm->Integral());
+
+    // STYLE
+    ccqe_on_H_true->SetLineColor(kRed);
+    ccqe_on_H_selected_plastic_reco->SetFillColor(kBlue);
+    cc_on_C_selected_plastic_reco->SetFillColor(kRed);
+    ccres_in_H_selected_plastic_reco->SetFillColor(kGreen);
+
+    // reconstructed style
+    selected_plastic_reco->SetLineColor(kBlack);
+    selected_plastic_reco->SetMarkerStyle(20);
+    selected_plastic_reco->SetMarkerSize(0.8);
+    selected_plastic_reco->SetMaximum(0.25);
+    selected_graphite_reco->SetLineColor(kBlack);
+    selected_graphite_reco->SetMarkerStyle(20);
+    selected_graphite_reco->SetMarkerSize(0.8);
+    selected_plastic_carbon_subtracted->SetLineColor(kBlack);
+    selected_plastic_carbon_subtracted->SetMarkerStyle(20);
+    selected_plastic_carbon_subtracted->SetMarkerSize(0.8);
+    final_rate_reco->SetLineColor(kBlack);
+    final_rate_reco->SetMarkerStyle(20);
+    final_rate_reco->SetMarkerSize(0.8);
+
+    // ratio style
+    total_selection_efficiency->SetTitle(""); // Remove title for ratio plot
+    total_selection_efficiency->GetYaxis()->SetTitle("Bin Content Ratio");
+    total_selection_efficiency->GetXaxis()->SetTitle("Energy (GeV)");
+    total_selection_efficiency->GetYaxis()->SetNdivisions(505);
+    total_selection_efficiency->GetYaxis()->SetTitleSize(0.1);
+    total_selection_efficiency->GetYaxis()->SetTitleOffset(0.4);
+    total_selection_efficiency->GetYaxis()->SetLabelSize(0.08);
+    total_selection_efficiency->GetYaxis()->SetRangeUser(0, 0.3);
+    total_selection_efficiency->GetXaxis()->SetTitleSize(0.1);
+    total_selection_efficiency->GetXaxis()->SetTitleOffset(0.8);
+    total_selection_efficiency->GetXaxis()->SetLabelSize(0.08);
+    total_selection_efficiency->SetLineColor(kBlack);
 
     //________________________________________________________________________________________
     /**
      * THSTACK: stack plot of components in selected CCQE-on-H like in plastic
     */
-    THStack* stack = new THStack("stack", "Stacked Histogram; Reco Energy (GeV); Counts");
 
-    int colors[REACTION_NONE] = {kRed, kBlue, kGreen};
-
-    auto h1 = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_TRUE_POSITIVE, CCQE_ON_H, 1);
-    h1->SetFillColor(kBlue);
-
-    auto h2 = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_PLASTIC_C, CC_ON_CARBON, 1);
-    h2->SetFillColor(kRed);
-
-    auto h3 = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_PLASTIC_H, CCRES_ON_H, 1);
-    h3->SetFillColor(kGreen);
-
-    stack->Add(h1);
-    stack->Add(h2);
-    stack->Add(h3);
-    
     TCanvas* canvas_stack = new TCanvas("Stack", "Stack Plot", 900, 700);
     
-    stack->Draw("E HIST");
-    auto hm = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_POSITIVE_PLASTIC, REACTION_ANY, 1);
-    hm->SetLineColor(kBlack);
-    hm->SetMarkerStyle(20);
-    hm->SetMarkerSize(0.8);
-    hm->SetMaximum(0.25);
-    hm->Draw("E1 SAME");
+    total_rate_plastic->Draw("E HIST");
+    selected_plastic_reco->Draw("E1 SAME");
 
-    // Add legend
     TLegend* legendstack = new TLegend(0.7, 0.7, 0.9, 0.9);
-    legendstack->AddEntry(h1, "CCQE on H (signal)", "f");
-    legendstack->AddEntry(h2, "CC on Carbon (bkg)", "f");
-    legendstack->AddEntry(h3, "CCRES on H (bkg)", "f");
+    legendstack->AddEntry(ccqe_on_H_selected_plastic_reco, "CCQE on H (signal)", "f");
+    legendstack->AddEntry(cc_on_C_selected_plastic_reco, "CC on Carbon (bkg)", "f");
+    legendstack->AddEntry(ccres_in_H_selected_plastic_reco, "CCRES on H (bkg)", "f");
     legendstack->Draw();
 
-    // Update canvas
     canvas_stack->Update();
 
     //_________________________________________________________________________________________
@@ -1265,27 +1268,18 @@ int efficiency_plots_test(){
 
     // Draw the main plot
     pad1_bkg->cd();
-    auto h2_ = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_GRAPHITE, CC_ON_CARBON, 1);
-    h2_->SetLineColor(kBlue);
-    
-    h2->Draw("E HIST");
-    h2_->Draw("E1 SAME");
+    cc_on_C_selected_plastic_reco->Draw("E HIST");
+    selected_graphite_reco->Draw("E1 SAME");
 
     // Add legend
     TLegend* legendbkg = new TLegend(0.6, 0.6, 0.9, 0.9);
-    legendbkg->AddEntry(h2, "CC on Carbon Plastic (signal-like)", "f");
-    legendbkg->AddEntry(h2_, "CC on Carbon Graphite (signal-like)", "l");
+    legendbkg->AddEntry(cc_on_C_selected_plastic_reco, "CC on Carbon Plastic (signal-like)", "f");
+    legendbkg->AddEntry(selected_graphite_reco, "CC on Carbon Graphite (signal-like) X 4", "l");
     legendbkg->Draw();
 
-    // Calculate the ratio
     pad2_bkg->cd();
-    h2->Sumw2();
-    h2_->Sumw2();
-    h2_ -> SetLineColor(kBlack);
-    h2_ -> SetLineWidth(2);
-    h2_ -> SetMarkerStyle(20);
-    TH1D* ratio_bkg = (TH1D*)h2->Clone("ratio");
-    ratio_bkg->Divide(h2_);
+    TH1D* ratio_bkg = (TH1D*)cc_on_C_selected_plastic_reco->Clone("ratio");
+    ratio_bkg->Divide(selected_graphite_reco);
     ratio_bkg->SetTitle(""); // Remove title for ratio plot
     ratio_bkg->GetYaxis()->SetTitle("Bin Content Ratio");
     ratio_bkg->GetXaxis()->SetTitle("Energy (GeV)");
@@ -1299,46 +1293,17 @@ int efficiency_plots_test(){
     ratio_bkg->SetLineColor(kBlack);
     ratio_bkg->Draw("E1");
 
-    // Update the canvas
     canvas_bkg->Update();
     //_________________________________________________________________________________________
 
     /**
      * SUBTRACTION:
     */
-    auto h_true_signal = antinu_hist.GetHistogram(FIDUCIAL_VOLUME, SELECTION_NONE, CCQE_ON_H, 0);
-    auto h_plastic =  antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_POSITIVE_PLASTIC, REACTION_ANY, 1);
-    auto h_graphite =  antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_GRAPHITE, CC_ON_CARBON, 1);
-    auto h_residual = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_PLASTIC_H, CCRES_ON_H, 1);
-    
-    auto h_selected_true_positive = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_TRUE_POSITIVE, CCQE_ON_H, 0);
-
-    h_plastic->Sumw2();
-    h_graphite->Sumw2();
-    h_true_signal->Sumw2();
-    h_selected_true_positive->Sumw2();
-
-    h_plastic->Add(h_graphite, -scale_factor);
-    h_plastic->Add(h_residual, -1.);
-    
-    // h_true_signal->Scale(1. / h_true_signal->Integral());
-    // h_selected_true_positive->Scale(1. / h_selected_true_positive->Integral());
-    // h_plastic->Scale(1. / h_plastic->Integral());
-
-    // STYLE
-    // h_true_signal->GetYaxis()->SetTitle("Hist Normalized");
-    h_true_signal->SetLineColor(kRed);
-    h_plastic->SetLineColor(kBlack);
-    h_plastic->SetMarkerStyle(20);
-    h_plastic->SetMarkerSize(0.8);
-    // h_true_signal->SetMaximum(0.13);
-    h_plastic->SetMaximum(0.13);
-    // STYLE
 
     TLegend* legendsub = new TLegend(0.6, 0.6, 0.9, 0.9);
-    legendsub->AddEntry(h_true_signal, "#Phi_{#bar{#nu}_{#mu}} #sigma_{S} (CCQE on H)", "l");
-    legendsub->AddEntry(h_selected_true_positive, "#Phi_{#bar{#nu}_{#mu}} #sigma_{S} #epsilon_{S} (CCQE on H like)", "lp");
-    legendsub->AddEntry(h_plastic, "#Phi_{#bar{#nu}_{#mu}} #sigma_{S} #epsilon_{S} R_{det} (w/ bkg subtraction)", "lp");
+    legendsub->AddEntry(ccqe_on_H_true, "#Phi_{#bar{#nu}_{#mu}} #sigma_{S} (CCQE on H)", "l");
+    legendsub->AddEntry(ccqe_on_H_selected_plastic_true, "#Phi_{#bar{#nu}_{#mu}} #sigma_{S} #epsilon_{S} (CCQE on H like)", "lp");
+    legendsub->AddEntry(selected_plastic_carbon_subtracted, "#Phi_{#bar{#nu}_{#mu}} #sigma_{S} #epsilon_{S} R_{det} (w/ bkg subtraction)", "lp");
 
     TCanvas* canvas_sub = new TCanvas("sub", "", 900, 700);
     TPad* pad1 = new TPad("pad1", "Main Plot", 0.0, 0.3, 1.0, 1.0); // Top pad
@@ -1353,185 +1318,72 @@ int efficiency_plots_test(){
     pad2->Draw();
 
     pad1->cd();
-    h_true_signal->Draw("E HIST");
-    h_selected_true_positive->Draw("E HIST SAME");
-    h_plastic->Draw("E1 SAME");
+    ccqe_on_H_true_norm->Draw("E HIST");
+    ccqe_on_H_selected_plastic_true_norm->Draw("E HIST SAME");
+    selected_plastic_carbon_subtracted_norm->Draw("E1 SAME");
     hFlux -> Draw("H SAME");
     legendsub->Draw("SAME");
 
     pad2->cd();
-    TH1D* ratio = (TH1D*)h_plastic->Clone("ratio");
-    TH1D* ratio2 = (TH1D*)h_selected_true_positive->Clone("ratio2");
-    
-    ratio->Divide(h_true_signal);
-    ratio->SetTitle(""); // Remove title for ratio plot
-    ratio->GetYaxis()->SetTitle("Bin Content Ratio");
-    ratio->GetXaxis()->SetTitle("Energy (GeV)");
-    ratio->GetYaxis()->SetNdivisions(505);
-    ratio->GetYaxis()->SetTitleSize(0.1);
-    ratio->GetYaxis()->SetTitleOffset(0.4);
-    ratio->GetYaxis()->SetLabelSize(0.08);
-    ratio->GetYaxis()->SetRangeUser(0, 0.3);
-    ratio->GetXaxis()->SetTitleSize(0.1);
-    ratio->GetXaxis()->SetTitleOffset(0.8);
-    ratio->GetXaxis()->SetLabelSize(0.08);
-    ratio->SetLineColor(kBlack);
-    ratio->Draw("E1");
+    effect_efficiency_and_detector_and_subtraction->Draw("E1");
+    total_selection_efficiency->Draw("E HIST SAME");
 
-    ratio2->Divide(h_true_signal);
-    ratio2->Draw("E HIST SAME");
-
-    // Aggiorna il canvas
     canvas_sub->Update();
 
     /***
-        EVENTRATE:
+    CORRECTEDRATE:
     */
-    TCanvas* canvas_rate = new TCanvas("canvas_rate", "", 900, 700);
-    TH1D* reco_signal_rate = (TH1D*)h_plastic->Clone("reco_signal_rate");
-    reco_signal_rate->Sumw2();
-    reco_signal_rate->Divide(ratio2);
-    
-    TPad* pad1rate = new TPad("pad1", "Main Plot", 0.0, 0.3, 1.0, 1.0); // Top pad
-    TPad* pad2rate = new TPad("pad2", "Ratio Plot", 0.0, 0.0, 1.0, 0.3); // Bottom pad
+    TCanvas* canvas_final_rate = new TCanvas("canvas_final_rate", "", 900, 700);
+    ccqe_on_H_true_norm -> Draw("E HIST");
+    final_rate_reco_norm -> Draw("E1 SAME");
 
-    TLegend* legend_rate = new TLegend(0.6, 0.6, 0.9, 0.9);
-    legend_rate->AddEntry(h_true_signal, "#Phi_{#bar{#nu}_{#mu}} #sigma_{S} (CCQE on H)", "l");
-    legend_rate->AddEntry(reco_signal_rate, "reconstructed rate", "lp");
-
-    pad1rate->SetBottomMargin(0.02); // Reduce bottom margin for top pad
-    pad2rate->SetTopMargin(0.02);   // Reduce top margin for bottom pad
-    pad2rate->SetBottomMargin(0.3); // Increase bottom margn for labels
-
-    canvas_rate->cd();
-    pad1rate->Draw();
-    pad2rate->Draw();
-
-    pad1rate->cd();
-    h_true_signal->Draw("E HIST");
-    reco_signal_rate->Draw("E1 SAME");
-    legend_rate->Draw("SAME");
-
-    pad2rate->cd();
-    TH1D* ratio_rate_true_reco = (TH1D*)reco_signal_rate->Clone("ratio_rate_true_reco");
-    ratio_rate_true_reco->Sumw2();
-    ratio_rate_true_reco->Divide(h_true_signal);
-
-    ratio_rate_true_reco->Draw("E1");
-    canvas_rate->Update();
-
+    TLegend* legend_rates = new TLegend(0.7, 0.7, 0.9, 0.9);
+    legend_rates->AddEntry(ccqe_on_H_true_norm, "#Phi_{#bar{#nu}_{#mu}} #sigma_{S} (CCQE on H)", "l");
+    legend_rates->AddEntry(final_rate_reco_norm, "#Phi_{#bar{#nu}_{#mu}} #sigma_{S} R_{det} (w/ bkg subtraction)", "l");
+    legend_rates->Draw();
 
     /***
-     * EFFICIENCIES: ECAL reconstruction efficiency on neutron as function of K neutron
+    RELATIVEFLUX:
     */
+    TCanvas* canvas_flux = new TCanvas("canvas_flux", "", 900, 700);
+    TPad* pad1_flux = new TPad("pad1", "Main Plot", 0.0, 0.3, 1.0, 1.0); // Top pad
+    TPad* pad2_flux = new TPad("pad2", "Ratio Plot", 0.0, 0.0, 1.0, 0.3); // Bottom pad
 
-    // TCanvas* c3 = new TCanvas("eff1","",900,700);
+    pad1_flux->SetBottomMargin(0.02); // Reduce bottom margin for top pad
+    pad2_flux->SetTopMargin(0.02);   // Reduce top margin for bottom pad
+    pad2_flux->SetBottomMargin(0.3); // Increase bottom margn for labels
 
-    // neutrons_w_hit_in_ECAL->Draw("AP");
+    canvas_flux->cd();
+    pad1_flux->Draw();
+    pad2_flux->Draw();
 
-    // neutrons_w_compatible_cells_in_ECAL->SetLineColor(kGreen);
-    // neutrons_w_complete_cells_in_ECAL->Draw("AP");
-    
-    // neutrons_w_compatible_cells_in_ECAL->SetLineColor(kRed);
-    // neutrons_w_compatible_cells_in_ECAL->Draw("EP SAME"); 
+    pad1_flux->cd();
 
-    // TLegend* legend = new TLegend(0.7, 0.7, 0.9, 0.9); // Posizione: in alto a destra
-    // legend->AddEntry(neutrons_w_hit_in_ECAL, "fraction of neutrons w hits in ECAL", "l"); // "l" per linea
-    // legend->AddEntry(neutrons_w_complete_cells_in_ECAL, "Complete cells", "l"); // "l" per linea
-    // legend->AddEntry(neutrons_w_compatible_cells_in_ECAL, "fraction of neutrons with ECAL coincidence", "l"); // "p" per marker
-    // legend->SetTextSize(0.03); // Dimensione del testo
-    // legend->Draw();
+    flux_norm -> Draw("E HIST");
+    ccqe_on_H_true_norm -> Draw("E HIST SAME");
 
-    // AS FUNCTION OF NEUTRINO ENERGY _____________________________________________
+    TLegend* legend_flux = new TLegend(0.7, 0.7, 0.9, 0.9);
+    legend_flux->AddEntry(flux_norm, "#Phi_{#bar{#nu}_{#mu}} ", "l");
+    legend_flux->AddEntry(ccqe_on_H_true_norm, "#Phi_{#bar{#nu}_{#mu}} #sigma_{S} (CCQE on H)", "l");
+    legend_flux->Draw();
 
-    // TCanvas* c = new TCanvas("eff2","",900,700);
-    // neutrons_w_hit_in_ECAL_vs_neutrino_E -> Draw("AP");
-    // neutrons_w_compatible_cells_in_ECAL_vs_neutrino_E->SetLineColor(kRed);
-    // neutrons_w_compatible_cells_in_ECAL_vs_neutrino_E -> Draw("EP SAME");
+    pad2_flux->cd();
+    TH1D* xsec_shape = (TH1D*)ccqe_on_H_true_norm->Clone("xsec_shape");
+    xsec_shape->Divide(flux_norm);
+    xsec_shape->Draw("E HIST");
+    canvas_flux->Update();
 
-    // TLegend* legend = new TLegend(0.7, 0.7, 0.9, 0.9); // Posizione: in alto a destra
-    // legend->AddEntry(neutrons_w_hit_in_ECAL_vs_neutrino_E, "fraction of neutrons w hits in ECAL", "l"); // "l" per linea
-    // legend->AddEntry(neutrons_w_compatible_cells_in_ECAL_vs_neutrino_E, "fraction of neutrons with ECAL coincidence", "l"); // "p" per marker
-    // legend->SetTextSize(0.03); // Dimensione del testo
-    // legend->Draw();
-
-    // neutrons_w_compatible_cells_in_ECAL_vs_neutrino_E_->Draw("AP");
-
-    /***
-        CUT: optimize ECAL cut
-    */
-    // TCanvas* c = new TCanvas("","",900,700);
-    // neutron_space_time_residulas -> Draw("COL Z");
-
-    /***
-        CELLS:
-    */
-    // TCanvas* c = new TCanvas("","",900,700);
-
-    // // h_nof_cells_fired -> Draw("HIST");
-    // h_nof_cells_fired_neutron -> SetLineColor(kRed);
-    // h_nof_cells_fired_antimu -> SetLineColor(kBlack);
-    // h_nof_cells_fired_neutron -> Draw("HIST");
-    // h_nof_cells_fired_antimu -> Draw("HIST SAME");
-    // std::cout << "total : " << h_nof_cells_fired_neutron->Integral() << "\n";
-
-
-    // // 
-    // TCanvas* c2 = new TCanvas("c2","",900,700);
-    // adc_count_antimu -> Draw("HIST");
-    // adc_count_neutron -> SetLineColor(kRed);
-    // adc_count_neutron -> Draw("HIST SAME");
-
-    // //
-    // TCanvas* c3 = new TCanvas("c3","",900,700);
-    // adc1_vs_adc2_incomplete->Draw("col z");
-
-    // // nod events with 0 complete cells
-    // std::cout << "nof of events with zero complete cells fired by neutrons : " << nof_events_w_zero_complete_cells << "\n";
-
-    // // 
-    // TCanvas* c4 = new TCanvas("c4","",900,700);
-    // cell_reco_energy_neutron -> Draw("HIST");
-    // cell_reco_energy_antimu -> Draw("HIST SAME");
-
-    /***
-    XSEC:
+    /**
+    RECOFLUX: 
      */
-    // TCanvas* cx = new TCanvas("c3","",900,700);
-    // h_true_signal->Draw("HIST");
-    // hFlux->Draw("HIST SAME");
-
-    // TPad* pad1x = new TPad("pad1", "Main Plot", 0.0, 0.3, 1.0, 1.0); // Top pad
-    // TPad* pad2x = new TPad("pad2", "Ratio Plot", 0.0, 0.0, 1.0, 0.3); // Bottom pad
-    
-    // pad1x->cd();
-    // h_true_signal->Draw("HIST");
-    // hFlux -> Draw("HIST SAME");
-
-    // pad2x->cd();
-    // TH1D* ratiox = (TH1D*)h_true_signal->Clone("ratio");
-    // hFlux->Sumw2();
-    // ratiox->Divide(hFlux);
-    
-    // ratiox->SetTitle(""); // Remove title for ratio plot
-    // ratiox->GetYaxis()->SetTitle("Bin Content Ratio");
-    // ratiox->GetXaxis()->SetTitle("Energy (GeV)");
-    // ratiox->GetYaxis()->SetNdivisions(505);
-    // ratiox->GetYaxis()->SetTitleSize(0.1);
-    // ratiox->GetYaxis()->SetTitleOffset(0.4);
-    // ratiox->GetYaxis()->SetLabelSize(0.08);
-    // ratiox->GetYaxis()->SetRangeUser(0, 0.3);
-    // ratiox->GetXaxis()->SetTitleSize(0.1);
-    // ratiox->GetXaxis()->SetTitleOffset(0.8);
-    // ratiox->GetXaxis()->SetLabelSize(0.08);
-    // ratiox->SetLineColor(kBlack);
-    // ratiox->Draw("E1");
-
-    // cx->Update();
-    
-    // TCanvas* cx2 = new TCanvas("c3","",900,700);
-    // ratiox->Draw("E");
-
+    TCanvas* canvas_flux_ = new TCanvas("canvas_flux_", "", 900, 700);
+    flux_norm -> Draw("E HIST");
+    TH1D* flux_norm_reco = (TH1D*)final_rate_reco_norm->Clone("flux_norm_reco");
+    flux_norm_reco -> Divide(xsec_shape);
+    flux_norm_reco->SetLineColor(kBlack);
+    flux_norm_reco->SetMarkerStyle(20);
+    flux_norm_reco->SetMarkerSize(0.8);
+    flux_norm_reco -> Draw("E1 SAME");
 
     /***
     PLOT:
@@ -1555,6 +1407,25 @@ int efficiency_plots_test(){
     // res_time_vs_res_space_3cells_->Draw("col z");
 
     /***
+    FLIGHTLENGTH:    
+    */
+    // TCanvas* cfl = new TCanvas("cfl",";reconstructed flight length [mm];count",900,700);
+    // flight_length_neutron_signal->Draw("E HIST");
+    // flight_length_neutron_bkg -> SetLineColor(kRed);
+    // flight_length_neutron_bkg -> Draw("E HIST SAME");
+
+    // TCanvas* cfl2 = new TCanvas("cfl2",";reconstructed flight length [mm];predicted time - reco time [ns]",900,700);
+    // flight_length_neutron_signal_vs_res_time -> Draw("col z");
+
+    // TCanvas* cfl3 = new TCanvas("cfl3",";reconstructed flight length [mm];predicted time - reco time [ns]",900,700);
+    // flight_length_neutron_bkg_vs_res_time -> Draw("col z");
+    
+    // TCanvas* cfl4 = new TCanvas("cfl4","",900,700);
+    // flight_length_neutron_bkg_vs_res_space -> Draw("col z");
+    
+    // TCanvas* cfl5 = new TCanvas("cfl5","",900,700);
+    // flight_length_neutron_bkg_vs_res_space -> Draw("col z");
+    /***
     RECAP: final recap on number of events
     */
 
@@ -1568,7 +1439,8 @@ int efficiency_plots_test(){
 
     int total_ccres_on_h = 0;
     int total_ccres_on_h_selected = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_PLASTIC_H, CCRES_ON_H, 1)->GetEntries();
-
+    
+    std::cout << "\n";
     std::cout << 
             "count CCQE on H : " << total_ccqe_on_H << 
                    ", selected " << total_ccqe_on_H_selected << "\n"

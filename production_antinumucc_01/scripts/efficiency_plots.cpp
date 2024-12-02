@@ -234,10 +234,10 @@ h_bins Get_h_bins(PARTICLE p)
 {
     if(p == ANTIMUON)
     {
-        return {24, 0., 6000.};
+        return {12, 0., 6000.};
     }else if(p == NEUTRINO)
     {
-        return {24, 0., 6.};
+        return {12, 0., 6.};
     }else if(p == NEUTRON){
         return {40, 0., 1.};
     }else
@@ -653,7 +653,7 @@ int efficiency_plots(){
 
     //________________________________________________________________________________________
 
-    // THStack* stack = new THStack("stack", "Stacked Histogram; Reco Energy (GeV); Counts");
+    THStack* stack = new THStack("stack", "Stacked Histogram; Reco Energy (GeV); Counts");
 
     // int colors[REACTION_NONE] = {kRed, kBlue, kGreen};
 
@@ -666,81 +666,82 @@ int efficiency_plots(){
     auto h3 = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_PLASTIC_H, CCRES_ON_H, 1);
     h3->SetFillColor(kGreen);
 
-    // stack->Add(h1);
-    // stack->Add(h2);
-    // stack->Add(h3);
+    stack->Add(h1);
+    stack->Add(h2);
+    stack->Add(h3);
     
-    // TCanvas* canvas = new TCanvas("canvas", "Stack Plot", 900, 700);
+    TCanvas* canvas_stack = new TCanvas("canvas_stack", "Stack Plot", 900, 700);
     
-    // stack->Draw("E HIST");
-    // auto hm = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_POSITIVE_PLASTIC, REACTION_ANY, 1);
-    // hm->SetLineColor(kBlack);
-    // hm->SetMarkerStyle(20);
-    // hm->SetMarkerSize(0.8);
-    // hm->SetMaximum(0.25);
-    // hm->Draw("E1 SAME");
+    stack->Draw("E HIST");
+    auto hm = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_POSITIVE_PLASTIC, REACTION_ANY, 1);
+    hm->SetLineColor(kBlack);
+    hm->SetMarkerStyle(20);
+    hm->SetMarkerSize(0.8);
+    hm->SetMaximum(0.25);
+    hm->Draw("E1 SAME");
 
-    // // Add legend
-    // TLegend* legend = new TLegend(0.7, 0.7, 0.9, 0.9);
-    // legend->AddEntry(h1, "CCQE on H (signal)", "f");
-    // legend->AddEntry(h2, "CC on Carbon (bkg)", "f");
-    // legend->AddEntry(h3, "CCRES on H (bkg)", "f");
-    // legend->Draw();
+    // Add legend
+    TLegend* legend_stack = new TLegend(0.7, 0.7, 0.9, 0.9);
+    legend_stack->AddEntry(h1, "CCQE on H (signal)", "f");
+    legend_stack->AddEntry(h2, "CC on Carbon (bkg)", "f");
+    legend_stack->AddEntry(h3, "CCRES on H (bkg)", "f");
+    legend_stack->Draw();
 
-    // // Update canvas
-    // canvas->Update();
+    // Update canvas
+    canvas_stack->Update();
 
     //_________________________________________________________________________________________
 
-    // TCanvas* canvas = new TCanvas("c", "", 900, 700);
+    TCanvas* canvas_ = new TCanvas("canvas_", "", 900, 700);
 
-    // // Define pads
-    // TPad* pad1 = new TPad("pad1", "Main Plot", 0.0, 0.3, 1.0, 1.0); // Top pad
-    // TPad* pad2 = new TPad("pad2", "Ratio Plot", 0.0, 0.0, 1.0, 0.3); // Bottom pad
-    // pad1->SetBottomMargin(0.02); // Reduce bottom margin for top pad
-    // pad2->SetTopMargin(0.02);   // Reduce top margin for bottom pad
-    // pad2->SetBottomMargin(0.3); // Increase bottom margin for labels
-    // pad1->Draw();
-    // pad2->Draw();
+    // Define pads
+    TPad* pad1 = new TPad("pad1", "Main Plot", 0.0, 0.3, 1.0, 1.0); // Top pad
+    TPad* pad2 = new TPad("pad2", "Ratio Plot", 0.0, 0.0, 1.0, 0.3); // Bottom pad
+    pad1->SetBottomMargin(0.02); // Reduce bottom margin for top pad
+    pad2->SetTopMargin(0.02);   // Reduce top margin for bottom pad
+    pad2->SetBottomMargin(0.3); // Increase bottom margin for labels
+    pad1->Draw();
+    pad2->Draw();
 
-    // // Draw the main plot
-    // pad1->cd();
-    // auto h2_ = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_GRAPHITE, CC_ON_CARBON, 1);
-    // h2_->SetLineColor(kBlue);
+    // Draw the main plot
+    pad1->cd();
+    auto h2_ = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_GRAPHITE, CC_ON_CARBON, 1);
+    h2->Sumw2();
+    h2_->Sumw2();
+    h2_->Scale(scale_factor);
+    h2_->SetLineColor(kBlue);
     
-    // h2->Draw("E HIST");
-    // h2_->Draw("E1 SAME");
+    h2->Draw("E HIST");
+    h2_->Draw("E1 SAME");
 
-    // // Add legend
-    // TLegend* legend = new TLegend(0.6, 0.6, 0.9, 0.9);
-    // legend->AddEntry(h2, "CC on Carbon Plastic (signal-like)", "f");
-    // legend->AddEntry(h2_, "CC on Carbon Graphite (signal-like)", "l");
-    // legend->Draw();
+    // Add legend
+    TLegend* legend_ = new TLegend(0.6, 0.6, 0.9, 0.9);
+    legend_->AddEntry(h2, "CC on Carbon Plastic (signal-like)", "f");
+    legend_->AddEntry(h2_, "CC on Carbon Graphite (signal-like)", "l");
+    legend_->Draw();
 
-    // // Calculate the ratio
-    // pad2->cd();
-    // h2->Sumw2();
-    // h2_->Sumw2();
-    // h2_ -> SetLineColor(kBlack);
-    // h2_ -> SetLineWidth(2);
-    // h2_ -> SetMarkerStyle(20);
-    // TH1D* ratio = (TH1D*)h2->Clone("ratio");
-    // ratio->Divide(h2_);
-    // ratio->SetTitle(""); // Remove title for ratio plot
-    // ratio->GetYaxis()->SetTitle("Bin Content Ratio");
-    // ratio->GetXaxis()->SetTitle("Energy (GeV)");
-    // ratio->GetYaxis()->SetNdivisions(505);
-    // ratio->GetYaxis()->SetTitleSize(0.1);
-    // ratio->GetYaxis()->SetTitleOffset(0.4);
-    // ratio->GetYaxis()->SetLabelSize(0.08);
-    // ratio->GetXaxis()->SetTitleSize(0.1);
-    // ratio->GetXaxis()->SetTitleOffset(0.8);
-    // ratio->GetXaxis()->SetLabelSize(0.08);
-    // ratio->SetLineColor(kBlack);
-    // ratio->Draw("E1");
+    // Calculate the ratio
+    pad2->cd();
+    h2_ -> SetLineColor(kBlack);
+    h2_ -> SetLineWidth(2);
+    h2_ -> SetMarkerStyle(20);
+    TH1D* ratio = (TH1D*)h2->Clone("ratio");
+    ratio->Divide(h2_);
+    ratio->SetTitle(""); // Remove title for ratio plot
+    ratio->GetYaxis()->SetTitle("Bin Content Ratio");
+    ratio->GetXaxis()->SetTitle("Energy (GeV)");
+    ratio->GetYaxis()->SetNdivisions(505);
+    ratio->GetYaxis()->SetTitleSize(0.1);
+    ratio->GetYaxis()->SetTitleOffset(0.4);
+    ratio->GetYaxis()->SetLabelSize(0.08);
+    ratio->GetXaxis()->SetTitleSize(0.1);
+    ratio->GetXaxis()->SetTitleOffset(0.8);
+    ratio->GetXaxis()->SetLabelSize(0.08);
+    ratio->SetLineColor(kBlack);
+    ratio->Draw("E1");
 
-    // // Update the canvas
-    // canvas->Update();
+    // Update the canvas
+    canvas_->Update();
     //_________________________________________________________________________________________
 
     /**
