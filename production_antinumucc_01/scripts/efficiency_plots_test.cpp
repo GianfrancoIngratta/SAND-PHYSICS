@@ -791,8 +791,8 @@ std::vector<int> are_cells_compatibles(
             float expected_sigma_time = 0.05 / sqrt(reco_energy[i]*1e-3);
             float expected_sigma_space = 10. / sqrt(reco_energy[i]*1e-3);
             bool space_pass = (fabs(space_residuals[i]) <= 150);
-            bool time_pass = (fabs(time_residuals[i]) <= 1);
-            // bool time_pass = (fabs(time_residuals[i])) < 2*expected_sigma_time;
+            // bool time_pass = (fabs(time_residuals[i]) <= 1);
+            bool time_pass = (fabs(time_residuals[i])) < 3*expected_sigma_time;
             // bool space_pass = (fabs(space_residuals[i])) < 2*expected_sigma_space;
             if(space_pass && time_pass)
             {
@@ -1192,6 +1192,13 @@ int efficiency_plots_test(){
     TH1D* selected_plastic_carbon_subtracted_norm = (TH1D*)selected_plastic_carbon_subtracted->Clone("selected_plastic_carbon_subtracted_norm");
     TH1D* final_rate_reco_norm = (TH1D*)final_rate_reco->Clone("final_rate_reco_norm");
     TH1D* flux_norm = (TH1D*)hFlux->Clone("flux_norm");
+    //
+    ccqe_on_H_true_norm -> Sumw2();
+    ccqe_on_H_selected_plastic_true_norm -> Sumw2();
+    selected_plastic_carbon_subtracted_norm -> Sumw2();
+    final_rate_reco_norm -> Sumw2();
+    flux_norm -> Sumw2();
+    //
     ccqe_on_H_true_norm->Scale(1. / ccqe_on_H_true->Integral());
     ccqe_on_H_selected_plastic_true_norm->Scale(1. / ccqe_on_H_selected_plastic_true->Integral());
     selected_plastic_carbon_subtracted_norm->Scale(1. / selected_plastic_carbon_subtracted->Integral());
@@ -1384,6 +1391,66 @@ int efficiency_plots_test(){
     flux_norm_reco->SetMarkerStyle(20);
     flux_norm_reco->SetMarkerSize(0.8);
     flux_norm_reco -> Draw("E1 SAME");
+
+    /**
+    SYSTEMATICSFLUX:
+    */
+    TCanvas* canvas_systematics_ = new TCanvas("canvas_systematics_", "", 900, 700);
+
+    // Creazione di un istogramma per memorizzare le differenze relative
+    TH1D* flux_systematics = (TH1D*)flux_norm->Clone("flux_systematics");
+    flux_systematics->Add(flux_norm_reco, -1.0); // Differenza tra flux_norm e flux_norm_reco
+    flux_systematics->Divide(flux_norm_reco);   // Calcolo della differenza relativa
+
+
+    // Prendi il valore assoluto dei contenuti
+    for (int i = 1; i <= flux_systematics->GetNbinsX(); ++i) {
+        double content = flux_systematics->GetBinContent(i);
+        flux_systematics->SetBinContent(i, std::abs(content)); // Valore assoluto
+    }
+
+    double min_y = 0; // Considera che non vuoi valori negativi
+    double max_y = 0;
+    for (int i = 1; i <= flux_systematics->GetNbinsX(); ++i) {
+        double content = flux_systematics->GetBinContent(i);
+        double error = flux_systematics->GetBinError(i);
+        max_y = std::max(max_y, content + error);
+    }
+
+    // Aggiungi un margine per migliorare la visibilità
+    max_y *= 1.1;
+
+    // Imposta i limiti dell'asse Y
+    flux_systematics->SetMinimum(min_y);
+    flux_systematics->SetMaximum(max_y);
+
+    // Creazione della banda di errore come rettangoli
+    std::vector<TBox*> error_boxes;
+    for (int i = 1; i <= flux_systematics->GetNbinsX(); ++i) {
+        double x_low = flux_systematics->GetBinLowEdge(i);
+        double x_high = x_low + flux_systematics->GetBinWidth(i);
+        double y = flux_systematics->GetBinContent(i);
+        double error = flux_systematics->GetBinError(i);
+
+        // Crea una banda rettangolare che copre l'intero bin
+        TBox* box = new TBox(x_low, y - error, x_high, y + error);
+        box->SetFillColorAlpha(kRed, 0.35); // Rosso chiaro con trasparenza
+        box->SetLineWidth(0);
+        error_boxes.push_back(box);
+    }
+
+    // Disegna i risultati
+    flux_systematics->SetTitle(";E [GeV];Systematics");
+    flux_systematics->SetLineColor(kBlue);
+    flux_systematics->Draw("HIST");
+
+    // Disegna le bande di errore
+    for (auto& box : error_boxes) {
+        box->Draw("SAME");
+    }
+
+    // Ridisegna l'istogramma sopra la banda di errore
+    flux_systematics->Draw("HIST SAME");
 
     /***
     PLOT:
