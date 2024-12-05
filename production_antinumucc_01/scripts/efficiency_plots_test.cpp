@@ -443,24 +443,24 @@ class Hist_Manager{
 
             auto h1 = energy_spectrum[FIDUCIAL_VOLUME][SELECTION_NONE][CCQE_ON_H][0];
             auto h2 = energy_spectrum[WIRES_CUT][SELECTION_NONE][CCQE_ON_H][0];
-            auto h3 = energy_spectrum[CHARGE_MULTIPLICITY][SELECTION_NONE][CCQE_ON_H][0];
+            // auto h3 = energy_spectrum[CHARGE_MULTIPLICITY][SELECTION_NONE][CCQE_ON_H][0];
             auto h4 = energy_spectrum[ECAL_COINCIDENCE][SELECTION_NONE][CCQE_ON_H][0];
         
             h1 -> SetLineColor(kRed);
-            h2 -> SetLineColor(kMagenta);
-            h3 -> SetLineColor(kBlue);
+            h2 -> SetLineColor(kBlue);
+            // h3 -> SetLineColor(kBlue);
             h4 -> SetLineColor(kBlack);
         
             h1 -> Draw("E HIST");
             h2 -> Draw("E HIST SAME");
-            h3 -> Draw("E HIST SAME");
+            // h3 -> Draw("E HIST SAME");
             h4 -> Draw("E HIST SAME");
 
             TLegend* legend = new TLegend(0.5, 0.5, 0.9, 0.9);
             std::string particle_name = GetParticleName();
             legend->AddEntry(h1, TString::Format("%s (STAGE FIDUCIAL)", particle_name.c_str()).Data(), "l");
             legend->AddEntry(h2, TString::Format("%s (STAGE WIRES CUT)", particle_name.c_str()).Data(), "l");
-            legend->AddEntry(h3, TString::Format("%s (STAGE CHARGE MULTI)", particle_name.c_str()).Data(), "l");
+            // legend->AddEntry(h3, TString::Format("%s (STAGE CHARGE MULTI)", particle_name.c_str()).Data(), "l");
             legend->AddEntry(h4, TString::Format("%s (STAGE ECAL COINC.)", particle_name.c_str()).Data(), "l");
             
             legend->Draw();
@@ -469,24 +469,24 @@ class Hist_Manager{
             pad2->cd();
             h1->Sumw2();
             h2->Sumw2();
-            h3->Sumw2();
+            // h3->Sumw2();
             h4->Sumw2();
             TH1D* ratio21 = (TH1D*)h2->Clone("ratio21");
-            TH1D* ratio32 = (TH1D*)h3->Clone("ratio32");
+            // TH1D* ratio32 = (TH1D*)h3->Clone("ratio32");
             TH1D* ratio43 = (TH1D*)h4->Clone("ratio43");
             
             ratio21->Divide(h1);
-            ratio32->Divide(h2);
-            ratio43->Divide(h3);
+            // ratio32->Divide(h2);
+            ratio43->Divide(h2);
             
             ratio21->SetTitle(""); // Remove title for ratio plot
             
-            ratio21->SetLineColor(kMagenta);
-            ratio32->SetLineColor(kBlue);
+            ratio21->SetLineColor(kBlue);
+            // ratio32->SetLineColor(kBlue);
             ratio43->SetLineColor(kBlack);
             
             ratio21->GetYaxis()->SetTitle("Cut Efficiency");
-            std::string x_label = (particle == ANTIMUON) ? "Energy (MeV)" : "Energy (GeV)";
+            std::string x_label = (particle == ANTIMUON) ? "True Energy [MeV]" : "True Energy [GeV]";
             ratio21->GetXaxis()->SetTitle(x_label.c_str());
             ratio21->GetYaxis()->SetNdivisions(505);
             ratio21->GetYaxis()->SetTitleSize(0.1);
@@ -497,7 +497,7 @@ class Hist_Manager{
             ratio21->GetXaxis()->SetLabelSize(0.08);
             
             ratio21->Draw("E1");
-            ratio32->Draw("E1 SAME");
+            // ratio32->Draw("E1 SAME");
             ratio43->Draw("E1 SAME");
         }
 
@@ -676,17 +676,88 @@ void LoopOverCells2D(const CellData& cell_data, TH2D* hist1, TH2* hist2) {
 //     }
 // }
 
-// struct counter
-// {
-//     int ccqe_on_H = 0;
-//     int ccqe_on_H_selected = 0;
-//     int cc_on_C_graphite = 0;
-//     int cc_on_C_plastic = 0;
-//     int ccres_on_H = 0;
-// }
+struct Counter
+{
+    int ccqe_on_H[4] = {0, 0, 0, 0};
+    int cc_on_C_graphite[4] = {0, 0, 0, 0};
+    int cc_on_C_plastic[4] = {0, 0, 0, 0};
+    int ccres_on_H[4] = {0, 0, 0, 0};
+    int cc_on_others[4] = {0, 0, 0, 0};
+};
+
+
+void PrintCounter(const Counter& counter) {
+    // Larghezza delle colonne
+    const int col_width = 15;
+
+    // Intestazione della tabella
+    std::cout << std::left
+              << std::setw(col_width) << "Category"
+              << std::setw(col_width) << "Entry 0"
+              << std::setw(col_width) << "Entry 1"
+              << std::setw(col_width) << "Entry 2"
+              << std::setw(col_width) << "Entry 3"
+              << std::endl;
+
+    std::cout << std::string(5 * col_width, '-') << std::endl;
+
+    // Righe della tabella
+    std::cout << std::setw(col_width) << "CCQE on H"
+              << std::setw(col_width) << counter.ccqe_on_H[0]
+              << std::setw(col_width) << counter.ccqe_on_H[1]
+              << std::setw(col_width) << counter.ccqe_on_H[2]
+              << std::setw(col_width) << counter.ccqe_on_H[3]
+              << std::endl;
+
+    std::cout << std::setw(col_width) << "CC on C (Graphite)"
+              << std::setw(col_width) << counter.cc_on_C_graphite[0]
+              << std::setw(col_width) << counter.cc_on_C_graphite[1]
+              << std::setw(col_width) << counter.cc_on_C_graphite[2]
+              << std::setw(col_width) << counter.cc_on_C_graphite[3]
+              << std::endl;
+
+    std::cout << std::setw(col_width) << "CC on C (Plastic)"
+              << std::setw(col_width) << counter.cc_on_C_plastic[0]
+              << std::setw(col_width) << counter.cc_on_C_plastic[1]
+              << std::setw(col_width) << counter.cc_on_C_plastic[2]
+              << std::setw(col_width) << counter.cc_on_C_plastic[3]
+              << std::endl;
+
+    std::cout << std::setw(col_width) << "CCRes on H"
+              << std::setw(col_width) << counter.ccres_on_H[0]
+              << std::setw(col_width) << counter.ccres_on_H[1]
+              << std::setw(col_width) << counter.ccres_on_H[2]
+              << std::setw(col_width) << counter.ccres_on_H[3]
+              << std::endl;
+
+    std::cout << std::setw(col_width) << "CC on Others"
+              << std::setw(col_width) << counter.cc_on_others[0]
+              << std::setw(col_width) << counter.cc_on_others[1]
+              << std::setw(col_width) << counter.cc_on_others[2]
+              << std::setw(col_width) << counter.cc_on_others[3]
+              << std::endl;
+}
+
+void Increment_counter(Counter& counter, const STAGE stage, 
+                        bool is_signal, bool is_on_C, bool is_in_graphite, bool is_in_plastic, bool is_on_H)
+{
+    if (is_signal) {
+        counter.ccqe_on_H[stage]++;
+    } else if (is_on_C && is_in_graphite) {
+        counter.cc_on_C_graphite[stage]++;
+    } else if (is_on_C && is_in_plastic) {
+        counter.cc_on_C_plastic[stage]++;
+    } else if (is_on_H && !is_signal) {
+        counter.ccres_on_H[stage]++;
+    }else{
+        counter.cc_on_others[stage]++;
+    }
+}
 
 void Fill_Final_Histos(SELECTION selection, 
-                      double true_nu_E, double reco_nu_E, const CellData& cell_data
+                      double true_nu_E, double reco_nu_E, 
+                      const CellData& cell_data,
+                      Counter& counter
                     //   double true_mu_E, double reco_mu_E,
                     //   double true_n_K, double reco_n_K,
                       ){
@@ -694,6 +765,9 @@ void Fill_Final_Histos(SELECTION selection,
     {
         case SELECTED_TRUE_POSITIVE:
             
+            counter.ccqe_on_H[FIDUCIAL_VOLUME]++;
+            counter.ccqe_on_H[ECAL_COINCIDENCE]++;
+
             antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_POSITIVE_PLASTIC, REACTION_ANY, 0, true_nu_E);
             antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_POSITIVE_PLASTIC, REACTION_ANY, 1, reco_nu_E);
             antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_TRUE_POSITIVE, CCQE_ON_H, 0, true_nu_E);
@@ -705,6 +779,8 @@ void Fill_Final_Histos(SELECTION selection,
             break;
 
         case FALSE_NEGATIVE:
+            
+            counter.ccqe_on_H[FIDUCIAL_VOLUME]++;
 
             LoopOverCells1D(cell_data, flight_length_neutron_signal);
             LoopOverCells2D(cell_data, flight_length_neutron_signal_vs_res_time, flight_length_neutron_signal_vs_res_space);
@@ -713,6 +789,10 @@ void Fill_Final_Histos(SELECTION selection,
 
         // FALSE POSITIVES
         case SELECTED_FALSE_POSITIVE_GRAPHITE:
+            
+            counter.cc_on_C_graphite[FIDUCIAL_VOLUME]++;
+            counter.cc_on_C_graphite[ECAL_COINCIDENCE]++;
+
             antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_GRAPHITE, CC_ON_CARBON, 0, true_nu_E);
             antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_GRAPHITE, CC_ON_CARBON, 1, reco_nu_E);
 
@@ -722,6 +802,10 @@ void Fill_Final_Histos(SELECTION selection,
             break;
 
         case SELECTED_FALSE_POSITIVE_PLASTIC_C:
+
+            counter.cc_on_C_plastic[FIDUCIAL_VOLUME]++;
+            counter.cc_on_C_plastic[ECAL_COINCIDENCE]++;
+
             antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_POSITIVE_PLASTIC, REACTION_ANY, 0, true_nu_E);
             antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_POSITIVE_PLASTIC, REACTION_ANY, 1, reco_nu_E);
             antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_PLASTIC_C, CC_ON_CARBON, 0, true_nu_E);
@@ -733,6 +817,10 @@ void Fill_Final_Histos(SELECTION selection,
             break;
 
         case SELECTED_FALSE_POSITIVE_PLASTIC_H:
+            
+            counter.ccres_on_H[FIDUCIAL_VOLUME]++;
+            counter.ccres_on_H[ECAL_COINCIDENCE]++;
+
             antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_POSITIVE_PLASTIC, REACTION_ANY, 0, true_nu_E);
             antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_POSITIVE_PLASTIC, REACTION_ANY, 1, reco_nu_E);
             antinu_hist.Fill(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_PLASTIC_H, CCRES_ON_H, 0, true_nu_E);
@@ -741,11 +829,14 @@ void Fill_Final_Histos(SELECTION selection,
             break;
 
         case SELECTED_FALSE_POSITIVE_OTHER:
+            counter.cc_on_others[FIDUCIAL_VOLUME]++;
             break;
 
         // TRUE NEGATIVES
         case TRUE_NEGATIVE_GRAPHITE:
-
+            
+            counter.cc_on_C_graphite[FIDUCIAL_VOLUME]++;
+            
             LoopOverCells1D(cell_data, flight_length_neutron_bkg);
             LoopOverCells2D(cell_data, flight_length_neutron_bkg_vs_res_time, flight_length_neutron_bkg_vs_res_space);
 
@@ -753,15 +844,19 @@ void Fill_Final_Histos(SELECTION selection,
 
         case TRUE_NEGATIVE_PLASTIC_C:
             
+            counter.cc_on_C_plastic[FIDUCIAL_VOLUME]++;
+            
             LoopOverCells1D(cell_data, flight_length_neutron_bkg);
             LoopOverCells2D(cell_data, flight_length_neutron_bkg_vs_res_time, flight_length_neutron_bkg_vs_res_space);
 
             break;
 
         case TRUE_NEGATIVE_PLASTIC_H:
+            counter.ccres_on_H[FIDUCIAL_VOLUME]++;
             break;
 
         case TRUE_NEGATIVE_OTHERS:
+            counter.cc_on_others[FIDUCIAL_VOLUME]++;
             break;
 
         case SELECTION_NONE:
@@ -1001,7 +1096,7 @@ int efficiency_plots_test(){
 
     std::cout << "Number of events in fiducial volume " << nof_entries << "\n";
 
-    int nof_events_w_zero_complete_cells = 0;
+    Counter counter;
     
     for (size_t i = 0; i < nof_entries; i++)
     {
@@ -1053,7 +1148,7 @@ int efficiency_plots_test(){
         antinu_hist.Fill(FIDUCIAL_VOLUME, SELECTION_NONE, REACTION_NONE, 0, IncomingNeutrino_energy);
         positive_mu_hist.Fill(FIDUCIAL_VOLUME, SELECTION_NONE, REACTION_NONE, 0, antimuon_true_energy);
 
-        Fill_Final_Histos(selection, IncomingNeutrino_energy, Neutrino_reconstructed_energy_GeV, cell_data);
+        Fill_Final_Histos(selection, IncomingNeutrino_energy, Neutrino_reconstructed_energy_GeV, cell_data, counter);
         
         if(!is_signal){
             continue;
@@ -1077,6 +1172,8 @@ int efficiency_plots_test(){
             continue;
         }
 
+        Increment_counter(counter, WIRES_CUT, is_signal, is_on_C, is_in_graphite, is_in_plastic, is_on_H);
+
         positive_mu_hist.Fill(WIRES_CUT, SELECTION_NONE, CCQE_ON_H, 0, antimuon_true_energy);
         positive_mu_hist.Fill(WIRES_CUT, SELECTION_NONE, CCQE_ON_H, 1, antimuon_reco_energy);
 
@@ -1093,6 +1190,9 @@ int efficiency_plots_test(){
         if(!event_has_charge_multi_1){
             continue;
         }
+
+        Increment_counter(counter, CHARGE_MULTIPLICITY, is_signal, is_on_C, is_in_graphite, is_in_plastic, is_on_H);
+
         positive_mu_hist.Fill(CHARGE_MULTIPLICITY, SELECTION_NONE, CCQE_ON_H, 0, antimuon_true_energy);
         positive_mu_hist.Fill(CHARGE_MULTIPLICITY, SELECTION_NONE, CCQE_ON_H, 1, antimuon_reco_energy);
         
@@ -1155,7 +1255,7 @@ int efficiency_plots_test(){
     TH1D* selected_graphite_reco = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_GRAPHITE, CC_ON_CARBON, 1);
     TH1D* selected_plastic_carbon_subtracted = (TH1D*)selected_plastic_reco -> Clone("selected_plastic_carbon_subtracted");
 
-    THStack* total_rate_plastic = new THStack("stack", "Stacked Histogram; Reco Energy (GeV); Counts");
+    THStack* total_rate_plastic = new THStack("stack", "Stacked Histogram; #bar{#nu}_{#mu} Reco Energy [GeV]; Counts");
     total_rate_plastic -> Add(ccqe_on_H_selected_plastic_reco);
     total_rate_plastic -> Add(cc_on_C_selected_plastic_reco);
     total_rate_plastic -> Add(ccres_in_H_selected_plastic_reco);
@@ -1179,8 +1279,6 @@ int efficiency_plots_test(){
     TH1D* total_selection_efficiency = (TH1D*)ccqe_on_H_selected_plastic_true->Clone("ratio");
     total_selection_efficiency->Divide(ccqe_on_H_true);
     
-    TH1D* effect_efficiency_and_detector_and_subtraction = (TH1D*)selected_plastic_carbon_subtracted->Clone("ratio");
-    effect_efficiency_and_detector_and_subtraction->Divide(ccqe_on_H_true);
      
     // RECONSTRUCTED RATE
     TH1D* final_rate_reco = (TH1D*)selected_plastic_carbon_subtracted->Clone("final_rate_reco");
@@ -1222,23 +1320,32 @@ int efficiency_plots_test(){
     selected_plastic_carbon_subtracted->SetLineColor(kBlack);
     selected_plastic_carbon_subtracted->SetMarkerStyle(20);
     selected_plastic_carbon_subtracted->SetMarkerSize(0.8);
+    selected_plastic_carbon_subtracted_norm->SetLineColor(kBlack);
+    selected_plastic_carbon_subtracted_norm->SetMarkerStyle(20);
+    selected_plastic_carbon_subtracted_norm->SetMarkerSize(0.8);
     final_rate_reco->SetLineColor(kBlack);
     final_rate_reco->SetMarkerStyle(20);
     final_rate_reco->SetMarkerSize(0.8);
+    final_rate_reco_norm->SetLineColor(kBlack);
+    final_rate_reco_norm->SetMarkerStyle(20);
+    final_rate_reco_norm->SetMarkerSize(0.8);
+    final_rate_reco_norm->GetXaxis()->SetTitle("#bar{#nu}_{#mu} Reco Energy [GeV]");
 
     // ratio style
-    total_selection_efficiency->SetTitle(""); // Remove title for ratio plot
-    total_selection_efficiency->GetYaxis()->SetTitle("Bin Content Ratio");
-    total_selection_efficiency->GetXaxis()->SetTitle("Energy (GeV)");
-    total_selection_efficiency->GetYaxis()->SetNdivisions(505);
-    total_selection_efficiency->GetYaxis()->SetTitleSize(0.1);
-    total_selection_efficiency->GetYaxis()->SetTitleOffset(0.4);
-    total_selection_efficiency->GetYaxis()->SetLabelSize(0.08);
-    total_selection_efficiency->GetYaxis()->SetRangeUser(0, 0.3);
-    total_selection_efficiency->GetXaxis()->SetTitleSize(0.1);
-    total_selection_efficiency->GetXaxis()->SetTitleOffset(0.8);
-    total_selection_efficiency->GetXaxis()->SetLabelSize(0.08);
-    total_selection_efficiency->SetLineColor(kBlack);
+    TH1D* total_selection_efficiency_relative_flux = (TH1D*)ccqe_on_H_selected_plastic_true_norm->Clone("ratio");
+    total_selection_efficiency_relative_flux->Divide(ccqe_on_H_true_norm);
+    total_selection_efficiency_relative_flux->SetTitle(""); // Remove title for ratio plot
+    total_selection_efficiency_relative_flux->GetYaxis()->SetTitle("Bin Content Ratio");
+    total_selection_efficiency_relative_flux->GetXaxis()->SetTitle("#bar{#nu}_{#mu} Reco Energy [GeV]");
+    total_selection_efficiency_relative_flux->GetYaxis()->SetNdivisions(505);
+    total_selection_efficiency_relative_flux->GetYaxis()->SetTitleSize(0.1);
+    total_selection_efficiency_relative_flux->GetYaxis()->SetTitleOffset(0.4);
+    total_selection_efficiency_relative_flux->GetYaxis()->SetLabelSize(0.08);
+    total_selection_efficiency_relative_flux->GetYaxis()->SetRangeUser(0, 0.3);
+    total_selection_efficiency_relative_flux->GetXaxis()->SetTitleSize(0.1);
+    total_selection_efficiency_relative_flux->GetXaxis()->SetTitleOffset(0.8);
+    total_selection_efficiency_relative_flux->GetXaxis()->SetLabelSize(0.08);
+    total_selection_efficiency_relative_flux->SetLineColor(kBlue);
 
     //________________________________________________________________________________________
     /**
@@ -1328,12 +1435,17 @@ int efficiency_plots_test(){
     ccqe_on_H_true_norm->Draw("E HIST");
     ccqe_on_H_selected_plastic_true_norm->Draw("E HIST SAME");
     selected_plastic_carbon_subtracted_norm->Draw("E1 SAME");
-    hFlux -> Draw("H SAME");
+    // hFlux -> Draw("H SAME");
     legendsub->Draw("SAME");
 
     pad2->cd();
-    effect_efficiency_and_detector_and_subtraction->Draw("E1");
-    total_selection_efficiency->Draw("E HIST SAME");
+    TH1D* effect_efficiency_and_detector_and_subtraction = (TH1D*)selected_plastic_carbon_subtracted_norm->Clone("ratio");
+    effect_efficiency_and_detector_and_subtraction->Divide(ccqe_on_H_true_norm);
+    effect_efficiency_and_detector_and_subtraction ->SetLineColor(kBlack);
+    effect_efficiency_and_detector_and_subtraction->SetMarkerStyle(20);
+    effect_efficiency_and_detector_and_subtraction->SetMarkerSize(0.8);
+    total_selection_efficiency_relative_flux->Draw("E HIST");
+    effect_efficiency_and_detector_and_subtraction->Draw("E1 SAME");
 
     canvas_sub->Update();
 
@@ -1341,8 +1453,8 @@ int efficiency_plots_test(){
     CORRECTEDRATE:
     */
     TCanvas* canvas_final_rate = new TCanvas("canvas_final_rate", "", 900, 700);
-    ccqe_on_H_true_norm -> Draw("E HIST");
-    final_rate_reco_norm -> Draw("E1 SAME");
+    final_rate_reco_norm -> Draw("E1");
+    ccqe_on_H_true_norm -> Draw("E HIST SAME");
 
     TLegend* legend_rates = new TLegend(0.7, 0.7, 0.9, 0.9);
     legend_rates->AddEntry(ccqe_on_H_true_norm, "#Phi_{#bar{#nu}_{#mu}} #sigma_{S} (CCQE on H)", "l");
@@ -1432,17 +1544,21 @@ int efficiency_plots_test(){
         double y = flux_systematics->GetBinContent(i);
         double error = flux_systematics->GetBinError(i);
 
-        // Crea una banda rettangolare che copre l'intero bin
-        TBox* box = new TBox(x_low, y - error, x_high, y + error);
+        // Limita le barre di errore tra 0 e 1
+        double y_min = std::max(0.0, y - error);  // if < 0 -> 0
+        double y_max = std::min(1.0, y + error);  // if > 1 -> 1
+
+        // Crea la banda di errore
+        TBox* box = new TBox(x_low, y_min, x_high, y_max);
         box->SetFillColorAlpha(kRed, 0.35); // Rosso chiaro con trasparenza
         box->SetLineWidth(0);
         error_boxes.push_back(box);
     }
 
     // Disegna i risultati
-    flux_systematics->SetTitle(";E [GeV];Systematics");
-    flux_systematics->SetLineColor(kBlue);
-    flux_systematics->Draw("HIST");
+    flux_systematics->SetTitle(";#bar{#nu}_{#mu} Reco Energy [GeV]; Relative Flux Systematics");
+    flux_systematics->SetLineColor(kBlack);
+    flux_systematics->Draw("E1");
 
     // Disegna le bande di errore
     for (auto& box : error_boxes) {
@@ -1496,31 +1612,22 @@ int efficiency_plots_test(){
     RECAP: final recap on number of events
     */
 
-    int total_ccqe_on_H = antinu_hist.GetHistogram(FIDUCIAL_VOLUME, SELECTION_NONE, CCQE_ON_H, 0)->GetEntries();
-    int total_ccqe_on_H_selected = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_TRUE_POSITIVE, CCQE_ON_H, 1)->GetEntries();
-    
-    int total_cc_on_Carbon_plastic = 0;
-    int total_cc_on_Carbon_plastic_selected = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_PLASTIC_C, CC_ON_CARBON, 1)->GetEntries();
-    int total_cc_on_Carbon_graphite = 0;
-    int total_cc_on_Carbon_graphite_selected = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_GRAPHITE, CC_ON_CARBON, 1)->GetEntries();
-
-    int total_ccres_on_h = 0;
-    int total_ccres_on_h_selected = antinu_hist.GetHistogram(ECAL_COINCIDENCE, SELECTED_FALSE_POSITIVE_PLASTIC_H, CCRES_ON_H, 1)->GetEntries();
-    
-    std::cout << "\n";
     std::cout << 
-            "count CCQE on H : " << total_ccqe_on_H << 
-                   ", selected " << total_ccqe_on_H_selected << "\n"
+            "count CCQE on H : " << counter.ccqe_on_H[FIDUCIAL_VOLUME] << 
+                   ", selected " << counter.ccqe_on_H[ECAL_COINCIDENCE] << "\n"
             
-            "count CC on Carbon plastic : " << total_cc_on_Carbon_plastic <<
-                              ", selected " << total_cc_on_Carbon_plastic_selected << "\n"
+            "count CC on Carbon plastic : " << counter.cc_on_C_plastic[FIDUCIAL_VOLUME] <<
+                              ", selected " << counter.cc_on_C_plastic[ECAL_COINCIDENCE] << "\n"
             
-            "count CCRES on H plastic: " << total_ccres_on_h << 
-                           ", selected " << total_ccres_on_h_selected << "\n"
+            "count CCRES on H plastic: " << counter.ccres_on_H[FIDUCIAL_VOLUME] << 
+                           ", selected " << counter.ccres_on_H[ECAL_COINCIDENCE] << "\n"
             
-            "count CC on Carbon graphite : " << total_cc_on_Carbon_graphite <<  
-                               ", selected " << total_cc_on_Carbon_graphite_selected << "\n";
+            "count CC on others: " << counter.cc_on_others[FIDUCIAL_VOLUME] << 
+                           ", selected " << counter.cc_on_others[ECAL_COINCIDENCE] << "\n"
             
-
+            "count CC on Carbon graphite : " << counter.cc_on_C_graphite[FIDUCIAL_VOLUME] <<  
+                               ", selected " << counter.cc_on_C_graphite[ECAL_COINCIDENCE] << "\n";
+            
+    PrintCounter(counter);
     return 0;
 }
