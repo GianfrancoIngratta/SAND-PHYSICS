@@ -12,95 +12,49 @@ TGeoManager* geo = nullptr;
 int main(int argc, char* argv[]){
     // Analyze output of genie production
 
-    // if(argc < 4 || argc > 7)
-    // {
-    //     LOG("W", "AnalyseEDepSim -i <EDEP PRODUCTION> -g <GEOMETRY> -o <FILE OUTPUT>\n");
-    //     throw "";
-    // }
+    // analyse file from file file_start" to "file_start + nof files 
+    unsigned int index;
+    if(argc != 2){
+        LOG("W", "One input number needed to run the executable");
+        throw "";
+    }
 
-    // read user inputs
+    index = atoi(argv[1]);
+    unsigned int files_per_jobs = 10u;
+    unsigned int file_start = index * files_per_jobs;
+    unsigned int file_stop = index * files_per_jobs + files_per_jobs;
 
-    // const char* fInput = argv[1];
-
-    // const char* geometry = argv[2];
-
-    // const char* fOutput = argv[3];
-
-    unsigned int start = 0;
-
-    // unsigned int stop = 1;
-
-    // int index = 1;
-
-    // LOG("I", "Parsing inputs");
-
-    // while (index < argc)
-    // {
-    //     TString opt = argv[index];
-    //     if(opt.CompareTo("-i")==0){
-    //         try
-    //         {
-    //             fInput = argv[++index];
-    //             LOG("ii",TString::Format("Input file : %s", fInput).Data());
-    //         }
-    //         catch(const std::exception& e)
-    //         {
-    //             std::cerr << e.what() << '\n';
-    //             return 1;
-    //         }
-    //     }else if(opt.CompareTo("-g")==0){
-    //         try
-    //         {
-    //             geometry = argv[++index];
-    //             LOG("ii",TString::Format("Geometry file : %s", geometry).Data());
-    //         }
-    //         catch(const std::exception& e)
-    //         {
-    //             std::cerr << e.what() << '\n';
-    //             return 1;
-    //         }
-    //     }else if(opt.CompareTo("-o")==0){
-    //         try
-    //         {
-    //             fOutput = argv[++index];
-    //             LOG("ii",TString::Format("Output file : %s", fOutput).Data());
-    //         }
-    //         catch(const std::exception& e)
-    //         {
-    //             std::cerr << e.what() << '\n';
-    //         }
-    //     }        else{
-    //         auto ui = argv[++index];
-    //         LOG("W", TString::Format("Unknown Input : %s", ui).Data());
-    //         return 1; 
-    //     }
-    //     index++;
-    // }
-
-    // if you have multiple files enable multiple thread pocessing
+    LOG("I", TString::Format("Analyze production from file %d to file %d", file_start, file_stop).Data());
     
     LOG("I", "Reading geometry");
     geo = TGeoManager::Import("/storage/gpfs_data/neutrino/users/gi/dunendggd/SAND_opt3_DRIFT1.root");
 
-    auto fInput_genie = "/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/events-in-SANDtracker.*.gtrac.root";
+    auto FOLDER_PRODUCTION = "/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_reverse_current_all_flavor_volSAND/";
+    auto FOLDER_ANALYSIS = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_reverse_current_volSAND/";
 
-    auto fInput_edep = "/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/events-in-SANDtracker.*.edep-sim.root";
-
-    auto fOutput = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/events-in-SANDtracker.0.edep-sim.analysed.root";
+    auto fInput_genie =TString::Format("%sevents-in-volSAND.*.gtrac.root", FOLDER_PRODUCTION);
+    auto fInput_edep =TString::Format("%sevents-in-volSAND.*.edep-sim.root", FOLDER_PRODUCTION);
+    // auto fInput_digit =TString::Format("%sevents-in-volSAND.*.ecal-digit.root", FOLDER_PRODUCTION);
+    auto fOutput = TString::Format("%sevents-in-volSAND.%d.to.%d.edep.analysed.root",FOLDER_ANALYSIS, file_start, file_stop);
     
-    auto fOutput2 = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/events-in-SANDtracker.0.edep-sim.analysed2.root";
-
     // if you have multiple files enable multiple thread pocessing
-    if(TString::Format("%s",fInput_genie).Contains("*")){
+    // if(TString::Format("%s",fInput_digit).Contains("*")){
+    if(fInput_edep.Contains("*")){
         LOG("I","Enabling multiple threading");
         ROOT::EnableImplicitMT();
         geo->SetMaxThreads(100);
     };
 
     LOG("I", "Initialize ROOT DataFrame");
-    auto chain_genie = RDFUtils::InitTChain(fInput_genie, "gRooTracker", start, start + 999u); 
-    auto chain_edep = RDFUtils::InitTChain(fInput_edep, "EDepSimEvents", start, start + 999u); 
+    auto chain_genie = RDFUtils::InitTChain(fInput_genie, "gRooTracker", file_start, file_stop);
+    auto chain_edep = RDFUtils::InitTChain(fInput_edep, "EDepSimEvents", file_start, file_stop);
+    // auto chain_digit = RDFUtils::InitTChain(fInput_digit, "tDigit", file_start, file_stop); 
+    // auto chain_cluster = RDFUtils::InitTChain(fInput_ecal_cluster, "tReco", file_start, file_stop); 
+    
     chain_edep->AddFriend(chain_genie, "genie");
+    // chain_digit->AddFriend(chain_edep, "edep");
+    // chain_digit->AddFriend(chain_cluster, "cluster");
+    
     auto df = RDFUtils::InitDF(chain_edep);
 
     // RDFUtils::PrintColumns(df);
@@ -113,17 +67,9 @@ int main(int argc, char* argv[]){
 
     auto dfEDEP = RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(dfGENIE);
     
-    LOG("I", "Writing ouput file");
+    // auto dfDigit = RDFUtils::DIGIT::AddColumnsFromDigit(dfEDEP);
 
-    // dfEDEP.Snapshot("edep_extended", fOutput2, {"FileName",
-    //                                             "EventId",
-    //                                             "EventType",
-    //                                             "CCQEonHydrogen",
-    //                                             "NofEvents",
-    //                                             "InteractionVolume",
-    //                                             });
-
-    dfEDEP.Snapshot("edep_extended", fOutput, { 
+    dfEDEP.Snapshot("edep_extended", fOutput.Data(), { 
                                                 "FileName",
                                                 "EventId",
                                                 "EventType",
@@ -137,6 +83,8 @@ int main(int argc, char* argv[]){
                                                 "Interaction_vtxZ",
                                                 "Interaction_vtxT",
                                                 "IncomingNeutrinoP4",
+                                                "IncomingNeutrinoPDG",
+                                                "IncomingNeutrinoName",
                                                 "InteractionVolume",
                                                 "InteractionTarget",
                                                 "FinalStateLeptonPDG",
@@ -154,21 +102,20 @@ int main(int argc, char* argv[]){
                                                 /*
                                                     EDEP INFO
                                                 */
-                                                "PrimariesPDG",
-                                                "PrimariesTrackId",
-                                                "PrimariesP4",
-                                                "PrimariesFirstHitECAL",
-                                                "PrimariesEDepECAL",
-                                                "PrimariesEmissionAngle",
+                                                // "PrimariesPDG",
+                                                // "PrimariesTrackId",
+                                                // "PrimariesP4",
+                                                // "PrimariesFirstHitECAL",
+                                                // "PrimariesEDepECAL",
+                                                // "PrimariesEmissionAngle",
                                                 /*
                                                     PREDICTIONS FOR CHANNEL antinu on H
                                                 */
-                                                "ExpectedNeutrinoP4FromMuon",
-                                                "ExpectedHadronSystP3",
-                                                "ExpectedHadronSystEnergy",
-                                                "ExpectedNeutronArrivalPositionECAL",
-                                                "MissingTransverseMomentum",
-                                                "DoubleTransverseMomentumImbalance",
+                                                // "ExpectedNeutrinoP4FromMuon",
+                                                // "ExpectedHadronSystP3",
+                                                // "ExpectedHadronSystEnergy",
+                                                // "MissingTransverseMomentum",
+                                                // "DoubleTransverseMomentumImbalance",
 
     });                                                    
 

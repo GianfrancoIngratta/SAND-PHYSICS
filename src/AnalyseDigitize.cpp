@@ -36,6 +36,7 @@ int main(int argc, char* argv[]){
     auto fInput_digit =TString::Format("%sevents-in-SANDtracker.*.ecal-digit.root", FOLDER_PRODUCTION);
     // auto fInput_ecal_cluster = "events-in-SANDtracker.*.ecal-cluster.root";
     auto fOutput = TString::Format("%sevents-in-SANDtracker.%d.to.%d.ecal-digit.analysed.root",FOLDER_ANALYSIS, file_start, file_stop);
+
     
     // if you have multiple files enable multiple thread pocessing
     // if(TString::Format("%s",fInput_digit).Contains("*")){
@@ -68,14 +69,63 @@ int main(int argc, char* argv[]){
     auto dfEDEP = RDFUtils::EDEPSIM::NOSPILL::AddColumnsFromEDEPSIM(dfGENIE);
     
     auto dfDigit = RDFUtils::DIGIT::AddColumnsFromDigit(dfEDEP);
+
+    /*
+        Filter
+        - Fiducial Volume
+        - Signal events (MC truth)
+        - Complete Cells (reco)
+    */
+
+    LOG("I", "Filter events in fiducial volume (MC truth) ____________________________________________");
+    dfDigit = dfDigit.Filter("isInFiducialVolume"); // genie
+    auto nof_events_in_FV = static_cast<double>(dfDigit.Count().GetValue());
+    auto nof_signal_events = static_cast<double>(dfDigit.Filter("CCQEonHydrogen==1").Count().GetValue());
+    auto nof_bkg_events = static_cast<double>(dfDigit.Filter("CCQEonHydrogen==0").Count().GetValue());
+    LOG("ii", TString::Format("Events in FV %.2f, signal %.2f %%, bkg %.2f %%", 
+                          nof_events_in_FV, 
+                          nof_signal_events/nof_events_in_FV,
+                          nof_bkg_events/nof_events_in_FV).Data());
+
+    LOG("I", "Filter signal events (MC truth)");
+    dfDigit = dfDigit.Filter("CCQEonHydrogen==1"); // genie
+
+    // LOG("I", "Filter multiplicity _____________________________________________________________________");
+    // dfDigit = dfDigit.Filter("NofFinalStateChargedParticles==1");
+
+    // LOG("I", "Filter events in C3H6 target ____________________________________________________________");
+    // dfDigit = dfDigit.Filter("InteractionVolume_short == \"C3H6_Target\"");
+
+    // LOG("I", "Filter candidates ________________________________________________________________________");
+    // auto nof_true_positve = static_cast<double>(dfDigit.Filter("event_has_candidate==1").Filter("CCQEonHydrogen==1").Count().GetValue());
+    // auto nof_false_positive = static_cast<double>(dfDigit.Filter("event_has_candidate==1").Filter("CCQEonHydrogen==0").Count().GetValue());
+    // auto nof_true_negative = static_cast<double>(dfDigit.Filter("event_has_candidate==0").Filter("CCQEonHydrogen==0").Count().GetValue());
+    // auto nof_false_negative = static_cast<double>(dfDigit.Filter("event_has_candidate==0").Filter("CCQEonHydrogen==1").Count().GetValue());
+    // LOG("i", TString::Format("nof_true_positve: %.2f, nof_false_positive: %.2f, nof_true_negative: %.2f, nof_false_negative: %.2f", 
+    //                      nof_true_positve, nof_false_positive, nof_true_negative, nof_false_negative).Data());
+    // dfDigit = dfDigit.Filter("event_has_candidate");
     
+    // auto filter_description = "FV";
+    auto filter_description = "FV_Signal";
+    // auto filter_description = "FV_candidate";
+    // auto filter_description = "FV_multi1_C3H6_candidate";
+    
+    auto fOutput_filtered = TString::Format("%s%s/events-in-SANDtracker.%d.to.%d.ecal-digit.analysed.root",
+                                        FOLDER_ANALYSIS, filter_description, file_start, file_stop);
+
+    auto fOutput_filtered_trj = TString::Format("%s%s/events-in-SANDtracker.%d.to.%d.ecal-digit.analysed.trj.root",
+                                            FOLDER_ANALYSIS, filter_description, file_start, file_stop);
+
+    // study cell fired by neutron
+    
+
     LOG("I", "Writing ouput file");
-    dfDigit.Snapshot("digit_extended", fOutput.Data(), {
+    dfDigit.Snapshot("digit_extended", fOutput_filtered.Data(), {
                                                 /*
                                                     GENIE INFO
                                                 */
                                                 "FileName",
-                                                "EventId",
+                                                // "EventId",
                                                 "EventType",
                                                 "CCQEonHydrogen",
                                                 "NuDirection",
@@ -84,34 +134,29 @@ int main(int argc, char* argv[]){
                                                 "Interaction_vtxY",
                                                 "Interaction_vtxZ",
                                                 "Interaction_vtxT",
-                                                "InteractionVolume",
+                                                "InteractionVolume_short",
                                                 "NofFinalStateChargedParticles",
                                                 "FinalStateLeptonEmissionAngle",
-                                                "PrimaryStateHadronicSystemTotalKinE",
                                                 "PrimaryStateHadronicSystemTopology_name",
                                                 "InteractionTarget",
-                                                /*
-                                                    EDEP INFO
-                                                */
+                                                // /*
+                                                //     EDEP INFO
+                                                // */
                                                 "PrimariesPDG",
                                                 "PrimariesTrackId",
                                                 "PrimariesP4",
-                                                "PrimariesFirstHitECAL",
+                                                "PrimariesBeta",
                                                 "PrimariesEDepECAL",
                                                 "PrimariesEmissionAngle",
-                                                "IsECALHitMissing",
+                                                // "IsECALHitMissing",
                                                 "DeviationAngle",
-                                                /*
-                                                    PREDICTIONS FOR CHANNEL antinu on H
-                                                */
+                                                // /*
+                                                //     PREDICTIONS FOR CHANNEL antinu on H
+                                                // */
                                                 "ExpectedNeutrinoP4FromMuon",
                                                 "ExpectedHadronSystP3",
                                                 "ExpectedHadronSystEnergy",
-                                                "ExpectedNeutronArrivalPositionECAL",
-                                                "ExpectedNeutronTOF",
-                                                "ExpectedFiredModuleByNeutron",
                                                 "MissingTransverseMomentum",
-    //                                             "DoubleTransverseMomentumImbalance",
                                                  /*
                                                       DIGIT INFO
                                                  */
@@ -126,20 +171,66 @@ int main(int argc, char* argv[]){
                                                 "Fired_Cells_adc2",
                                                 "Fired_Cells_tdc1",
                                                 "Fired_Cells_tdc2",
-                                                "who_produced_tdc1",
-                                                "who_produced_tdc2",
                                                 "Fired_Cell_true_hit1",
                                                 "Fired_Cell_true_hit2",
+                                                "Fired_by_primary_neutron",
+                                                "Fired_by_primary_antimu",
+                                                // "who_produced_tdc2",
                                                 "isCellComplete",
-                                                "Cell_Reconstructed_hit",
-                                                "ExpectedNeutronHit",
-                                                 /*
-                                                    ECAL CLUSTER INFO
-                                                 */
-                                                //  "NofEventClusters",
-                                                //  "ClusterX4",
-                                                //  "Cluster2Vertex4Distance",
+                                                /*
+                                                    true
+                                                */
+                                                "Fired_Cell_true_Hit_x",
+                                                "Fired_Cell_true_Hit_y",
+                                                "Fired_Cell_true_Hit_z",
+                                                "Fired_Cell_true_Hit_t",
+                                                "Fired_Cell_true_Hit_e",
+                                                // "CrossingNeutron_KinE_true",
+                                                "True_FlightLength",
+                                                /*
+                                                    expected
+                                                */
+                                                // "ExpectedNeutron_Beta",
+                                                "ExpectedNeutron_HitPosition_x",
+                                                "ExpectedNeutron_HitPosition_y",
+                                                "ExpectedNeutron_HitPosition_z",
+                                                // "ExpectedNeutron_TOF",
+                                                "ExpectedNeutron_FlightLength",
+                                                /*
+                                                    reco
+                                                */
+                                                "Reconstructed_HitPosition_x",
+                                                "Reconstructed_HitPosition_y",
+                                                "Reconstructed_HitPosition_z",
+                                                "Reconstructed_HitTime",
+                                                "Reconstructed_Energy",
+                                                "compatible_cell_weighted",
+                                                "Reconstructed_FlightLength",
+                                                "Reconstructed_FlightLength_weighted",
+                                                //
+                                                "IsCompatible",
+                                                "compatible_cell_weighted",
+                                                // "isCandidate",
+                                                // "event_has_candidate",
+                                                // "Reconstructed_MissingPT",
     });                                                    
 
+    LOG("I", "Writing trajectory file");
+    auto dfTraj = RDFUtils::DIGIT::GetFilteredTrajectories(dfDigit, "ECALactive_trajectories");
+    
+    dfTraj.Snapshot("trj_extended", fOutput_filtered_trj.Data(), {
+                                                 "FileName",
+                                                 "trackid",
+                                                 "pdg",
+                                                 "point_x",
+                                                 "point_y",
+                                                 "point_z",
+                                                 "point_px",
+                                                 "point_py",
+                                                 "point_pz",
+                                                 "process",
+
+    });
+    
     return 0;
 }

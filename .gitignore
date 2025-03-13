@@ -4,3 +4,10 @@ production_antinumucc/*
 *.root
 *.gdml
 .vscode
+condor_submission/logs/*
+*.err
+*.log
+*.out
+*.html
+notebook/figures/*
+condor_submission/*

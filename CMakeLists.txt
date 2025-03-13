@@ -16,7 +16,7 @@ set(CMAKE_INSTALL_LIBDIR "${CMAKE_INSTALL_PREFIX}/lib")
 find_package(ROOT REQUIRED COMPONENTS Geom Physics Matrix MathCore RIO Net Tree)
 find_package(EDepSim)
 
-# find_package(SandReco)
+find_package(SandReco)
 include_directories(${PROJECT_SOURCE_DIR}/include /storage/gpfs_data/neutrino/users/gi/sand-reco/include)
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -39,9 +39,6 @@ target_link_libraries(GenieUtils PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::Tre
 add_library(GeoUtils SHARED src/GeoUtils.cpp)
 target_link_libraries(GeoUtils PUBLIC ROOT::RIO ROOT::Net ROOT::ROOTDataFrame EDepSim::edepsim_io)
 
-# add_library(SelectSignalUtils SHARED src/SelectSignal.cpp)
-# target_link_libraries(SelectSignalUtils PUBLIC ROOT::RIO ROOT::Net ROOT::ROOTDataFrame EDepSim::edepsim_io GenieUtils)
-
 # Creates a libUtils shared library
 add_library(RDataFrameUtils SHARED src/RDataFrameUtils.cpp src/GenieUtils.cpp src/GeoUtils.cpp)
 # add_library(RDataFrameUtils SHARED src/RDataFrameUtils.cpp)
@@ -52,29 +49,33 @@ target_include_directories(RDataFrameUtils PUBLIC
   /opt/exp_software/neutrino/LHAPDF5/lib)
 target_link_libraries(RDataFrameUtils PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame
 ROOT::Physics ROOT::Geom ROOT::EG ROOT::EGPythia6 GenieUtils GeoUtils)
+
 ROOT_GENERATE_DICTIONARY(RDataFrameUtilsDict RDataFrameUtils.h GHEP/GHepParticle.h 
 MODULE RDataFrameUtils LINKDEF include/RDataFrameUtilsLinkDef.h)
 
 add_executable(AnalyseGenie src/AnalyseGenie.cpp)
-target_link_libraries(AnalyseGenie PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics RDataFrameUtils)
+target_link_libraries(AnalyseGenie PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics RDataFrameUtils SandReco::SANDRecoUtils)
 
 add_executable(AnalyseEDepSim src/AnalyseEDepSim.cpp)
-target_link_libraries(AnalyseEDepSim PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils)
+target_link_libraries(AnalyseEDepSim PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils SandReco::SANDRecoUtils)
 
 add_executable(AnalyseDigit src/AnalyseDigitize.cpp)
-target_link_libraries(AnalyseDigit PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils)
+target_link_libraries(AnalyseDigit PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils SandReco::SANDRecoUtils)
 
 add_executable(AnalyseDriftReco src/AnalyseDriftReco.cpp)
-target_link_libraries(AnalyseDriftReco PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils)
+target_link_libraries(AnalyseDriftReco PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils SandReco::SANDRecoUtils)
+
+add_executable(AnalyseSpill src/AnalyseSpill.cpp)
+target_link_libraries(AnalyseSpill PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils SandReco::SANDRecoUtils)
 
 add_executable(SelectSignal src/SelectSignal.cpp)
-target_link_libraries(SelectSignal PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils)
+target_link_libraries(SelectSignal PUBLIC ROOT::RIO ROOT::Net ROOT::Tree ROOT::TreePlayer ROOT::ROOTDataFrame ROOT::Physics GenieUtils RDataFrameUtils GeoUtils SandReco::SANDRecoUtils)
 
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set (CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}" CACHE PATH "default install path" FORCE )
 endif()
 
-install(TARGETS  GenieUtils RDataFrameUtils GeoUtils AnalyseGenie
+install(TARGETS  GenieUtils RDataFrameUtils GeoUtils AnalyseGenie 
         EXPORT SandPhysicsTargets
         RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin"
         LIBRARY DESTINATION "${CMAKE_INSTALL_PREFIX}/lib"

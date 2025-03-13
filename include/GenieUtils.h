@@ -19,7 +19,11 @@ static auto database = genie::PDGLibrary::Instance();
 
 Double_t GetMass(int pdg);
 
+Double_t GetCharge(int pdg);
+
 std::string PDG2Name(int pdg);
+
+std::string ShortEventType(const TString& s);
 
 struct event_topology
 {

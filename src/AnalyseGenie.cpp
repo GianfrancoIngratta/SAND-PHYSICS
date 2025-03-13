@@ -8,156 +8,68 @@ TGeoManager* geo = nullptr;
 
 //___________________________________________________________________
 int main(int argc, char* argv[]){
-    // Analyze output of genie production
 
-    // if(argc<4)
-    // {
-    //     LOG("W", "AnalyseGenie -i <GENIE PRODUCTION> -g <GEOMETRY> -o <FILE OUTPUT>\n");
-    //     throw "";
-    // }
+    unsigned int index;
+    if(argc != 2){
+        LOG("W", "One input number needed to run the executable");
+        throw "";
+    }
 
-    // // read user inputs
+    index = atoi(argv[1]);
+    unsigned int files_per_jobs = 5000u;
+    unsigned int file_start = index * files_per_jobs;
+    unsigned int file_stop = index * files_per_jobs + files_per_jobs;
 
-    // const char* fInput = argv[1];
-
-    // const char* geometry = argv[2];
-
-    // const char* fOutput = argv[3];
-
-    unsigned int start = 0;
-
-    // int index = 1;
-
-    // LOG("I", "Parsing inputs");
-
-    // while (index < argc)
-    // {
-    //     TString opt = argv[index];
-    //     if(opt.CompareTo("-i")==0){
-    //         try
-    //         {
-    //             fInput = argv[++index];
-    //             LOG("ii",TString::Format("Input file : %s", fInput).Data());
-    //         }
-    //         catch(const std::exception& e)
-    //         {
-    //             std::cerr << e.what() << '\n';
-    //             return 1;
-    //         }
-    //     }else if(opt.CompareTo("-g")==0){
-    //         try
-    //         {
-    //             geometry = argv[++index];
-    //             LOG("ii",TString::Format("Geometry file : %s", geometry).Data());
-    //         }
-    //         catch(const std::exception& e)
-    //         {
-    //             std::cerr << e.what() << '\n';
-    //             return 1;
-    //         }
-    //     }else if(opt.CompareTo("-o")==0){
-    //         try
-    //         {
-    //             fOutput = argv[++index];
-    //             LOG("ii",TString::Format("Output file : %s", fOutput).Data());
-    //         }
-    //         catch(const std::exception& e)
-    //         {
-    //             std::cerr << e.what() << '\n';
-    //         }
-    //     }else{
-    //         auto ui = argv[++index];
-    //         LOG("W", TString::Format("Unknown Input : %s", ui).Data());
-    //         return 1; 
-    //     }
-    //     index++;
-    // }
-
-    LOG("I", "Reading geometry");        
+    LOG("I", TString::Format("Analyze production from file %d to file %d", file_start, file_stop).Data());
+    
+    LOG("I", "Reading geometry");
     geo = TGeoManager::Import("/storage/gpfs_data/neutrino/users/gi/dunendggd/SAND_opt3_DRIFT1.root");
 
-    auto fInput = "/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/events-in-SANDtracker.*.gtrac.root";
+    auto FOLDER_PRODUCTION = "/storage/gpfs_data/neutrino/users/gi/SAND-DRIFT-STUDY/geometry/production_antinumucc/";
+    auto FOLDER_ANALYSIS = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/antinumu_CCQE_on_H_like/genie/";
 
-    auto fOutput = "/storage/gpfs_data/neutrino/users/gi/sand-physics/production_antinumucc/events-in-SANDtracker.0.gtrac.analysed.root";
+    auto fInput_genie = TString::Format("%sevents-in-SANDtracker.*.gtrac.root", FOLDER_PRODUCTION);
+    auto fOutput = TString::Format("%sevents-in-SANDtracker.from.%d.to.%d.genie_extended.root", FOLDER_ANALYSIS, file_start, file_stop);
 
-    // if you have multiple files enable multiple thread pocessing
-    if(TString::Format("%s",fInput).Contains("*")){
+    if(fInput_genie.Contains("*")){
         LOG("I","Enabling multiple threading");
         ROOT::EnableImplicitMT();
         geo->SetMaxThreads(100);
-        };
+    };
 
     LOG("I", "Initialize ROOT DataFrame");
-    auto chain_genie = RDFUtils::InitTChain(fInput, "gRooTracker", start, start + 999u); 
+    auto chain_genie = RDFUtils::InitTChain(fInput_genie, "gRooTracker", file_start, file_stop); 
     auto df = RDFUtils::InitDF(chain_genie);
 
     auto dfC = RDFUtils::AddConstantsToDF(df); // add some columns with usefull constants
 
     auto dfG = RDFUtils::GENIE::AddColumnsFromGENIE(dfC);
-
+    LOG("I", "Filtere Fiducial Volume");
+    auto df_filtered = RDFUtils::Filter(dfG, "isInFiducialVolume==1", true);
     // auto dfG_SolidHydrogen = RDFUtils::GENIE::AddColumnsForHydrogenCarbonSampleSelection(dfG); // add columns for Hydrogen sample selection
     LOG("I", "Writing ouput file");
-    dfG.Snapshot("gtrac_extended",fOutput, {
-                                            "EvtNum",
+    dfG.Snapshot("gtrac_extended",fOutput.Data(), {
+                                            "CCQEonHydrogen",
+                                            "EvtXSec",
+                                            "EvtDXSec",
+                                            "EvtProb",
+                                            "InteractionVolume",
+                                            "InteractionVolume_short",
+                                            "isInFiducialVolume",
                                             "NeutrinoFlavor",
                                             "isCCEvent",
                                             "EventType",
-                                            "InteractionTargetPDG",
-                                            "CCQEonHydrogen",
                                             "Interaction_vtxX",
                                             "Interaction_vtxY",
                                             "Interaction_vtxZ",
-                                            "isInFiducialVolume",
+                                            "Interaction_vtxT",
                                             "InteractionTarget",
-                                            "InteractionTargetFromGEO",
-                                            "InteractionVolume",
-                                            // initial state
-                                            "InitialStatePDG",
-                                            "InitialStateNames",
-                                            "InitialStateMomenta",
-                                            "InitialStateTotal4Momentum",
-                                            "InitialStateEmissionAngle",
-                                            // final state lepton
-                                            "FinalStateLeptonPDG",
-                                            "FinalStateLeptonNames",
-                                            "NofFinalStateChargedParticles",
+                                            "IncomingNeutrinoP4",
+                                            "NucleonTargetP4",
                                             "FinalStateLepton4Momentum",
-                                            "FinalStateLeptonEmissionAngle",
-                                            // prmary state hadronic system 
-                                            "PrimaryStateHadronicSystemPDG",
-                                            "PrimaryStateHadronicSystemNames",
-                                            "PrimaryStateHadronicSystemMomenta",
-                                            "PrimaryStateHadronicSystemTotal4Momentum",
-                                            "PrimaryStateHadronicSystemEmissionAngle",
-                                            "PrimaryStateHadronicSystemTotalKinE",
-                                            "PrimaryStateHadronicSystemTopology_code",
-                                            "PrimaryStateHadronicSystemTopology_name",
-                                            // final state hadronic system 
-                                            "FinalStateHadronicSystemPDG",
-                                            "FinalStateHadronicSystemNames",
-                                            "FinalStateHadronicSystemMomenta",
-                                            "FinalStateHadronicSystemTotal4Momentum",
-                                            "FinalStateHadronicSystemEmissionAngle",
-                                            "FinalStateHadronicSystemTotalKinE",
-                                            "FinalStateHadronicSystemTopology_code",
+                                            "FinalStateLeptonPDG",
                                             "FinalStateHadronicSystemTopology_name",
-                                            // nuclear remnant
-                                            "NuclearRemnantPDG",
-                                            "NuclearRemnantMomenta",
-                                            "NuclearTotal4Momentum",
-                                            // checks energy momentum conservation
-                                            "PrimaryStateTotal4Momantum",
-                                            "FinalStateTotal4Momantum",
-                                            // for channel selection
-                                            "ExpectedNeutrinoP4FromMuon",
-                                            "ExpectedHadronSystP3",
-                                            "ExpectedHadronSystEnergy",
-                                            "FinalStateLeptonTransverseP",
-                                            "FinalStateHadronicSystemTransverseP",
-                                            "MissingTransverseMomentum",
-                                            "RmH",
-                                            "DoubleTransverseMomentumImbalance",
-                                            "ExpectedNeutronArrivalPositionECAL",
+                                            "FinalStateHadronicSystemTotal4Momentum",
                                             });
 
     return 0;

@@ -29,7 +29,9 @@ class ROOT_tools:
         hist.Fit(gaussian_func, "R")
         mean = gaussian_func.GetParameter(1)
         sigma = gaussian_func.GetParameter(2)
-        return (hist, mean, sigma)
+        mean_error = gaussian_func.GetParError(1)
+        sigma_error = gaussian_func.GetParError(2)
+        return (hist, mean, sigma, mean_error, sigma_error)
     
     def FitTH1D_w_chi2(self, hist: ROOT.TH1D, chi2_range: tuple, fit_range: tuple) -> tuple:
         # fit TH1D with chi2 function and return hist, mean and sigma of the fit
