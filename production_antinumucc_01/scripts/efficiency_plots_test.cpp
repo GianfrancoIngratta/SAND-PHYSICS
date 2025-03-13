@@ -4,6 +4,101 @@
 #include <TCanvas.h>
 #include <TLegend.h>
 
+// source /opt/exp_software/neutrino/ROOUNFOLD/RooUnfold/setup.sh
+// .L /opt/exp_software/neutrino/ROOUNFOLD/RooUnfold/src/RooUnfold.h
+
+#include <TEfficiency.h>
+#include "RooUnfoldResponse.h"
+#include "RooUnfoldBayes.h"
+
+enum UNFOLD_COMPONTENTS{
+    SIGNAL_SAMPLE1 = 0,
+    SIGNAL_BKG_SAMPLE1 = 1,
+    BKG_SAMPLE1 = 2,
+    //
+    SIGNAL_SAMPLE2 = 3,
+    SIGNAL_BKG_SAMPLE2 = 4,
+    BKG_SAMPLE2 = 5,
+    //
+    SIGNAL_SAMPLE3 = 6,
+    SIGNAL_BKG_SAMPLE3 = 7,
+    BKG_SAMPLE3 = 8,
+    UNFOLD_NONE
+};
+
+
+/**
+UNFOLD:
+ */
+TFile* unfold_file = new TFile("unfold_file.root", "RECREATE");
+
+RooUnfoldResponse* response_matrix[UNFOLD_NONE];
+
+TEfficiency* efficiency[UNFOLD_NONE];
+
+TH1D* hist4unfold[UNFOLD_NONE][3];
+
+uint nof_bin_nu_E = 12;
+double low_bin_nu_E = 0.;
+double up_bin_nu_E = 6.;
+
+void Init_Unfold(){
+    // ALL EFFICIENCIES
+    efficiency[SIGNAL_SAMPLE1] = new TEfficiency("eff_signal_sample1", "Efficiency Signal Sample 1", nof_bin_nu_E, 0., 6.);
+    efficiency[SIGNAL_BKG_SAMPLE1] = new TEfficiency("eff_signal_bkg_sample1", "Efficiency Signal + Background Sample 1", nof_bin_nu_E, 0., 6.);
+    efficiency[BKG_SAMPLE1] = new TEfficiency("eff_bkg_sample1", "Efficiency Background Sample 1", nof_bin_nu_E, 0., 6.);
+    // EFFICIECNY_SAMPLE2
+    efficiency[SIGNAL_SAMPLE2] = new TEfficiency("eff_signal_sample2", "Efficiency Signal Sample 2", nof_bin_nu_E, 0., 6.);
+    efficiency[SIGNAL_BKG_SAMPLE2] = new TEfficiency("eff_signal_bkg_sample2", "Efficiency Signal + Background Sample 2", nof_bin_nu_E, 0., 6.);
+    efficiency[BKG_SAMPLE2] = new TEfficiency("eff_bkg_sample2", "Efficiency Background Sample 2", nof_bin_nu_E, 0., 6.);
+
+    // ALL RESPONSES
+    // MARTRIX RESPONSE SAMPLE 1
+    response_matrix[SIGNAL_SAMPLE1] = new RooUnfoldResponse(nof_bin_nu_E,0.,6.,"SIGNAL_SAMPLE1","SIGNAL_SAMPLE1");
+    response_matrix[SIGNAL_BKG_SAMPLE1] = new RooUnfoldResponse(nof_bin_nu_E,0.,6.,"SIGNAL_BKG_SAMPLE1","SIGNAL_BKG_SAMPLE1");
+    response_matrix[BKG_SAMPLE1] = new RooUnfoldResponse(nof_bin_nu_E,0.,6.,"BKG_SAMPLE1","BKG_SAMPLE1");
+    // MARTRIX RESPONSE SAMPLE 2
+    response_matrix[SIGNAL_SAMPLE2] = new RooUnfoldResponse(nof_bin_nu_E,0.,6.,"SIGNAL_SAMPLE2","SIGNAL_SAMPLE2");
+    response_matrix[SIGNAL_BKG_SAMPLE2] = new RooUnfoldResponse(nof_bin_nu_E,0.,6.,"SIGNAL_BKG_SAMPLE2","SIGNAL_BKG_SAMPLE2");
+    response_matrix[BKG_SAMPLE2] = new RooUnfoldResponse(nof_bin_nu_E,0.,6.,"BKG_SAMPLE2","BKG_SAMPLE2");
+
+    // ALL HISTOS
+    hist4unfold[SIGNAL_SAMPLE1][0] = new TH1D("h_SIGNAL_SAMPLE1_true", "h_SIGNAL_SAMPLE1_true", nof_bin_nu_E, 0, 6);
+    hist4unfold[SIGNAL_SAMPLE1][1] = new TH1D("h_SIGNAL_SAMPLE1_reco", "h_SIGNAL_SAMPLE1_reco", nof_bin_nu_E, 0, 6);
+    hist4unfold[SIGNAL_BKG_SAMPLE1][0] = new TH1D("h_SIGNAL_BKG_SAMPLE1_true", "h_SIGNAL_BKG_SAMPLE1_true", nof_bin_nu_E, 0, 6);
+    hist4unfold[SIGNAL_BKG_SAMPLE1][1] = new TH1D("h_SIGNAL_BKG_SAMPLE1_reco", "h_SIGNAL_BKG_SAMPLE1_reco", nof_bin_nu_E, 0, 6);
+    hist4unfold[BKG_SAMPLE1][0] = new TH1D("h_BKG_SAMPLE1_true", "h_BKG_SAMPLE1_true", nof_bin_nu_E, 0, 6);
+    hist4unfold[BKG_SAMPLE1][1] = new TH1D("h_BKG_SAMPLE1_reco", "h_BKG_SAMPLE1_reco", nof_bin_nu_E, 0, 6);
+    
+    hist4unfold[SIGNAL_SAMPLE2][0] = new TH1D("h_SIGNAL_SAMPLE2_true", "h_SIGNAL_SAMPLE2_true", nof_bin_nu_E, 0, 6);
+    hist4unfold[SIGNAL_SAMPLE2][1] = new TH1D("h_SIGNAL_SAMPLE2_reco", "h_SIGNAL_SAMPLE2_reco", nof_bin_nu_E, 0, 6);
+    hist4unfold[SIGNAL_BKG_SAMPLE2][0] = new TH1D("h_SIGNAL_BKG_SAMPLE2_true", "h_SIGNAL_BKG_SAMPLE2_true", nof_bin_nu_E, 0, 6);
+    hist4unfold[SIGNAL_BKG_SAMPLE2][1] = new TH1D("h_SIGNAL_BKG_SAMPLE2_reco", "h_SIGNAL_BKG_SAMPLE2_reco", nof_bin_nu_E, 0, 6);
+    hist4unfold[BKG_SAMPLE2][0] = new TH1D("h_BKG_SAMPLE2_true", "h_BKG_SAMPLE2_true", nof_bin_nu_E, 0, 6);
+    hist4unfold[BKG_SAMPLE2][1] = new TH1D("h_BKG_SAMPLE2_reco", "h_BKG_SAMPLE2_reco", nof_bin_nu_E, 0, 6);
+    
+    hist4unfold[SIGNAL_SAMPLE3][0] = new TH1D("h_SIGNAL_SAMPLE3_true", "h_SIGNAL_SAMPLE3_true", nof_bin_nu_E, 0, 6);
+    hist4unfold[SIGNAL_SAMPLE3][1] = new TH1D("h_SIGNAL_SAMPLE3_reco", "h_SIGNAL_SAMPLE3_reco", nof_bin_nu_E, 0, 6);
+    hist4unfold[SIGNAL_BKG_SAMPLE3][0] = new TH1D("h_SIGNAL_BKG_SAMPLE3_true", "h_SIGNAL_BKG_SAMPLE3_true", nof_bin_nu_E, 0, 6);
+    hist4unfold[SIGNAL_BKG_SAMPLE3][1] = new TH1D("h_SIGNAL_BKG_SAMPLE3_reco", "h_SIGNAL_BKG3_reco", nof_bin_nu_E, 0, 6);
+    hist4unfold[BKG_SAMPLE3][0] = new TH1D("h_BKG_SAMPLE3_true", "h_BKG_SAMPLE3_true", nof_bin_nu_E, 0, 6);
+    hist4unfold[BKG_SAMPLE3][1] = new TH1D("h_BKG_SAMPLE3_reco", "h_BKG_SAMPLE3_reco", nof_bin_nu_E, 0, 6);
+}
+
+void PrintAllUnfoldInfos()
+{
+    unfold_file->cd();
+    for(size_t i=0; i< SIGNAL_SAMPLE3; i++){
+        efficiency[i] -> Write();
+        response_matrix[i] -> Write();
+    }
+    for(size_t i=0; i< UNFOLD_NONE; i++){
+        hist4unfold[i][0] -> Write(); 
+        hist4unfold[i][1] -> Write();
+    }
+    unfold_file->Close();
+}
+
 struct CellData {
     std::vector<int>* Fired_Cells_mod = nullptr;
     std::vector<int>* Fired_Cells_id = nullptr;
@@ -148,7 +243,7 @@ std::vector<double>* Reconstructed_Energy = nullptr;
 /***
  * SCALE: mass ratio carbon_in_graphite / carbon_in_plastic
 */
-const double scale_factor = 4.084;
+const double scale_factor = 4.049;
 
 enum STAGE{
     FIDUCIAL_VOLUME = 0,
@@ -328,7 +423,7 @@ bool IsInsideSpot(const double vtxX, const double vtxY, const double vtxZ, doubl
 
 struct h_bins
 {
-    uint nof_bins = 12;
+    uint nof_bins = nof_bin_nu_E;
     double low = 0.;
     double up = 6.;
     h_bins(uint bins, double l, double u) : nof_bins(bins), low(l), up(u) {};
@@ -338,15 +433,15 @@ h_bins Get_h_bins(PARTICLE p)
 {
     if(p == ANTIMUON)
     {
-        return {12, 0., 6000.};
+        return {nof_bin_nu_E, 0., 6000.};
     }else if(p == NEUTRINO)
     {
-        return {12, 0., 6.};
+        return {nof_bin_nu_E, 0., 6.};
     }else if(p == NEUTRON){
         return {20, 0., 1.};
     }else
     {
-        return {12, 0., 6.};
+        return {nof_bin_nu_E, 0., 6.};
     }
 };
 
@@ -624,12 +719,12 @@ public:
 
 TH1D* flight_length_neutron_signal = new TH1D("flight_length_neutron_signal", ";reconstructed flight length [mm];count", 300, 0, 4000);
 TH1D* flight_length_neutron_bkg = new TH1D("flight_length_neutron_bkg", ";reconstructed flight length [mm];count", 300, 0, 4000);
-TH2D* flight_length_neutron_signal_vs_res_time = new TH2D("fl_neutron_signal_vs_res", ";reconstructed flight length [mm];predicted time - reco time [ns]", 300, 0, 4000, 100, -4, 4 );
-TH2D* flight_length_neutron_bkg_vs_res_time = new TH2D("fl_neutron_signal_vs_res", ";reconstructed flight length [mm];predicted time - reco time [ns]", 300, 0, 4000, 100, -4, 4 );
+TH2D* flight_length_neutron_signal_vs_res_time = new TH2D("fl_neutron_signal_vs_res1", ";reconstructed flight length [mm];predicted time - reco time [ns]", 300, 0, 4000, 100, -4, 4 );
+TH2D* flight_length_neutron_bkg_vs_res_time = new TH2D("fl_neutron_signal_vs_res2", ";reconstructed flight length [mm];predicted time - reco time [ns]", 300, 0, 4000, 100, -4, 4 );
 
 
-TH2D* flight_length_neutron_signal_vs_res_space = new TH2D("fl_neutron_signal_vs_res", ";reconstructed flight length [mm];space_residuals [mm]", 300, 0, 4000, 250, 0, 1000 );
-TH2D* flight_length_neutron_bkg_vs_res_space = new TH2D("fl_neutron_signal_vs_res", ";reconstructed flight length [mm];space_residuals [mm]", 300, 0, 4000, 250, 0, 1000);
+TH2D* flight_length_neutron_signal_vs_res_space = new TH2D("fl_neutron_signal_vs_res11", ";reconstructed flight length [mm];space_residuals [mm]", 300, 0, 4000, 250, 0, 1000 );
+TH2D* flight_length_neutron_bkg_vs_res_space = new TH2D("fl_neutron_signal_vs_res22", ";reconstructed flight length [mm];space_residuals [mm]", 300, 0, 4000, 250, 0, 1000);
 
 void LoopOverCells1D(const CellData& cell_data, TH1D* hist) {
     for (size_t i = 0; i < cell_data.Fired_Cells_mod->size(); i++) {
@@ -688,7 +783,7 @@ struct Counter
 
 void PrintCounter(const Counter& counter) {
     // Larghezza delle colonne
-    const int col_width = 15;
+    const int col_width = 25;
 
     // Intestazione della tabella
     std::cout << std::left
@@ -738,7 +833,7 @@ void PrintCounter(const Counter& counter) {
               << std::endl;
 }
 
-void Increment_counter(Counter& counter, const STAGE stage, 
+void Increment_counter(Counter& counter, STAGE stage, 
                         bool is_signal, bool is_on_C, bool is_in_graphite, bool is_in_plastic, bool is_on_H)
 {
     if (is_signal) {
@@ -757,14 +852,44 @@ void Increment_counter(Counter& counter, const STAGE stage,
 void Fill_Final_Histos(SELECTION selection, 
                       double true_nu_E, double reco_nu_E, 
                       const CellData& cell_data,
-                      Counter& counter
+                      Counter& counter,
+                      int event_number
                     //   double true_mu_E, double reco_mu_E,
                     //   double true_n_K, double reco_n_K,
                       ){
     switch (selection)
     {
         case SELECTED_TRUE_POSITIVE:
-            
+            // efficiency & matrix unfold_____________________________
+            if(event_number%2){
+                response_matrix[SIGNAL_SAMPLE2]->Fill(reco_nu_E, true_nu_E);
+                efficiency[SIGNAL_SAMPLE2] -> Fill(true, true_nu_E);
+                hist4unfold[SIGNAL_SAMPLE2][0] -> Fill(true_nu_E); 
+                hist4unfold[SIGNAL_SAMPLE2][1] -> Fill(reco_nu_E); 
+
+                response_matrix[SIGNAL_BKG_SAMPLE2]->Fill(reco_nu_E, true_nu_E);
+                efficiency[SIGNAL_BKG_SAMPLE2] -> Fill(true, true_nu_E);
+                hist4unfold[SIGNAL_BKG_SAMPLE2][0] -> Fill(true_nu_E); 
+                hist4unfold[SIGNAL_BKG_SAMPLE2][1] -> Fill(reco_nu_E); 
+
+            }else{
+                hist4unfold[SIGNAL_SAMPLE3][0] -> Fill(true_nu_E); 
+                hist4unfold[SIGNAL_SAMPLE3][1] -> Fill(reco_nu_E); 
+                hist4unfold[SIGNAL_BKG_SAMPLE3][0] -> Fill(true_nu_E); 
+                hist4unfold[SIGNAL_BKG_SAMPLE3][1] -> Fill(reco_nu_E); 
+            }
+            response_matrix[SIGNAL_SAMPLE1]->Fill(reco_nu_E, true_nu_E);
+            efficiency[SIGNAL_SAMPLE1] -> Fill(true, true_nu_E);
+            hist4unfold[SIGNAL_SAMPLE1][0] -> Fill(true_nu_E); 
+            hist4unfold[SIGNAL_SAMPLE1][1] -> Fill(reco_nu_E);
+
+            response_matrix[SIGNAL_BKG_SAMPLE1]->Fill(reco_nu_E, true_nu_E);
+            efficiency[SIGNAL_BKG_SAMPLE1] -> Fill(true, true_nu_E);
+            hist4unfold[SIGNAL_BKG_SAMPLE1][0] -> Fill(true_nu_E); 
+            hist4unfold[SIGNAL_BKG_SAMPLE1][1] -> Fill(reco_nu_E);
+
+            // _________________________________________________
+
             counter.ccqe_on_H[FIDUCIAL_VOLUME]++;
             counter.ccqe_on_H[ECAL_COINCIDENCE]++;
 
@@ -779,7 +904,29 @@ void Fill_Final_Histos(SELECTION selection,
             break;
 
         case FALSE_NEGATIVE:
+            // efficiency & matrix unfold_____________________________
+            if(event_number%2){
+                response_matrix[SIGNAL_SAMPLE2]->Miss(true_nu_E);
+                efficiency[SIGNAL_SAMPLE2] -> Fill(false, true_nu_E);
+                hist4unfold[SIGNAL_SAMPLE2][0] -> Fill(true_nu_E); 
+
+                response_matrix[SIGNAL_BKG_SAMPLE2]->Miss(true_nu_E);
+                efficiency[SIGNAL_BKG_SAMPLE2] -> Fill(false, true_nu_E);
+                hist4unfold[SIGNAL_BKG_SAMPLE2][0] -> Fill(true_nu_E); 
+            } else {
+                hist4unfold[SIGNAL_SAMPLE3][0] -> Fill(true_nu_E); 
+                hist4unfold[SIGNAL_BKG_SAMPLE3][0] -> Fill(true_nu_E); 
+            }
+            response_matrix[SIGNAL_SAMPLE1]->Miss(true_nu_E);
+            efficiency[SIGNAL_SAMPLE1] -> Fill(false, true_nu_E);
+            hist4unfold[SIGNAL_SAMPLE1][0] -> Fill(true_nu_E); 
             
+            response_matrix[SIGNAL_BKG_SAMPLE1]->Miss(true_nu_E);
+            efficiency[SIGNAL_BKG_SAMPLE1] -> Fill(false, true_nu_E);
+            hist4unfold[SIGNAL_BKG_SAMPLE1][0] -> Fill(true_nu_E); 
+            
+            // _________________________________________________
+
             counter.ccqe_on_H[FIDUCIAL_VOLUME]++;
 
             LoopOverCells1D(cell_data, flight_length_neutron_signal);
@@ -787,8 +934,23 @@ void Fill_Final_Histos(SELECTION selection,
 
             break;
 
-        // FALSE POSITIVES
         case SELECTED_FALSE_POSITIVE_GRAPHITE:
+            // efficiency & matrix unfold_____________________________
+            if(event_number%2){
+                response_matrix[BKG_SAMPLE2]->Fill(reco_nu_E, true_nu_E);
+                efficiency[BKG_SAMPLE2] -> Fill(true, true_nu_E);
+                hist4unfold[BKG_SAMPLE2][0] -> Fill(true_nu_E); 
+                hist4unfold[BKG_SAMPLE2][1] -> Fill(reco_nu_E); 
+            } else {
+                hist4unfold[BKG_SAMPLE3][0] -> Fill(true_nu_E); 
+                hist4unfold[BKG_SAMPLE3][1] -> Fill(reco_nu_E); 
+            }
+            response_matrix[BKG_SAMPLE1]->Fill(reco_nu_E, true_nu_E);
+            efficiency[BKG_SAMPLE1] -> Fill(true, true_nu_E);
+            hist4unfold[BKG_SAMPLE1][0] -> Fill(true_nu_E); 
+            hist4unfold[BKG_SAMPLE1][1] -> Fill(reco_nu_E); 
+            
+            // _________________________________________________
             
             counter.cc_on_C_graphite[FIDUCIAL_VOLUME]++;
             counter.cc_on_C_graphite[ECAL_COINCIDENCE]++;
@@ -802,6 +964,21 @@ void Fill_Final_Histos(SELECTION selection,
             break;
 
         case SELECTED_FALSE_POSITIVE_PLASTIC_C:
+            // efficiency & matrix unfold_____________________________
+            if(event_number%2){
+                response_matrix[SIGNAL_BKG_SAMPLE2]->Fill(reco_nu_E, true_nu_E);
+                efficiency[SIGNAL_BKG_SAMPLE2] -> Fill(true, true_nu_E);
+                hist4unfold[SIGNAL_BKG_SAMPLE2][0] -> Fill(true_nu_E);
+                hist4unfold[SIGNAL_BKG_SAMPLE2][1] -> Fill(reco_nu_E);
+            } else {
+                hist4unfold[SIGNAL_BKG_SAMPLE3][0] -> Fill(true_nu_E);
+                hist4unfold[SIGNAL_BKG_SAMPLE3][1] -> Fill(reco_nu_E);
+            }
+            response_matrix[SIGNAL_BKG_SAMPLE1]->Fill(reco_nu_E, true_nu_E);
+            efficiency[SIGNAL_BKG_SAMPLE1] -> Fill(true, true_nu_E);
+            hist4unfold[SIGNAL_BKG_SAMPLE1][0] -> Fill(true_nu_E);
+            hist4unfold[SIGNAL_BKG_SAMPLE1][1] -> Fill(reco_nu_E);
+            // _________________________________________________
 
             counter.cc_on_C_plastic[FIDUCIAL_VOLUME]++;
             counter.cc_on_C_plastic[ECAL_COINCIDENCE]++;
@@ -834,6 +1011,18 @@ void Fill_Final_Histos(SELECTION selection,
 
         // TRUE NEGATIVES
         case TRUE_NEGATIVE_GRAPHITE:
+            // efficiency & matrix unfold_____________________________
+            if(event_number%2){
+                response_matrix[BKG_SAMPLE2]->Miss(true_nu_E);
+                efficiency[BKG_SAMPLE2] -> Fill(false, true_nu_E);
+                hist4unfold[BKG_SAMPLE2][0] -> Fill(true_nu_E); 
+            } else {
+                hist4unfold[BKG_SAMPLE3][0] -> Fill(true_nu_E); 
+            }
+            response_matrix[BKG_SAMPLE1]->Miss(true_nu_E);
+            efficiency[BKG_SAMPLE1] -> Fill(false, true_nu_E);
+            hist4unfold[BKG_SAMPLE1][0] -> Fill(true_nu_E); 
+            // _________________________________________________
             
             counter.cc_on_C_graphite[FIDUCIAL_VOLUME]++;
             
@@ -843,6 +1032,19 @@ void Fill_Final_Histos(SELECTION selection,
             break;
 
         case TRUE_NEGATIVE_PLASTIC_C:
+            // efficiency & matrix unfold_____________________________
+            if(event_number%2){
+                response_matrix[SIGNAL_BKG_SAMPLE2]->Miss(true_nu_E);
+                efficiency[SIGNAL_BKG_SAMPLE2] -> Fill(false, true_nu_E);
+                hist4unfold[SIGNAL_BKG_SAMPLE2][0] -> Fill(true_nu_E); 
+            } else {
+                hist4unfold[SIGNAL_BKG_SAMPLE3][0] -> Fill(true_nu_E); 
+            }
+            response_matrix[SIGNAL_BKG_SAMPLE1]->Miss(true_nu_E);
+            efficiency[SIGNAL_BKG_SAMPLE1] -> Fill(false, true_nu_E);
+            hist4unfold[SIGNAL_BKG_SAMPLE1][0] -> Fill(true_nu_E); 
+           
+            // _________________________________________________
             
             counter.cc_on_C_plastic[FIDUCIAL_VOLUME]++;
             
@@ -886,9 +1088,8 @@ std::vector<int> are_cells_compatibles(
             float expected_sigma_time = 0.05 / sqrt(reco_energy[i]*1e-3);
             float expected_sigma_space = 10. / sqrt(reco_energy[i]*1e-3);
             bool space_pass = (fabs(space_residuals[i]) <= 150);
-            // bool time_pass = (fabs(time_residuals[i]) <= 1);
             bool time_pass = (fabs(time_residuals[i])) < 3*expected_sigma_time;
-            // bool space_pass = (fabs(space_residuals[i])) < 2*expected_sigma_space;
+            // bool space_pass = (fabs(space_residuals[i])) < 3*expected_sigma_space;
             if(space_pass && time_pass)
             {
                 isCompatible[i] = 1;
@@ -1037,7 +1238,7 @@ int efficiency_plots_test(){
     if(!flux){
         return -1;
     }
-    TH1F* hFlux = new TH1F("hFlux", "Distribuzione di E;E (GeV);Conteggi", 12, 0., 6.);
+    TH1F* hFlux = new TH1F("hFlux", ";neutrino E [GeV];Counts", nof_bin_nu_E, 0., 6.);
     flux->Draw("E >> hFlux");
 
     TTree* tree = (TTree*)file->Get("tAnalysis");
@@ -1097,6 +1298,8 @@ int efficiency_plots_test(){
     std::cout << "Number of events in fiducial volume " << nof_entries << "\n";
 
     Counter counter;
+
+    Init_Unfold();
     
     for (size_t i = 0; i < nof_entries; i++)
     {
@@ -1148,8 +1351,13 @@ int efficiency_plots_test(){
         antinu_hist.Fill(FIDUCIAL_VOLUME, SELECTION_NONE, REACTION_NONE, 0, IncomingNeutrino_energy);
         positive_mu_hist.Fill(FIDUCIAL_VOLUME, SELECTION_NONE, REACTION_NONE, 0, antimuon_true_energy);
 
-        Fill_Final_Histos(selection, IncomingNeutrino_energy, Neutrino_reconstructed_energy_GeV, cell_data, counter);
-        
+        Fill_Final_Histos(selection, 
+                          IncomingNeutrino_energy, 
+                          Neutrino_reconstructed_energy_GeV, 
+                          cell_data, 
+                          counter,
+                          i);
+
         if(!is_signal){
             continue;
         }
@@ -1364,6 +1572,7 @@ int efficiency_plots_test(){
     legendstack->Draw();
 
     canvas_stack->Update();
+    canvas_stack->SaveAs("plots/measured_rate_plastic_compontents.pdf");
 
     //_________________________________________________________________________________________
     /**
@@ -1408,6 +1617,7 @@ int efficiency_plots_test(){
     ratio_bkg->Draw("E1");
 
     canvas_bkg->Update();
+    canvas_bkg->SaveAs("plots/graphite_2_plastic_bkg_comparison.pdf");
     //_________________________________________________________________________________________
 
     /**
@@ -1450,16 +1660,67 @@ int efficiency_plots_test(){
     canvas_sub->Update();
 
     /***
+    POSTSUBTRACTION:
+     */
+    TCanvas* canvas_post_sub = new TCanvas("Stack", "Stack Plot", 900, 700);
+    
+    ccqe_on_H_selected_plastic_reco->GetXaxis()->SetTitle("#bar{#nu}_{#mu} Reco Energy [GeV]");    
+    ccqe_on_H_selected_plastic_reco->Draw("E HIST");
+    selected_plastic_carbon_subtracted->Draw("E1 SAME");
+
+    TLegend* legendpost = new TLegend(0.7, 0.7, 0.9, 0.9);
+    legendpost->AddEntry(ccqe_on_H_selected_plastic_reco, "CCQE on H (signal)", "f");
+    legendpost->AddEntry(selected_plastic_carbon_subtracted, "plastic w/ bkg subtraction", "lp");
+    legendpost->Draw();
+
+    canvas_post_sub->Update();
+    canvas_post_sub->SaveAs("plots/measured_rate_plastic_post_subtraction.pdf");
+
+    /***
+    RESPONSEMATRIX: response matrix true ccqe on H selected
+    the response matrix account also for efficiency
+     */
+    TH2* hResponse = response_matrix[SIGNAL_SAMPLE1]->Hresponse();
+    hResponse->SetTitle("response matrix true CCQE on H selected; true neutrino energy");
+    TCanvas* canvas_response = new TCanvas("canvas_response", "", 900, 700);
+    hResponse->Draw("col z");
+    canvas_response->SaveAs("plots/response_matrix_ccqe_On_h_selected.pdf");
+
+    /***
+    UNFOLDING:
+    - ccqe_on_H_true: true event rate as function of true neutrino energy
+    - selected_plastic_carbon_subtracted: reconstructed event rate from carbon sub as function of reconstructed neutrino energy
+     */
+    RooUnfoldBayes   unfold(response_matrix[SIGNAL_SAMPLE1], selected_plastic_carbon_subtracted, 30);
+    auto selected_plastic_carbon_subtracted_UNFOLDED = (TH1D*) unfold.Hreco();
+    TCanvas* canvas_unfold = new TCanvas("unfolded", "", 900, 700);
+    // unfold.PrintTable (cout, ccqe_on_H_true);
+    ccqe_on_H_true->GetXaxis()->SetTitle("#bar{#nu}_{#mu} Reco Energy [GeV]");
+    ccqe_on_H_true->Draw("E HIST");
+    selected_plastic_carbon_subtracted_UNFOLDED->Draw("E HIST SAME");
+    selected_plastic_carbon_subtracted->Draw("E1 SAME");
+
+    TLegend* legend_unf = new TLegend(0.58, 0.58, 0.9, 0.9);
+    legend_unf->AddEntry(ccqe_on_H_true, "#m_H #Phi_{#bar{#nu}_{#mu}} #sigma_{S} (CCQE on H)", "l");
+    legend_unf->AddEntry(selected_plastic_carbon_subtracted, "plastic w/ bkg subtraction", "lp");
+    legend_unf->AddEntry(selected_plastic_carbon_subtracted_UNFOLDED, "unfolded", "lp");
+    legend_unf->Draw("SAME");
+    
+    canvas_unfold->Update();
+    canvas_unfold->SaveAs("plots/unfolded_rate.pdf");
+
+
+    /***
     CORRECTEDRATE:
     */
-    TCanvas* canvas_final_rate = new TCanvas("canvas_final_rate", "", 900, 700);
-    final_rate_reco_norm -> Draw("E1");
-    ccqe_on_H_true_norm -> Draw("E HIST SAME");
+    // TCanvas* canvas_final_rate = new TCanvas("canvas_final_rate", "", 900, 700);
+    // final_rate_reco_norm -> Draw("E1");
+    // ccqe_on_H_true_norm -> Draw("E HIST SAME");
 
-    TLegend* legend_rates = new TLegend(0.7, 0.7, 0.9, 0.9);
-    legend_rates->AddEntry(ccqe_on_H_true_norm, "#Phi_{#bar{#nu}_{#mu}} #sigma_{S} (CCQE on H)", "l");
-    legend_rates->AddEntry(final_rate_reco_norm, "#Phi_{#bar{#nu}_{#mu}} #sigma_{S} R_{det} (w/ bkg subtraction)", "l");
-    legend_rates->Draw();
+    // TLegend* legend_rates = new TLegend(0.7, 0.7, 0.9, 0.9);
+    // legend_rates->AddEntry(ccqe_on_H_true_norm, "#Phi_{#bar{#nu}_{#mu}} #sigma_{S} (CCQE on H)", "l");
+    // legend_rates->AddEntry(final_rate_reco_norm, "#Phi_{#bar{#nu}_{#mu}} #sigma_{S} R_{det} (w/ bkg subtraction)", "l");
+    // legend_rates->Draw();
 
     /***
     RELATIVEFLUX:
@@ -1478,31 +1739,60 @@ int efficiency_plots_test(){
 
     pad1_flux->cd();
 
-    flux_norm -> Draw("E HIST");
-    ccqe_on_H_true_norm -> Draw("E HIST SAME");
+    hFlux -> Draw("E HIST");
+    // flux_norm -> Draw("E HIST");
+    ccqe_on_H_true -> Draw("E HIST SAME");
+    // ccqe_on_H_true_norm -> Draw("E HIST SAME");
 
     TLegend* legend_flux = new TLegend(0.7, 0.7, 0.9, 0.9);
-    legend_flux->AddEntry(flux_norm, "#Phi_{#bar{#nu}_{#mu}} ", "l");
-    legend_flux->AddEntry(ccqe_on_H_true_norm, "#Phi_{#bar{#nu}_{#mu}} #sigma_{S} (CCQE on H)", "l");
+    legend_flux->AddEntry(hFlux, "#Phi_{#bar{#nu}_{#mu}} ", "l");
+    legend_flux->AddEntry(ccqe_on_H_true, "#Phi_{#bar{#nu}_{#mu}} #sigma_{S} (CCQE on H)", "l");
     legend_flux->Draw();
 
     pad2_flux->cd();
-    TH1D* xsec_shape = (TH1D*)ccqe_on_H_true_norm->Clone("xsec_shape");
-    xsec_shape->Divide(flux_norm);
+    TH1D* xsec_shape = (TH1D*)ccqe_on_H_true->Clone("xsec_shape"); 
+    // TH1D* xsec_shape = (TH1D*)ccqe_on_H_true_norm->Clone("xsec_shape"); 
+    xsec_shape->Divide(hFlux);
     xsec_shape->Draw("E HIST");
     canvas_flux->Update();
+
+    /**
+    UNFOLDEDCROSSEX:
+         */
+    RooUnfoldResponse response(xsec_shape, hResponse);
+    RooUnfoldBinByBin unfoldBinByBin(&response, xsec_shape);
+
+    // Perform the unfolding and get the result
+    auto unfoldedBinByBin = (TH1D*) unfoldBinByBin.Hreco();
+
+    // Set up a canvas for plotting
+    TCanvas* canvas_xsec = new TCanvas("canvas_xsec", "", 900, 700);
+    xsec_shape->Draw("E HIST");
+    unfoldedBinByBin->Draw("E HIST SAME");
+
+    // Add a legend for clarity
+    TLegend* legend = new TLegend(0.75, 0.75, 0.9, 0.9);
+    legend->AddEntry(xsec_shape, "Input Spectrum", "l");
+    legend->AddEntry(unfoldedBinByBin, "Unfolded Spectrum", "l");
+    legend->Draw();
+
+    // Save the canvas as a PDF
+    canvas_xsec->Print("plots/unfolded_XSEC.pdf");
 
     /**
     RECOFLUX: 
      */
     TCanvas* canvas_flux_ = new TCanvas("canvas_flux_", "", 900, 700);
-    flux_norm -> Draw("E HIST");
-    TH1D* flux_norm_reco = (TH1D*)final_rate_reco_norm->Clone("flux_norm_reco");
-    flux_norm_reco -> Divide(xsec_shape);
-    flux_norm_reco->SetLineColor(kBlack);
-    flux_norm_reco->SetMarkerStyle(20);
-    flux_norm_reco->SetMarkerSize(0.8);
-    flux_norm_reco -> Draw("E1 SAME");
+    hFlux -> Draw("E HIST");
+    // flux_norm -> Draw("E HIST");
+    TH1D* flux_reco = (TH1D*)selected_plastic_carbon_subtracted_UNFOLDED->Clone("flux_reco");
+    // TH1D* flux_norm_reco = (TH1D*)final_rate_reco_norm->Clone("flux_norm_reco");
+    flux_reco -> Divide(xsec_shape);
+    flux_reco->SetLineColor(kBlack);
+    flux_reco->SetMarkerStyle(20);
+    flux_reco->SetMarkerSize(0.8);
+    flux_reco -> Draw("E1 SAME");
+    canvas_flux_->SaveAs("plots/reconstructed_flux.pdf");
 
     /**
     SYSTEMATICSFLUX:
@@ -1510,10 +1800,9 @@ int efficiency_plots_test(){
     TCanvas* canvas_systematics_ = new TCanvas("canvas_systematics_", "", 900, 700);
 
     // Creazione di un istogramma per memorizzare le differenze relative
-    TH1D* flux_systematics = (TH1D*)flux_norm->Clone("flux_systematics");
-    flux_systematics->Add(flux_norm_reco, -1.0); // Differenza tra flux_norm e flux_norm_reco
-    flux_systematics->Divide(flux_norm_reco);   // Calcolo della differenza relativa
-
+    TH1D* flux_systematics = (TH1D*)hFlux->Clone("flux_systematics");
+    flux_systematics->Add(flux_reco, -1.0); // Differenza tra hFlux e flux_reco
+    flux_systematics->Divide(flux_reco);   // Calcolo della differenza relativa
 
     // Prendi il valore assoluto dei contenuti
     for (int i = 1; i <= flux_systematics->GetNbinsX(); ++i) {
@@ -1521,113 +1810,61 @@ int efficiency_plots_test(){
         flux_systematics->SetBinContent(i, std::abs(content)); // Valore assoluto
     }
 
-    double min_y = 0; // Considera che non vuoi valori negativi
+    // Calcola i limiti dell'asse Y
+    double min_y = 0;
     double max_y = 0;
     for (int i = 1; i <= flux_systematics->GetNbinsX(); ++i) {
         double content = flux_systematics->GetBinContent(i);
         double error = flux_systematics->GetBinError(i);
         max_y = std::max(max_y, content + error);
     }
-
-    // Aggiungi un margine per migliorare la visibilità
-    max_y *= 1.1;
+    max_y *= 1.1; // Aggiungi un margine al massimo
 
     // Imposta i limiti dell'asse Y
     flux_systematics->SetMinimum(min_y);
     flux_systematics->SetMaximum(max_y);
 
-    // Creazione della banda di errore come rettangoli
-    std::vector<TBox*> error_boxes;
+    // Disegna l'istogramma
+    flux_systematics->GetYaxis()->SetRangeUser(0., 1.);
+    flux_systematics->SetTitle(";#bar{#nu}_{#mu} Reco Energy [GeV]; Flux Systematic Uncertainties");
+    flux_systematics->SetLineColor(kBlack);
+    flux_systematics->Draw("HIST"); // Disegna prima l'istogramma
+
+    // Creazione e disegno della banda di errore
     for (int i = 1; i <= flux_systematics->GetNbinsX(); ++i) {
         double x_low = flux_systematics->GetBinLowEdge(i);
         double x_high = x_low + flux_systematics->GetBinWidth(i);
         double y = flux_systematics->GetBinContent(i);
         double error = flux_systematics->GetBinError(i);
 
-        // Limita le barre di errore tra 0 e 1
-        double y_min = std::max(0.0, y - error);  // if < 0 -> 0
-        double y_max = std::min(1.0, y + error);  // if > 1 -> 1
+        double y_min = std::max(0.0, y - error);
+        double y_max = y + error;
 
         // Crea la banda di errore
         TBox* box = new TBox(x_low, y_min, x_high, y_max);
         box->SetFillColorAlpha(kRed, 0.35); // Rosso chiaro con trasparenza
         box->SetLineWidth(0);
-        error_boxes.push_back(box);
-    }
-
-    // Disegna i risultati
-    flux_systematics->SetTitle(";#bar{#nu}_{#mu} Reco Energy [GeV]; Relative Flux Systematics");
-    flux_systematics->SetLineColor(kBlack);
-    flux_systematics->Draw("E1");
-
-    // Disegna le bande di errore
-    for (auto& box : error_boxes) {
         box->Draw("SAME");
     }
 
-    // Ridisegna l'istogramma sopra la banda di errore
+    // Ridisegna l'istogramma sopra le bande di errore
     flux_systematics->Draw("HIST SAME");
 
-    /***
-    PLOT:
-     */
-    // TCanvas* canvas_residulas = new TCanvas("cr1","",900,700);
-    // best_time_residual_vs_any_space_residual -> Draw("col z");
-    
-    // TCanvas* canvas_residulas_2 = new TCanvas("cr2","",900,700);
-    // any_time_residual_vs_best_space_residual -> Draw("col z");
+    // Salva il canvas
+    canvas_systematics_->SaveAs("plots/systematics_on_reconstructed_flux.pdf");
 
-    // TCanvas* canvas_proj1 = new TCanvas("cp1","",900,700);
-    // best_time_residuals -> Draw("HIST");
 
-    // TCanvas* canvas_proj2 = new TCanvas("cp2","",900,700);
-    // best_space_residuals -> Draw("HIST");
 
-    // TCanvas* canvas_3cells = new TCanvas("canvas_3cells","",900,700);
-    // res_time_vs_res_space_3cells->Draw("col z");
-
-    // TCanvas* canvas_3cells_c = new TCanvas("canvas_3cells_","",900,700);
-    // res_time_vs_res_space_3cells_->Draw("col z");
-
-    /***
-    FLIGHTLENGTH:    
-    */
-    // TCanvas* cfl = new TCanvas("cfl",";reconstructed flight length [mm];count",900,700);
-    // flight_length_neutron_signal->Draw("E HIST");
-    // flight_length_neutron_bkg -> SetLineColor(kRed);
-    // flight_length_neutron_bkg -> Draw("E HIST SAME");
-
-    // TCanvas* cfl2 = new TCanvas("cfl2",";reconstructed flight length [mm];predicted time - reco time [ns]",900,700);
-    // flight_length_neutron_signal_vs_res_time -> Draw("col z");
-
-    // TCanvas* cfl3 = new TCanvas("cfl3",";reconstructed flight length [mm];predicted time - reco time [ns]",900,700);
-    // flight_length_neutron_bkg_vs_res_time -> Draw("col z");
-    
-    // TCanvas* cfl4 = new TCanvas("cfl4","",900,700);
-    // flight_length_neutron_bkg_vs_res_space -> Draw("col z");
-    
-    // TCanvas* cfl5 = new TCanvas("cfl5","",900,700);
-    // flight_length_neutron_bkg_vs_res_space -> Draw("col z");
     /***
     RECAP: final recap on number of events
     */
 
-    std::cout << 
-            "count CCQE on H : " << counter.ccqe_on_H[FIDUCIAL_VOLUME] << 
-                   ", selected " << counter.ccqe_on_H[ECAL_COINCIDENCE] << "\n"
-            
-            "count CC on Carbon plastic : " << counter.cc_on_C_plastic[FIDUCIAL_VOLUME] <<
-                              ", selected " << counter.cc_on_C_plastic[ECAL_COINCIDENCE] << "\n"
-            
-            "count CCRES on H plastic: " << counter.ccres_on_H[FIDUCIAL_VOLUME] << 
-                           ", selected " << counter.ccres_on_H[ECAL_COINCIDENCE] << "\n"
-            
-            "count CC on others: " << counter.cc_on_others[FIDUCIAL_VOLUME] << 
-                           ", selected " << counter.cc_on_others[ECAL_COINCIDENCE] << "\n"
-            
-            "count CC on Carbon graphite : " << counter.cc_on_C_graphite[FIDUCIAL_VOLUME] <<  
-                               ", selected " << counter.cc_on_C_graphite[ECAL_COINCIDENCE] << "\n";
-            
     PrintCounter(counter);
+
+    /**
+    UNFOLDMAGIC:
+     */
+    PrintAllUnfoldInfos();
+
     return 0;
 }
